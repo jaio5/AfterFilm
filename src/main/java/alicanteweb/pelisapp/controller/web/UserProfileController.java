@@ -29,10 +29,18 @@ public class UserProfileController {
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
             List<Review> userReviews = reviewRepository.findAllByUser_Id(user.getId());
+            // Seguidores y seguidos
+            int followersCount = user.getFollowers() != null ? user.getFollowers().size() : 0;
+            int followingCount = user.getFollowing() != null ? user.getFollowing().size() : 0;
+            // Logros
+            var archivements = user.getUsuarioArchievements();
+            // Carátulas de películas (ya accesibles desde review.getMovie().getPosterLocalPath())
             model.addAttribute("user", user);
             model.addAttribute("reviews", userReviews);
             model.addAttribute("reviewCount", userReviews.size());
-            // Si la vista 'perfil' no existe, devolver 'error'
+            model.addAttribute("followersCount", followersCount);
+            model.addAttribute("followingCount", followingCount);
+            model.addAttribute("archivements", archivements);
             return model.containsAttribute("user") ? "perfil" : "error";
         } catch (Exception e) {
             log.error("Error cargando perfil: {}", e.getMessage());

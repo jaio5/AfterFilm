@@ -10,10 +10,15 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -133,27 +138,26 @@ public class WebController {
 
     @PostMapping("/admin/load-popular")
     @ResponseBody
-    public String loadPopularMovies(@RequestParam(defaultValue = "3") int pages, Authentication auth) {
+    public ResponseEntity<?> loadPopularMovies(@RequestParam(defaultValue = "3") int pages, Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
-        if (redirect != null) return "❌ Sin permisos de administrador";
-        return bulkLoadMovies(pages, "popular");
+        if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "❌ Sin permisos de administrador"));
+        return ResponseEntity.ok(bulkLoadMoviesJson(pages, "popular"));
     }
 
     @PostMapping("/admin/load-top-rated")
     @ResponseBody
-    public String loadTopRatedMovies(@RequestParam(defaultValue = "3") int pages, Authentication auth) {
+    public ResponseEntity<?> loadTopRatedMovies(@RequestParam(defaultValue = "3") int pages, Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
-        if (redirect != null) return "❌ Sin permisos de administrador";
-        return bulkLoadMovies(pages, "topRated");
+        if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "❌ Sin permisos de administrador"));
+        return ResponseEntity.ok(bulkLoadMoviesJson(pages, "topRated"));
     }
 
     @PostMapping("/admin/load-trending")
     @ResponseBody
-    public String loadTrendingMovies(@RequestParam(defaultValue = "1") int pages, Authentication auth) {
+    public ResponseEntity<?> loadTrendingMovies(@RequestParam(defaultValue = "1") int pages, Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
-        if (redirect != null) return "❌ Sin permisos de administrador";
-        // Por ahora usar popular movies como trending
-        return bulkLoadMovies(pages, "popular");
+        if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "❌ Sin permisos de administrador"));
+        return ResponseEntity.ok(bulkLoadMoviesJson(pages, "popular"));
     }
 
     @GetMapping("/admin/load-more")
@@ -350,6 +354,58 @@ Sin carátula: %d (%.1f%%)
             log.error("❌ ERROR EN CARGA MASIVA: Tipo={}, Páginas={}, Error={}", type, pages, e.getMessage(), e);
             return "❌ Error cargando películas: " + e.getMessage();
         }
+    }
+
+    /**
+     * Versión mejorada: devuelve un JSON con el resultado de la carga masiva
+     */
+    private Map<String, Object> bulkLoadMoviesJson(int pages, String type) {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            log.info("🚀 INICIANDO CARGA MASIVA: Tipo={}, Páginas={}", type, pages);
+            long countBefore = movieRepository.count();
+            int totalProcessed = 0;
+            int totalOmitted = 0;
+            int totalErrors = 0;
+            if ("popular".equals(type)) {
+                for (int page = 1; page <= Math.min(pages, 5); page++) {
+                    try {
+                        int processed = tmdbMovieLoaderService.loadPopularMoviesAndReturnCount(page);
+                        totalProcessed += processed;
+                        totalOmitted += 20 - processed; // asumiendo 20 por página
+                    } catch (Exception e) {
+                        totalErrors++;
+                    }
+                }
+            } else if ("topRated".equals(type)) {
+                for (int page = 1; page <= Math.min(pages, 5); page++) {
+                    try {
+                        int processed = tmdbMovieLoaderService.loadTopRatedMoviesAndReturnCount(page);
+                        totalProcessed += processed;
+                        totalOmitted += 20 - processed;
+                    } catch (Exception e) {
+                        totalErrors++;
+                    }
+                }
+            } else {
+                throw new IllegalArgumentException("Tipo de carga no soportado");
+            }
+            long countAfter = movieRepository.count();
+            long newMovies = countAfter - countBefore;
+            result.put("success", true);
+            result.put("newMovies", newMovies);
+            result.put("processed", totalProcessed);
+            result.put("omitted", totalOmitted);
+            result.put("errors", totalErrors);
+            result.put("totalBefore", countBefore);
+            result.put("totalAfter", countAfter);
+            result.put("message", String.format("Se han cargado %d nuevas películas. Omitidas: %d. Errores: %d.", newMovies, totalOmitted, totalErrors));
+        } catch (Exception e) {
+            log.error("❌ ERROR EN CARGA MASIVA: Tipo={}, Páginas={}, Error={}", type, pages, e.getMessage(), e);
+            result.put("success", false);
+            result.put("message", "❌ Error cargando películas: " + e.getMessage());
+        }
+        return result;
     }
 
     // Método utilitario para manejo de errores en endpoints

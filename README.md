@@ -297,3 +297,6 @@ Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) par
 ---
 
 **PelisApp** - Descubre, valora y comparte tu pasión por el cine 🎬✨
+#   M o b i l e P e l i s A p p  
+ #   M o b i l e P e l i s A p p  
+ 

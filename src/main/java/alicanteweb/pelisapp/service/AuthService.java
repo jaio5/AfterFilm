@@ -57,8 +57,10 @@ public class AuthService {
 
         userRepository.save(user);
         log.info("Usuario registrado exitosamente: {}", req.getUsername());
-
-        return generateTokensForUser(user.getUsername(), Collections.singleton("ROLE_USER"));
+        // Añadir roles al UserDTO
+        java.util.List<String> rolesList = user.getRoles().stream().map(r -> r.getName()).collect(java.util.stream.Collectors.toList());
+        UserDTO userDTO = new UserDTO(user.getId(), user.getUsername(), user.getDisplayName(), user.getCriticLevel(), rolesList);
+        return generateTokensForUser(user.getUsername(), Collections.singleton("ROLE_USER"), userDTO);
     }
 
     private void validateRegistrationRequest(RegisterRequest req) {
@@ -95,7 +97,15 @@ public class AuthService {
         user.setRoles(new HashSet<>(Collections.singleton(defaultRole)));
     }
 
+    private LoginResponse generateTokensForUser(String username, Set<String> roles, UserDTO userDTO) {
+        String access = jwtTokenProvider.createAccessToken(username, roles);
+        String refresh = jwtTokenProvider.createRefreshToken(username);
+        long expires = jwtTokenProvider.getExpiryMillis(access);
+        return new LoginResponse(access, expires, refresh, userDTO);
+    }
+
     private LoginResponse generateTokensForUser(String username, Set<String> roles) {
+        // Para compatibilidad, pero sin userDTO
         String access = jwtTokenProvider.createAccessToken(username, roles);
         String refresh = jwtTokenProvider.createRefreshToken(username);
         long expires = jwtTokenProvider.getExpiryMillis(access);
@@ -118,8 +128,14 @@ public class AuthService {
                 .map(GrantedAuthority::getAuthority)
                 .collect(java.util.stream.Collectors.toSet());
 
+            User user = userRepository.findByUsername(principal.getUsername()).orElse(null);
+            UserDTO userDTO = null;
+            if (user != null) {
+                java.util.List<String> rolesList = user.getRoles().stream().map(r -> r.getName()).collect(java.util.stream.Collectors.toList());
+                userDTO = new UserDTO(user.getId(), user.getUsername(), user.getDisplayName(), user.getCriticLevel(), rolesList);
+            }
             log.info("Login exitoso para usuario: {}", req.getUsername());
-            return generateTokensForUser(principal.getUsername(), roles);
+            return generateTokensForUser(principal.getUsername(), roles, userDTO);
 
         } catch (Exception e) {
             log.error("Error en login para usuario {}: {}", req.getUsername(), e.getMessage());
@@ -145,8 +161,8 @@ public class AuthService {
 
         String access = jwtTokenProvider.createAccessToken(username, roles);
         long expires = jwtTokenProvider.getExpiryMillis(access);
-
-        return new LoginResponse(access, expires, refreshToken);
+        UserDTO userDTO = new UserDTO(user.getId(), user.getUsername(), user.getDisplayName(), user.getCriticLevel(), user.getRoles().stream().map(r -> r.getName()).collect(java.util.stream.Collectors.toList()));
+        return new LoginResponse(access, expires, refreshToken, userDTO);
     }
 
     /**
@@ -166,6 +182,6 @@ public class AuthService {
     public UserDTO getUserDTOByUsername(String username) {
         User user = findUserByUsername(username);
         if (user == null) return null;
-        return new UserDTO(user.getId(), user.getUsername(), user.getDisplayName(), user.getCriticLevel());
+        return new UserDTO(user.getId(), user.getUsername(), user.getDisplayName(), user.getCriticLevel(), user.getRoles().stream().map(r -> r.getName()).collect(java.util.stream.Collectors.toList()));
     }
 }

@@ -231,6 +231,32 @@ public class AdminApiController {
         return ResponseEntity.ok(user);
     }
 
+
+    @GetMapping("/users")
+    public ResponseEntity<Map<String, Object>> listUsers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size
+    ) {
+        var pageable = PageRequest.of(page, size);
+        var userPage = userRepository.findAll(pageable);
+        // Evitar exponer datos sensibles, mapear a DTO básico
+        var users = userPage.getContent().stream().map(user -> Map.of(
+                "id", user.getId(),
+                "username", user.getUsername(),
+                "email", user.getEmail(),
+                "roles", user.getRoles().stream().map(role -> role.getName()).toArray(),
+                "banned", user.isBanned(),
+                "emailConfirmed", user.isEmailConfirmed()
+        )).toList();
+        Map<String, Object> result = new HashMap<>();
+        result.put("users", users);
+        result.put("totalElements", userPage.getTotalElements());
+        result.put("totalPages", userPage.getTotalPages());
+        result.put("page", page);
+        result.put("size", size);
+        return ResponseEntity.ok(result);
+    }
+
     // ============= TMDB INTEGRATION =============
 
     /*
@@ -266,12 +292,17 @@ public class AdminApiController {
     @PostMapping("/tmdb/load-movie/{tmdbId}")
     public ResponseEntity<Map<String, Object>> loadMovieFromTMDB(@PathVariable Long tmdbId) {
         try {
-            // Simplificado - usar el servicio básico
-            tmdbMovieLoaderService.loadPopularMovies(1);
-
+            Movie movie = tmdbMovieLoaderService.loadMovieByTmdbId(tmdbId);
             Map<String, Object> result = new HashMap<>();
-            result.put("success", true);
-            result.put("message", "Proceso de carga iniciado para TMDB ID: " + tmdbId);
+            if (movie != null) {
+                result.put("success", true);
+                result.put("message", "Película descargada y guardada correctamente");
+                result.put("movieId", movie.getId());
+                result.put("title", movie.getTitle());
+            } else {
+                result.put("success", false);
+                result.put("message", "No se pudo descargar la película (puede que ya exista o haya error de conexión)");
+            }
             return ResponseEntity.ok(result);
         } catch (Exception e) {
             log.error("Error cargando película {}: {}", tmdbId, e.getMessage());

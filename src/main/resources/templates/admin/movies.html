@@ -273,9 +273,10 @@
                 method: 'POST',
                 body: data
             })
-            .then(response => response.text())
+            .then(response => response.json()) // Cambiado de .text() a .json()
             .then(result => {
-                updateStatus(result);
+                // Mostrar el mensaje real del backend
+                updateStatus(result.message || JSON.stringify(result));
                 // Actualizar contador después de 2 segundos
                 setTimeout(() => {
                     window.location.reload();

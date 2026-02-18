@@ -17,11 +17,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.List;
 
-/**
- * Servicio para gestión de reseñas de películas.
- * Implementa principios de código limpio y usa constantes centralizadas.
- */
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -114,6 +112,10 @@ public class ReviewService {
         User user = userRepository.findByUsername(username).orElse(null);
         if (user == null) return Page.empty();
         return reviewRepository.findAllByUser_Id(user.getId(), pageable);
+    }
+
+    public List<Review> getReviewsByMovieId(Long movieId) {
+        return reviewRepository.findByMovieIdOrderByCreatedAtDesc(movieId);
     }
 
     /**

@@ -307,6 +307,23 @@ public class TMDBMovieLoaderService {
         }
     }
 
+    public int loadPopularMoviesAndReturnCount(int page) {
+        JsonNode response = tmdbClient.getPopular(page);
+        if (response == null || !response.has(AppConstants.TMDB_RESULTS_KEY)) return 0;
+        JsonNode results = response.path(AppConstants.TMDB_RESULTS_KEY);
+        return processMoviesFromResponse(results);
+    }
+
+    /**
+     * Carga una página de películas top rated y devuelve el número de nuevas películas añadidas
+     */
+    public int loadTopRatedMoviesAndReturnCount(int page) {
+        JsonNode response = tmdbClient.getTopRated(page);
+        if (response == null || !response.has(AppConstants.TMDB_RESULTS_KEY)) return 0;
+        JsonNode results = response.path(AppConstants.TMDB_RESULTS_KEY);
+        return processMoviesFromResponse(results);
+    }
+
     /**
      * Procesa el reparto (cast) de una película con información detallada
      */
