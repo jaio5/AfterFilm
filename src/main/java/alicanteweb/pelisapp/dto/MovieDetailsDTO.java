@@ -15,8 +15,8 @@ public class MovieDetailsDTO {
     private String posterPath;
     private String releaseDate;
     private List<String> cast;
-    private List<CastDTO> castMembers; // Cast con fotos
-    private List<CrewDTO> directors;   // Directores con fotos
+    private List<CastDTO> castMembers;
+    private List<CrewDTO> directors;
     private List<CommentDTO> comments;
 
     @Setter
