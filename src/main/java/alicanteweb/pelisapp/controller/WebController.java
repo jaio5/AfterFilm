@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +21,7 @@ import org.springframework.ui.Model;
 import org.springframework.security.core.Authentication;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -40,9 +42,19 @@ public class WebController {
     // Services
     private final TMDBMovieLoaderService tmdbMovieLoaderService;
     private final EmailConfirmationService emailConfirmationService;
+    private final IEmailService emailService;
 
     @Value("${app.email.enabled:false}")
     private boolean emailEnabled;
+
+    @Value("${spring.mail.host:smtp.gmail.com}")
+    private String mailHost;
+
+    @Value("${spring.mail.port:587}")
+    private String mailPort;
+
+    @Value("${spring.mail.username:}")
+    private String mailUser;
 
 
 
@@ -90,7 +102,10 @@ public class WebController {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return redirect;
         try {
+            Page<Movie> moviesPage = movieRepository.findAll(
+                PageRequest.of(0, 100, Sort.by("title").ascending()));
             long movieCount = movieRepository.count();
+            model.addAttribute("movies", moviesPage.getContent());
             addMovieStatsToModel(model, movieCount);
             return "admin/movies";
         } catch (Exception e) {
@@ -133,7 +148,26 @@ public class WebController {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return redirect;
         model.addAttribute("emailEnabled", emailEnabled);
+        model.addAttribute("emailHost", mailHost);
+        model.addAttribute("emailPort", mailPort);
+        model.addAttribute("emailUser", mailUser);
         return "admin/email-config";
+    }
+
+    @PostMapping("/admin/test-email")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> testEmail(
+            @RequestParam String email, Authentication auth) {
+        String redirect = requireAdminOrRedirect(auth, null);
+        if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos"));
+        try {
+            emailService.sendConfirmationEmail(email, "admin-test", "TEST_TOKEN_ADMIN");
+            return ResponseEntity.ok(Map.of("success", true,
+                "message", "✅ Email enviado correctamente a " + email));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("success", false,
+                "message", "❌ Error: " + e.getMessage()));
+        }
     }
 
     @PostMapping("/admin/load-popular")
@@ -284,6 +318,7 @@ Sin carátula: %d (%.1f%%)
     // Método utilitario para obtener y añadir estadísticas de películas
     private void addMovieStatsToModel(Model model, long movieCount) {
         model.addAttribute("movieCount", movieCount);
+        model.addAttribute("currentMovieCount", movieCount);
     }
 
     // Método utilitario para añadir paginación y usuarios al modelo
@@ -499,6 +534,7 @@ Sin carátula: %d (%.1f%%)
             long movieCount = movieRepository.count();
             status.put("success", true);
             status.put("movieCount", movieCount);
+            status.put("currentMovieCount", movieCount);
             status.put("isLoading", false);
             status.put("lastUpdate", System.currentTimeMillis());
             return ResponseEntity.ok(status);

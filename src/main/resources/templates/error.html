@@ -3,23 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Error - PelisApp</title>
+    <title>Error — PelisApp</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>
-<body style="background-color: #1e1e1e; color: white;">
-    <div class="container d-flex align-items-center justify-content-center vh-100">
-        <div class="text-center">
-            <i class="fas fa-exclamation-triangle text-warning display-1 mb-4"></i>
-            <h1 class="display-4 mb-3">¡Oops! Algo salió mal</h1>
-            <p class="lead mb-4" th:text="${error ?: 'Ha ocurrido un error inesperado'}">Error desconocido</p>
-            <div class="d-flex gap-3 justify-content-center">
-                <a th:href="@{/}" class="btn btn-primary">
-                    <i class="fas fa-home me-2"></i>Volver al Inicio
+<body>
+    <div class="auth-page">
+        <div style="text-align:center;max-width:480px;">
+            <div style="font-size:3rem;color:var(--text-muted);margin-bottom:1.5rem;">
+                <i class="fas fa-exclamation-circle"></i>
+            </div>
+            <h1 style="font-size:1.5rem;font-weight:500;letter-spacing:-0.02em;margin-bottom:0.75rem;">
+                Algo salió mal
+            </h1>
+            <p style="color:var(--text-secondary);font-size:0.9rem;margin-bottom:2rem;"
+               th:text="${error ?: 'Ha ocurrido un error inesperado. Inténtalo de nuevo.'}">
+                Error desconocido
+            </p>
+            <div style="display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+                <a th:href="@{/}" class="btn-accent">
+                    <i class="fas fa-home"></i> Volver al inicio
                 </a>
-                <button onclick="history.back()" class="btn btn-outline-light">
-                    <i class="fas fa-arrow-left me-2"></i>Regresar
+                <button onclick="history.back()" class="btn-ghost">
+                    <i class="fas fa-arrow-left"></i> Regresar
                 </button>
             </div>
         </div>

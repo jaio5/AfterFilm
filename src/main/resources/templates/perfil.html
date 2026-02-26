@@ -3,160 +3,97 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Perfil - PelisApp</title>
+    <title>Mi Perfil — PelisApp</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
-    <style>
-        :root {
-            --primary-color: #1e1e1e;
-            --secondary-color: #2c2c2c;
-            --accent-color: #ff6b35;
-            --text-color: #ffffff;
-            --muted-color: #b3b3b3;
-        }
-        body {
-            background-color: var(--primary-color);
-            color: var(--text-color);
-        }
-        .profile-header {
-            background: linear-gradient(135deg, var(--secondary-color), var(--primary-color));
-            padding: 2rem 0;
-            margin-bottom: 2rem;
-        }
-        .profile-avatar {
-            width: 120px;
-            height: 120px;
-            border-radius: 50%;
-            object-fit: cover;
-            background: var(--muted-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-        }
-        .profile-info h2 {
-            color: var(--accent-color);
-            font-weight: bold;
-        }
-        .profile-meta {
-            color: var(--muted-color);
-            font-size: 1rem;
-        }
-        .review-card {
-            background: var(--secondary-color);
-            border-radius: 10px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        .review-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        .review-author {
-            font-weight: bold;
-            color: var(--accent-color);
-        }
-        .review-rating {
-            color: #ffc107;
-        }
-        .review-text {
-            margin-bottom: 1rem;
-            line-height: 1.6;
-        }
-        .review-date {
-            color: var(--muted-color);
-            font-size: 0.875rem;
-        }
-        .back-link {
-            color: var(--accent-color);
-            text-decoration: none;
-            margin-bottom: 1rem;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .back-link:hover {
-            color: #e55a30;
-        }
-    </style>
 </head>
 <body>
+
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark" style="background-color: var(--secondary-color); border-bottom: 2px solid var(--accent-color);">
+    <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" href="/" style="color: var(--accent-color); font-weight: bold; font-size: 1.8rem;">
-                <i class="fas fa-film me-2"></i>PelisApp
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" th:href="@{/}"><i class="fas fa-home me-1"></i>Inicio</a>
-                <a class="nav-link" th:href="@{/perfil}" sec:authorize="isAuthenticated()"><i class="fas fa-user me-1"></i>Mi Perfil</a>
-                <a class="nav-link" th:href="@{/login}" sec:authorize="!isAuthenticated()"><i class="fas fa-sign-in-alt me-1"></i>Login</a>
+            <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> PelisApp</a>
+            <div class="navbar-nav-links">
+                <a th:href="@{/}"><i class="fas fa-home"></i> Inicio</a>
+                <a th:href="@{/perfil}" sec:authorize="isAuthenticated()"><i class="fas fa-user"></i> Mi Perfil</a>
+                <a th:href="@{/login}" sec:authorize="!isAuthenticated()">Entrar</a>
+                <form th:action="@{/logout}" method="post" sec:authorize="isAuthenticated()" style="margin:0">
+                    <button type="submit" class="btn-text">Cerrar sesión</button>
+                </form>
             </div>
         </div>
     </nav>
-    <div class="container mt-4">
-        <a href="javascript:history.back()" class="back-link"><i class="fas fa-arrow-left"></i>Volver</a>
-        <div class="profile-header mb-4">
-            <div class="row align-items-center">
-                <div class="col-md-3 text-center">
-                    <div class="profile-avatar mx-auto mb-3">
-                        <i class="fas fa-user"></i>
-                    </div>
-                </div>
-                <div class="col-md-9">
-                    <div class="profile-info">
-                        <h2 th:text="${user.displayName ?: user.username}">Nombre Usuario</h2>
-                        <div class="profile-meta mb-2">
-                            <span th:text="${user.email}">email@ejemplo.com</span>
-                        </div>
-                        <div class="profile-meta mb-2">
-                            <span th:text="${user.username}">Usuario</span> | Reseñas: <span th:text="${reviewCount}">0</span>
-                        </div>
-                        <div class="profile-meta">
-                            <span th:if="${user.roles != null}" th:text="${user.roles}">Roles</span>
-                        </div>
-                    </div>
-                </div>
+
+    <!-- Profile hero -->
+    <div class="profile-hero">
+        <div class="profile-hero-inner">
+            <div class="profile-avatar-circle">
+                <span th:text="${#strings.substring(user.displayName ?: user.username, 0, 1).toUpperCase()}">U</span>
             </div>
-        </div>
-        <div class="mb-4">
-            <h4><i class="fas fa-comments me-2"></i>Mis Reseñas</h4>
-            <div th:if="${#lists.isEmpty(reviews)}" class="text-center py-4 text-muted">
-                <i class="fas fa-comment-slash fa-3x mb-3"></i>
-                <p>No has escrito ninguna reseña aún.</p>
-            </div>
-            <div th:each="review : ${reviews}" class="review-card mb-3 p-3 rounded shadow-sm bg-dark bg-opacity-75">
-                <div class="review-header d-flex justify-content-between align-items-center mb-2">
-                    <span class="review-author fw-bold text-accent" th:text="${user.displayName ?: user.username}">Usuario</span>
-                    <span class="review-rating">
-                        <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star text-warning"></span>
-                        <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star text-muted"></span>
-                    </span>
+            <div>
+                <h1 class="profile-name" th:text="${user.displayName ?: user.username}">Nombre</h1>
+                <div class="profile-username" th:text="'@' + ${user.username}">@usuario</div>
+                <div class="profile-stats">
+                    <div class="profile-stat">
+                        <strong th:text="${reviewCount}">0</strong> reseñas
+                    </div>
+                    <div class="profile-stat" th:if="${reviewCount > 0}">
+                        Media:
+                        <strong th:text="${#numbers.formatDecimal(avgRating, 1, 1)}">0.0</strong>
+                        <i class="fas fa-star" style="color:#f59e0b;font-size:0.75rem;"></i>
+                    </div>
+                    <div class="profile-stat" th:text="${user.email}">email@ejemplo.com</div>
                 </div>
-                <div class="review-text mb-2">
-                    <span th:if="${review.text != null and !review.text.trim().isEmpty()}" th:text="${review.text}">Texto de la reseña aquí...</span>
-                    <span th:unless="${review.text != null and !review.text.trim().isEmpty()}" class="text-muted fst-italic">
-                        <i class="fas fa-star me-1"></i>Valoración sin comentario
-                    </span>
-                </div>
-                <span class="review-date ms-auto text-muted" th:text="${#temporals.format(review.createdAt, 'dd/MM/yyyy HH:mm')}">01/01/2023 12:00</span>
-                <a th:href="@{/pelicula/{id}(id=${review.movie.id})}" class="btn btn-outline-light btn-sm mt-2"><i class="fas fa-eye me-1"></i>Ver Película</a>
             </div>
         </div>
     </div>
-    <footer class="text-center py-4 mt-5" style="background-color: var(--secondary-color); border-top: 1px solid #444;">
-        <div class="container">
-            <p class="mb-0 text-muted">
-                © 2026 PelisApp - Red Social de Películas |
-                <i class="fas fa-heart text-danger"></i>
-                Hecho con pasión por el cine
-            </p>
+
+    <!-- Content -->
+    <div class="profile-content">
+        <a href="javascript:history.back()" class="back-link">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+
+        <p class="section-title" style="margin-top:1.5rem;">Mis reseñas</p>
+
+        <div th:if="${#lists.isEmpty(reviews)}" class="empty-state">
+            <i class="fas fa-film"></i>
+            <p>Aún no has valorado ninguna película.</p>
+            <a th:href="@{/}" class="btn-accent btn-sm" style="margin-top:0.75rem;">Explorar catálogo</a>
         </div>
+
+        <div th:each="review : ${reviews}" class="profile-review-card">
+            <!-- Poster placeholder (evita lazy loading de relaciones) -->
+            <div class="profile-review-poster-placeholder">
+                <i class="fas fa-film"></i>
+            </div>
+            <!-- Review body -->
+            <div class="profile-review-body">
+                <a th:href="@{/pelicula/{id}(id=${review.movie.id})}"
+                   class="profile-review-title"
+                   th:text="${review.movie.title}">Título película</a>
+                <div class="profile-review-stars">
+                    <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
+                    <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"
+                          style="color:var(--bg-elevated)"></span>
+                </div>
+                <div class="profile-review-text"
+                     th:if="${review.text != null and !review.text.trim().isEmpty()}"
+                     th:text="${review.text}">Texto reseña</div>
+                <div class="profile-review-text"
+                     th:unless="${review.text != null and !review.text.trim().isEmpty()}"
+                     style="font-style:italic;color:var(--text-muted)">Sin comentario</div>
+                <div class="profile-review-date"
+                     th:text="${#temporals.format(review.createdAt, 'dd/MM/yyyy')}">01/01/2023</div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        © 2026 PelisApp — <i class="fas fa-heart text-accent"></i> por el cine
     </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

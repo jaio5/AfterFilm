@@ -52,10 +52,16 @@ public class MovieViewController {
             model.addAttribute("reviews", reviews);
             model.addAttribute("movieStats", stats);
             model.addAttribute("userReview", userReview);
-            model.addAttribute("canReview", auth != null && auth.isAuthenticated() && userReview == null);
-            model.addAttribute("isAuthenticated", auth != null && auth.isAuthenticated());
-            if (auth != null && auth.isAuthenticated() && userReview != null) {
-                userRepository.findByUsername(auth.getName()).ifPresent(user -> model.addAttribute("currentUser", user));
+            boolean isAuthenticated = auth != null && auth.isAuthenticated();
+            boolean isAdmin = isAuthenticated && auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                            || a.getAuthority().equals("ADMIN")
+                            || a.getAuthority().equals("Administrador"));
+            model.addAttribute("canReview", isAuthenticated && userReview == null);
+            model.addAttribute("isAuthenticated", isAuthenticated);
+            model.addAttribute("isAdmin", isAdmin);
+            if (isAuthenticated) {
+                userRepository.findByUsername(auth.getName()).ifPresent(u -> model.addAttribute("currentUser", u));
             }
             return "movie-detail";
         } catch (Exception e) {

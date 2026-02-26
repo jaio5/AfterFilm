@@ -4,366 +4,163 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Panel Admin - PelisApp</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #1e1e1e 0%, #2c2c2c 100%);
-            min-height: 100vh;
-            color: white;
-        }
-        .admin-card {
-            background: rgba(44, 44, 44, 0.9);
-            border: 1px solid rgba(255, 107, 53, 0.3);
-            border-radius: 15px;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-        }
-        .admin-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(255, 107, 53, 0.2);
-        }
-        .navbar {
-            background: rgba(0, 0, 0, 0.8) !important;
-            backdrop-filter: blur(10px);
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>
 <body>
-    <nav class="navbar navbar-dark navbar-expand-lg">
+    <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-film me-2 text-warning"></i>
-                <span class="fw-bold">PelisApp</span>
-                <span class="badge bg-danger ms-2">ADMIN</span>
+                <i class="fas fa-film"></i> PelisApp
+                <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
             </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" th:href="@{/}">
-                    <i class="fas fa-home me-1"></i>Ir a la App
-                </a>
-                <a class="nav-link" th:href="@{/logout}">
-                    <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
-                </a>
+            <div class="navbar-nav-links">
+                <a th:href="@{/}"><i class="fas fa-home"></i> App</a>
+                <a th:href="@{/logout}"><i class="fas fa-sign-out-alt"></i> Salir</a>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
-        <div class="row mb-4">
-            <div class="col-12">
-                <h1 class="display-4 mb-3">
-                    <i class="fas fa-shield-alt me-3 text-danger"></i>
-                    Panel de Administración
-                </h1>
-                <p class="lead text-muted">Gestiona todos los aspectos de PelisApp</p>
+    <div class="admin-wrapper">
+        <div class="admin-page-title"><i class="fas fa-shield-alt" style="color:var(--accent);margin-right:0.5rem"></i>Panel de Administración</div>
+        <div class="admin-page-subtitle">Hola, <span th:text="${adminUser}">admin</span> — gestiona todos los aspectos de PelisApp</div>
+
+        <!-- Stats row -->
+        <div class="admin-grid-4" style="margin-bottom:1.5rem">
+            <div class="admin-stat-card">
+                <div class="stat-label"><i class="fas fa-film" style="margin-right:0.3rem"></i>Películas</div>
+                <div class="stat-value" th:text="${totalMovies}">0</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label"><i class="fas fa-users" style="margin-right:0.3rem"></i>Usuarios</div>
+                <div class="stat-value" th:text="${totalUsers}">0</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label"><i class="fas fa-star" style="margin-right:0.3rem"></i>Reseñas</div>
+                <div class="stat-value" th:text="${totalReviews}">0</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label"><i class="fas fa-clock" style="margin-right:0.3rem"></i>Última comprobación</div>
+                <div class="stat-value" style="font-size:1rem;padding-top:0.3rem" id="last-check">–</div>
             </div>
         </div>
 
-        <!-- Status Cards -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="card admin-card text-white">
-                    <div class="card-body text-center">
-                        <i class="fas fa-database fa-2x text-info mb-2"></i>
-                        <h6>Base de Datos</h6>
-                        <span id="db-status" class="badge bg-secondary">
-                            <i class="fas fa-spinner fa-spin"></i> Verificando...
-                        </span>
-                        <div id="db-details" class="mt-2 small text-muted"></div>
+        <!-- Service status -->
+        <div class="admin-section" style="margin-bottom:1.5rem">
+            <div class="admin-section-title"><i class="fas fa-heartbeat"></i>Estado de Servicios</div>
+            <div class="admin-grid-4" style="margin-bottom:0">
+                <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0">
+                    <span class="status-dot loading" id="dot-db"></span>
+                    <div>
+                        <div style="font-size:0.85rem;font-weight:500">Base de Datos</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted)" id="msg-db">Verificando…</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0">
+                    <span class="status-dot loading" id="dot-tmdb"></span>
+                    <div>
+                        <div style="font-size:0.85rem;font-weight:500">TMDB API</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted)" id="msg-tmdb">Verificando…</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0">
+                    <span class="status-dot loading" id="dot-ollama"></span>
+                    <div>
+                        <div style="font-size:0.85rem;font-weight:500">Ollama AI</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted)" id="msg-ollama">Verificando…</div>
+                    </div>
+                </div>
+                <div style="display:flex;align-items:center;gap:0.75rem;padding:0.5rem 0">
+                    <span class="status-dot loading" id="dot-email"></span>
+                    <div>
+                        <div style="font-size:0.85rem;font-weight:500">Sistema Email</div>
+                        <div style="font-size:0.75rem;color:var(--text-muted)" id="msg-email">Verificando…</div>
                     </div>
                 </div>
             </div>
-            <div class="col-md-3 mb-3">
-                <div class="card admin-card text-white">
-                    <div class="card-body text-center">
-                        <i class="fas fa-film fa-2x text-warning mb-2"></i>
-                        <h6>TMDB API</h6>
-                        <span id="tmdb-status" class="badge bg-secondary">
-                            <i class="fas fa-spinner fa-spin"></i> Verificando...
-                        </span>
-                        <div id="tmdb-details" class="mt-2 small text-muted"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card admin-card text-white">
-                    <div class="card-body text-center">
-                        <i class="fas fa-robot fa-2x text-primary mb-2"></i>
-                        <h6>Ollama AI</h6>
-                        <span id="ollama-status" class="badge bg-secondary">
-                            <i class="fas fa-spinner fa-spin"></i> Verificando...
-                        </span>
-                        <div id="ollama-details" class="mt-2 small text-muted"></div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card admin-card text-white">
-                    <div class="card-body text-center">
-                        <i class="fas fa-envelope fa-2x text-success mb-2"></i>
-                        <h6>Sistema Email</h6>
-                        <span id="email-status" class="badge bg-secondary">
-                            <i class="fas fa-spinner fa-spin"></i> Verificando...
-                        </span>
-                        <div id="email-details" class="mt-2 small text-muted"></div>
-                    </div>
-                </div>
+            <div style="margin-top:1rem;display:flex;align-items:center;gap:1rem">
+                <button onclick="loadSystemHealth()" class="btn-ghost" style="font-size:0.8rem;padding:0.35rem 0.85rem">
+                    <i class="fas fa-sync-alt" style="margin-right:0.4rem"></i>Actualizar
+                </button>
+                <span style="font-size:0.75rem;color:var(--text-muted)" id="server-msg"></span>
             </div>
         </div>
 
-        <!-- Server Health Card -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card admin-card text-white">
-                    <div class="card-header">
-                        <h5><i class="fas fa-server me-2"></i>Estado del Servidor</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <span id="server-status" class="badge bg-secondary mb-2">
-                                    <i class="fas fa-spinner fa-spin"></i> Verificando...
-                                </span>
-                                <div id="server-message" class="text-muted"></div>
-                            </div>
-                            <div class="col-md-6">
-                                <div id="server-details" class="small"></div>
-                            </div>
-                        </div>
-                        <div class="mt-3">
-                            <button onclick="refreshSystemHealth()" class="btn btn-primary btn-sm">
-                                <i class="fas fa-sync-alt me-2"></i>Actualizar Estado
-                            </button>
-                            <small class="text-muted ms-3">Última verificación: <span id="last-check">-</span></small>
-                        </div>
-                    </div>
-                </div>
+        <!-- Module cards -->
+        <div class="admin-section-title" style="margin-bottom:1rem"><i class="fas fa-th-large"></i>Módulos</div>
+        <div class="admin-grid-3">
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-users"></i></div>
+                <h4>Gestión de Usuarios</h4>
+                <p>Administra usuarios, roles y permisos</p>
+                <a th:href="@{/admin/users}" class="btn-accent"><i class="fas fa-cog"></i> Gestionar</a>
             </div>
-        </div>
-
-        <!-- Admin Modules -->
-        <div class="row">
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card admin-card text-white h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-users fa-4x mb-3 text-primary"></i>
-                        <h4 class="card-title">Gestión de Usuarios</h4>
-                        <p class="card-text text-muted">Administra usuarios, roles y permisos</p>
-                        <a href="/admin/users" class="btn btn-primary w-100">
-                            <i class="fas fa-cog me-2"></i>Gestionar Usuarios
-                        </a>
-                    </div>
-                </div>
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-film"></i></div>
+                <h4>Gestión de Películas</h4>
+                <p>Administra el catálogo de películas</p>
+                <a th:href="@{/admin/movies}" class="btn-accent"><i class="fas fa-video"></i> Gestionar</a>
             </div>
-
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card admin-card text-white h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-film fa-4x mb-3 text-success"></i>
-                        <h4 class="card-title">Gestión de Películas</h4>
-                        <p class="card-text text-muted">Administra el catálogo de películas</p>
-                        <a th:href="@{/admin/movies}" class="btn btn-success w-100">
-                            <i class="fas fa-video me-2"></i>Gestionar Películas
-                        </a>
-                    </div>
-                </div>
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-upload"></i></div>
+                <h4>Carga Masiva TMDB</h4>
+                <p>Importa películas desde TMDB por lotes</p>
+                <a th:href="@{/admin/bulk-loader}" class="btn-accent"><i class="fas fa-download"></i> Carga Masiva</a>
             </div>
-
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card admin-card text-white h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-upload fa-4x mb-3 text-warning"></i>
-                        <h4 class="card-title">Carga Masiva</h4>
-                        <p class="card-text text-muted">Carga películas desde TMDB</p>
-                        <a th:href="@{/admin/bulk-loader}" class="btn btn-warning w-100">
-                            <i class="fas fa-download me-2"></i>Carga Masiva
-                        </a>
-                    </div>
-                </div>
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-envelope"></i></div>
+                <h4>Config Email</h4>
+                <p>Configuración y prueba de correos</p>
+                <a th:href="@{/admin/email-config}" class="btn-accent"><i class="fas fa-cog"></i> Config Email</a>
             </div>
-
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card admin-card text-white h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-envelope fa-4x mb-3 text-info"></i>
-                        <h4 class="card-title">Config Email</h4>
-                        <p class="card-text text-muted">Configuración de correos</p>
-                        <a th:href="@{/admin/email-config}" class="btn btn-info w-100">
-                            <i class="fas fa-cog me-2"></i>Config Email
-                        </a>
-                    </div>
-                </div>
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-shield-alt"></i></div>
+                <h4>Moderación IA</h4>
+                <p>Sistema de moderación automática</p>
+                <a th:href="@{/admin/moderation}" class="btn-accent"><i class="fas fa-robot"></i> Moderación</a>
             </div>
-
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card admin-card text-white h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-shield-alt fa-4x mb-3 text-danger"></i>
-                        <h4 class="card-title">Moderación</h4>
-                        <p class="card-text text-muted">Sistema de moderación IA</p>
-                        <a th:href="@{/admin/moderation}" class="btn btn-danger w-100">
-                            <i class="fas fa-robot me-2"></i>Moderación
-                        </a>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-4 col-md-6 mb-4">
-                <div class="card admin-card text-white h-100">
-                    <div class="card-body text-center">
-                        <i class="fas fa-chart-bar fa-4x mb-3 text-secondary"></i>
-                        <h4 class="card-title">Estadísticas</h4>
-                        <p class="card-text text-muted">Métricas del sistema</p>
-                        <button class="btn btn-secondary w-100" disabled>
-                            <i class="fas fa-chart-line me-2"></i>Próximamente
-                        </button>
-                    </div>
-                </div>
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-chart-bar"></i></div>
+                <h4>Estadísticas</h4>
+                <p>Métricas del sistema</p>
+                <button class="btn-ghost" disabled style="opacity:0.5;cursor:not-allowed">
+                    <i class="fas fa-chart-line"></i> Próximamente
+                </button>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     <script>
-        // Cargar estado del sistema al cargar la página
         document.addEventListener('DOMContentLoaded', function() {
             loadSystemHealth();
+            setInterval(loadSystemHealth, 30000);
         });
 
-        // Función para cargar el estado de todas las conexiones
         async function loadSystemHealth() {
             try {
-                console.log('🔍 Verificando estado del sistema...');
-
-                const response = await fetch('/api/system-health', {
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                const response = await fetch('/api/admin/system/health', { headers: { 'Accept': 'application/json' } });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                setDot('db',     data.database);
+                setDot('tmdb',   data.tmdb);
+                setDot('ollama', data.ollama);
+                setDot('email',  data.email);
+                document.getElementById('last-check').textContent = new Date().toLocaleTimeString('es-ES');
+                if (data.server && data.server.message) {
+                    document.getElementById('server-msg').textContent = data.server.message;
                 }
-
-                const healthData = await response.json();
-                console.log('✅ Estado del sistema cargado:', healthData);
-
-                // Actualizar cada servicio
-                updateServiceStatus('db', 'database', healthData.database);
-                updateServiceStatus('tmdb', 'tmdb', healthData.tmdb);
-                updateServiceStatus('ollama', 'ollama', healthData.ollama);
-                updateServiceStatus('email', 'email', healthData.email);
-                updateServerStatus(healthData.server);
-
-                // Actualizar timestamp
-                document.getElementById('last-check').textContent = new Date().toLocaleTimeString();
-
-            } catch (error) {
-                console.error('❌ Error cargando estado del sistema:', error);
-
-                // Mostrar error en todos los servicios
-                const services = ['db', 'tmdb', 'ollama', 'email'];
-                services.forEach(service => {
-                    updateServiceStatus(service, service, {
-                        connected: false,
-                        message: 'Error de conexión',
-                        error: error.message
-                    });
-                });
-
-                updateServerStatus({
-                    connected: false,
-                    message: 'Error verificando servidor',
-                    error: error.message
-                });
+            } catch (err) {
+                ['db','tmdb','ollama','email'].forEach(s => setDot(s, { connected: false, message: 'Error: ' + err.message }));
             }
         }
 
-        // Función para actualizar el estado de un servicio específico
-        function updateServiceStatus(elementPrefix, serviceName, status) {
-            const statusElement = document.getElementById(`${elementPrefix}-status`);
-            const detailsElement = document.getElementById(`${elementPrefix}-details`);
-
-            if (!statusElement) {
-                console.warn(`Elemento ${elementPrefix}-status no encontrado`);
-                return;
-            }
-
-            // Actualizar badge de estado
-            statusElement.className = `badge ${status.connected ? 'bg-success' : 'bg-danger'}`;
-            statusElement.innerHTML = `
-                <i class="${status.connected ? 'fas fa-check-circle' : 'fas fa-times-circle'}"></i>
-                ${status.connected ? 'Conectado' : 'Desconectado'}
-            `;
-
-            // Actualizar detalles
-            if (detailsElement) {
-                let detailsText = status.message;
-                if (status.responseTimeMs !== undefined) {
-                    detailsText += `\n⏱️ ${status.responseTimeMs}ms`;
-                }
-                if (status.error && !status.connected) {
-                    detailsText += `\n❌ ${status.error}`;
-                }
-                detailsElement.textContent = detailsText;
-                detailsElement.style.whiteSpace = 'pre-line';
-            }
-
-            console.log(`📊 ${serviceName}: ${status.connected ? '✅' : '❌'} - ${status.message}`);
+        function setDot(id, status) {
+            const dot = document.getElementById('dot-' + id);
+            const msg = document.getElementById('msg-' + id);
+            if (!dot) return;
+            dot.className = 'status-dot ' + (status && status.connected ? 'ok' : 'err');
+            if (msg) msg.textContent = (status && status.message) ? status.message : (status && status.connected ? 'Conectado' : 'Desconectado');
         }
-
-        // Función para actualizar el estado del servidor
-        function updateServerStatus(status) {
-            const statusElement = document.getElementById('server-status');
-            const messageElement = document.getElementById('server-message');
-            const detailsElement = document.getElementById('server-details');
-
-            if (!statusElement) return;
-
-            // Actualizar badge de estado
-            statusElement.className = `badge ${status.connected ? 'bg-success' : 'bg-danger'} mb-2`;
-            statusElement.innerHTML = `
-                <i class="${status.connected ? 'fas fa-check-circle' : 'fas fa-times-circle'}"></i>
-                ${status.connected ? 'Funcionando' : 'Con problemas'}
-            `;
-
-            // Actualizar mensaje
-            if (messageElement) {
-                messageElement.textContent = status.message || 'Sin información';
-            }
-
-            // Actualizar detalles técnicos
-            if (detailsElement && status.details) {
-                let detailsHtml = '';
-                if (status.details.maxMemoryMB) {
-                    detailsHtml += `
-                        <div>💾 Memoria: ${status.details.usedMemoryMB}MB / ${status.details.maxMemoryMB}MB</div>
-                        <div>📊 Uso: ${status.details.memoryUsagePercent}%</div>
-                        <div>🔧 CPUs: ${status.details.availableProcessors}</div>
-                    `;
-                }
-                detailsElement.innerHTML = detailsHtml;
-            }
-        }
-
-        // Función para refrescar el estado manualmente
-        function refreshSystemHealth() {
-            // Mostrar indicador de carga
-            const services = ['db', 'tmdb', 'ollama', 'email', 'server'];
-            services.forEach(service => {
-                const element = document.getElementById(`${service}-status`);
-                if (element) {
-                    element.className = 'badge bg-secondary';
-                    element.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
-                }
-            });
-
-            // Cargar nuevo estado
-            loadSystemHealth();
-        }
-
-        // Auto-refresh cada 30 segundos (opcional)
-        setInterval(loadSystemHealth, 30000);
     </script>
 </body>
 </html>

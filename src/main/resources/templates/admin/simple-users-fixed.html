@@ -4,147 +4,148 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Usuarios - Admin PelisApp</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #1e1e1e 0%, #2c2c2c 100%);
-            min-height: 100vh;
-            color: white;
-        }
-        .table-dark {
-            background-color: #2c2c2c;
-        }
-        .btn-group-vertical .btn {
-            margin-bottom: 2px;
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>
 <body>
-    <nav class="navbar navbar-dark bg-dark">
+    <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-film me-2"></i>PelisApp Admin
+            <a class="navbar-brand" th:href="@{/}">
+                <i class="fas fa-film"></i> PelisApp
+                <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
             </a>
-            <a class="btn btn-outline-light" th:href="@{/admin}">Volver al Panel</a>
+            <div class="navbar-nav-links">
+                <a th:href="@{/admin}"><i class="fas fa-arrow-left"></i> Panel</a>
+                <a th:href="@{/}"><i class="fas fa-home"></i> App</a>
+                <a th:href="@{/logout}"><i class="fas fa-sign-out-alt"></i> Salir</a>
+            </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
-        <h1 class="text-white mb-4">Gestión de Usuarios</h1>
+    <div class="admin-wrapper">
+        <div class="admin-page-title"><i class="fas fa-users" style="color:var(--accent);margin-right:0.5rem"></i>Gestión de Usuarios</div>
+        <div class="admin-page-subtitle">Administra usuarios, roles y permisos</div>
 
-        <!-- Error Display -->
-        <div th:if="${error}" class="alert alert-danger">
-            <span th:text="${error}">Error message</span>
+        <!-- Error -->
+        <div th:if="${error}" style="background:rgba(230,57,70,0.1);border:1px solid rgba(230,57,70,0.3);border-radius:var(--radius);padding:0.75rem 1rem;margin-bottom:1rem;font-size:0.85rem;color:#fca5a5">
+            <i class="fas fa-exclamation-triangle" style="margin-right:0.4rem"></i>
+            <span th:text="${error}">Error</span>
         </div>
 
-        <!-- Stats -->
-        <div class="alert alert-info">
-            <strong>Total de usuarios:</strong> <span th:text="${totalUsers}">0</span>
+        <!-- Search + stats bar -->
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.5rem;flex-wrap:wrap">
+            <form th:action="@{/admin/users}" method="get" style="display:flex;gap:0.5rem;flex:1;min-width:220px">
+                <input type="text" name="search" th:value="${search}" placeholder="Buscar por usuario…"
+                       style="flex:1;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;color:var(--text-primary);font-size:0.85rem"
+                       aria-label="Buscar usuario">
+                <button type="submit" class="btn-ghost" style="font-size:0.82rem;padding:0.5rem 0.9rem">
+                    <i class="fas fa-search"></i>
+                </button>
+                <a th:if="${search}" th:href="@{/admin/users}" class="btn-ghost" style="font-size:0.82rem;padding:0.5rem 0.9rem">
+                    <i class="fas fa-times"></i>
+                </a>
+            </form>
+            <div class="admin-stat-card" style="text-align:right;padding:0.75rem 1.25rem">
+                <div class="stat-label">Total usuarios</div>
+                <div class="stat-value" style="font-size:1.4rem" th:text="${totalUsers}">0</div>
+            </div>
         </div>
 
-        <!-- Users Table -->
-        <div class="card bg-dark">
-            <div class="card-header">
-                <h5>Lista de Usuarios - Panel de Moderación</h5>
+        <!-- User table -->
+        <div class="admin-section">
+            <div style="overflow-x:auto">
+                <table class="admin-table" aria-label="Lista de usuarios">
+                    <thead>
+                        <tr>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Roles</th>
+                            <th>Confirmado</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="user : ${users}">
+                            <td>
+                                <div style="font-weight:500;color:var(--text-primary)" th:text="${user.username}">username</div>
+                                <div style="font-size:0.75rem;color:var(--text-muted)" th:text="${user.displayName ?: ''}"></div>
+                            </td>
+                            <td style="font-size:0.82rem" th:text="${user.email}">email@example.com</td>
+                            <td>
+                                <span th:each="role : ${user.roles}"
+                                      th:class="${role.name == 'ROLE_ADMIN' ? 'badge-warn' : 'badge-info'}"
+                                      th:text="${role.name}"
+                                      style="margin-right:0.25rem">ROLE</span>
+                            </td>
+                            <td>
+                                <span th:if="${user.emailConfirmed}"  class="badge-ok"><i class="fas fa-check"></i> Sí</span>
+                                <span th:unless="${user.emailConfirmed}" class="badge-warn"><i class="fas fa-clock"></i> Pendiente</span>
+                            </td>
+                            <td>
+                                <span th:if="${user.banned}"   class="badge-err"><i class="fas fa-ban"></i> Baneado</span>
+                                <span th:unless="${user.banned}" class="badge-ok"><i class="fas fa-check-circle"></i> Activo</span>
+                            </td>
+                            <td>
+                                <div style="display:flex;flex-direction:column;gap:0.3rem">
+                                    <button th:unless="${user.emailConfirmed}"
+                                            type="button"
+                                            class="btn-ghost"
+                                            style="font-size:0.73rem;padding:0.2rem 0.55rem"
+                                            onclick="confirmEmail(this)"
+                                            th:data-user-id="${user.id}">
+                                        <i class="fas fa-envelope-check"></i> Confirmar email
+                                    </button>
+                                    <button th:unless="${user.banned}"
+                                            type="button"
+                                            class="btn-ghost ban-btn"
+                                            style="font-size:0.73rem;padding:0.2rem 0.55rem;color:#fde68a;border-color:rgba(251,191,36,0.3)"
+                                            onclick="banUser(this)"
+                                            th:data-user-id="${user.id}">
+                                        <i class="fas fa-ban"></i> Banear
+                                    </button>
+                                    <button th:if="${user.banned}"
+                                            type="button"
+                                            class="btn-ghost unban-btn"
+                                            style="font-size:0.73rem;padding:0.2rem 0.55rem;color:#86efac;border-color:rgba(34,197,94,0.3)"
+                                            onclick="unbanUser(this)"
+                                            th:data-user-id="${user.id}">
+                                        <i class="fas fa-user-check"></i> Desbanear
+                                    </button>
+                                    <button type="button"
+                                            class="btn-ghost delete-btn"
+                                            style="font-size:0.73rem;padding:0.2rem 0.55rem;color:#fca5a5;border-color:rgba(230,57,70,0.3)"
+                                            onclick="deleteUser(this)"
+                                            th:data-user-id="${user.id}"
+                                            th:data-username="${user.username}">
+                                        <i class="fas fa-trash"></i> Eliminar
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(users)}">
+                            <td colspan="6" style="text-align:center;color:var(--text-muted)">No hay usuarios</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Username</th>
-                                <th>Email</th>
-                                <th>Nombre</th>
-                                <th>Email Confirmado</th>
-                                <th>Estado</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="user : ${users}">
-                                <td th:text="${user.id}">1</td>
-                                <td>
-                                    <strong th:text="${user.username}">username</strong>
-                                    <div class="small text-muted" th:if="${user.roles != null and !user.roles.isEmpty()}">
-                                        <span th:each="role : ${user.roles}"
-                                              th:text="${role.name}"
-                                              class="badge bg-secondary me-1">ROLE</span>
-                                    </div>
-                                </td>
-                                <td th:text="${user.email}">email@example.com</td>
-                                <td th:text="${user.displayName ?: 'Sin nombre'}">Nombre</td>
-                                <td>
-                                    <span th:if="${user.emailConfirmed}" class="badge bg-success">
-                                        <i class="fas fa-check-circle"></i> Confirmado
-                                    </span>
-                                    <span th:unless="${user.emailConfirmed}" class="badge bg-warning">
-                                        <i class="fas fa-exclamation-triangle"></i> Pendiente
-                                    </span>
-                                </td>
-                                <td>
-                                    <span th:if="${user.banned}" class="badge bg-danger">
-                                        <i class="fas fa-ban"></i> Baneado
-                                    </span>
-                                    <span th:unless="${user.banned}" class="badge bg-success">
-                                        <i class="fas fa-user-check"></i> Activo
-                                    </span>
-                                </td>
-                                <td>
-                                    <div class="btn-group-vertical btn-group-sm" role="group">
-                                        <!-- Confirmar email -->
-                                        <button th:unless="${user.emailConfirmed}"
-                                                type="button"
-                                                class="btn btn-info btn-sm"
-                                                onclick="confirmEmail(this)"
-                                                th:data-user-id="${user.id}"
-                                                title="Confirmar email manualmente">
-                                            <i class="fas fa-envelope-check"></i> Confirmar Email
-                                        </button>
+        </div>
 
-                                        <!-- Banear -->
-                                        <button th:unless="${user.banned}"
-                                                type="button"
-                                                class="btn btn-warning btn-sm ban-btn"
-                                                onclick="banUser(this)"
-                                                th:data-user-id="${user.id}"
-                                                title="Banear usuario">
-                                            <i class="fas fa-ban"></i> Banear
-                                        </button>
-
-                                        <!-- Desbanear -->
-                                        <button th:if="${user.banned}"
-                                                type="button"
-                                                class="btn btn-success btn-sm unban-btn"
-                                                onclick="unbanUser(this)"
-                                                th:data-user-id="${user.id}"
-                                                title="Desbanear usuario">
-                                            <i class="fas fa-user-check"></i> Desbanear
-                                        </button>
-
-                                        <!-- Eliminar -->
-                                        <button type="button"
-                                                class="btn btn-danger btn-sm delete-btn"
-                                                onclick="deleteUser(this)"
-                                                th:data-user-id="${user.id}"
-                                                th:data-username="${user.username}"
-                                                title="Eliminar usuario">
-                                            <i class="fas fa-trash"></i> Eliminar
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+        <!-- Pagination -->
+        <div th:if="${totalPages > 1}" style="display:flex;align-items:center;justify-content:center;gap:0.25rem;padding:1.5rem 0">
+            <a th:if="${hasPrevious}" th:href="@{/admin/users(page=${currentPage - 1},search=${search})}"
+               style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.4rem 0.75rem;font-size:0.875rem;color:var(--text-secondary)">&laquo;</a>
+            <span th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+                <a th:href="@{/admin/users(page=${i},search=${search})}"
+                   th:text="${i + 1}"
+                   th:style="${i == currentPage ? 'background:var(--accent);border:1px solid var(--accent);border-radius:var(--radius);padding:0.4rem 0.75rem;font-size:0.875rem;color:#fff' : 'background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.4rem 0.75rem;font-size:0.875rem;color:var(--text-secondary)'}">1</a>
+            </span>
+            <a th:if="${hasNext}" th:href="@{/admin/users(page=${currentPage + 1},search=${search})}"
+               style="background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius);padding:0.4rem 0.75rem;font-size:0.875rem;color:var(--text-secondary)">&raquo;</a>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Funciones simplificadas
         function confirmEmail(btn) {
             const userId = btn.getAttribute('data-user-id');
             if (confirm('¿Confirmar email de este usuario?')) {
@@ -167,7 +168,7 @@
         }
 
         function deleteUser(btn) {
-            const userId = btn.getAttribute('data-user-id');
+            const userId   = btn.getAttribute('data-user-id');
             const username = btn.getAttribute('data-username');
             if (confirm('¿ELIMINAR PERMANENTEMENTE al usuario "' + username + '"? Esta acción NO se puede deshacer.')) {
                 if (confirm('¿Estás COMPLETAMENTE SEGURO?')) {
@@ -177,41 +178,22 @@
         }
 
         function performAction(url, method) {
-            fetch(url, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.text())
-            .then(data => {
-                alert(data);
-                window.location.reload();
-            })
-            .catch(error => {
-                alert('Error: ' + error.message);
-            });
+            fetch(url, { method, headers: { 'Content-Type': 'application/json' } })
+                .then(r => r.text())
+                .then(data => { alert(data); window.location.reload(); })
+                .catch(err => alert('Error: ' + err.message));
         }
 
-        // Ocultar botones para SUPERADMIN al cargar la página
+        // Hide action buttons for SUPERADMIN rows
         document.addEventListener('DOMContentLoaded', function() {
-            const rows = document.querySelectorAll('tbody tr');
-            rows.forEach(function(row) {
-                const rolesDiv = row.querySelector('.small.text-muted');
-                if (rolesDiv && rolesDiv.textContent.includes('ROLE_SUPERADMIN')) {
-                    const deleteBtn = row.querySelector('.delete-btn');
-                    const banBtn = row.querySelector('.ban-btn');
-                    const unbanBtn = row.querySelector('.unban-btn');
-
-                    if (deleteBtn) deleteBtn.style.display = 'none';
-                    if (banBtn) banBtn.style.display = 'none';
-                    if (unbanBtn) unbanBtn.style.display = 'none';
-
-                    // Añadir etiqueta de protección
-                    const actionsDiv = row.querySelector('.btn-group-vertical');
-                    if (actionsDiv) {
-                        actionsDiv.innerHTML += '<small class="text-danger mt-2"><i class="fas fa-crown"></i> SUPERADMIN - Protegido</small>';
-                    }
+            document.querySelectorAll('tbody tr').forEach(function(row) {
+                const badges = row.querySelectorAll('.badge-warn, .badge-info');
+                let isSuperAdmin = false;
+                badges.forEach(b => { if (b.textContent.includes('ROLE_SUPERADMIN')) isSuperAdmin = true; });
+                if (isSuperAdmin) {
+                    row.querySelector('.delete-btn')?.remove();
+                    row.querySelector('.ban-btn')?.remove();
+                    row.querySelector('.unban-btn')?.remove();
                 }
             });
         });

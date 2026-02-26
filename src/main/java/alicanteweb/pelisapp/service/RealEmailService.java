@@ -82,46 +82,6 @@ public class RealEmailService implements IEmailService {
         }
     }
 
-    public void sendSimpleConfirmationEmail(String toEmail, String username, String confirmationToken) {
-        try {
-            log.info("📧 Enviando email de confirmación simple a: {}", toEmail);
-
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, false, "UTF-8");
-
-            helper.setTo(toEmail);
-            helper.setFrom(fromEmail);
-            helper.setSubject("🎬 Confirma tu cuenta en " + appName);
-
-            String confirmationUrl = baseUrl + "/login?token=" + confirmationToken;
-            String textContent = String.format("""
-                ¡Hola %s!
-                
-                Gracias por registrarte en %s, tu red social de películas favorita.
-                
-                Para activar tu cuenta, haz clic en el siguiente enlace:
-                %s
-                
-                Este enlace es válido por 24 horas.
-                
-                Si no creaste esta cuenta, puedes ignorar este email.
-                
-                ¡Disfruta valorando y descubriendo nuevas películas!
-                
-                Saludos,
-                El equipo de %s
-                """, username, appName, confirmationUrl, appName);
-
-            helper.setText(textContent, false);
-            mailSender.send(message);
-            log.info("✅ Email simple de confirmación enviado a: {}", toEmail);
-
-        } catch (Exception e) {
-            log.error("❌ Error enviando email simple: {}", e.getMessage());
-            throw new RuntimeException("Error enviando email: " + e.getMessage(), e);
-        }
-    }
-
     /**
      * Crea contenido HTML bonito para el email de confirmación
      */

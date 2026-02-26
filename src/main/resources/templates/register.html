@@ -3,268 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Crear Cuenta - PelisApp</title>
+    <title>Crear Cuenta — PelisApp</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
-    <style>
-        body {
-            background: linear-gradient(135deg, #1e1e1e 0%, #2c2c2c 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px 0;
-        }
-
-        .register-container {
-            background: rgba(44, 44, 44, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 3rem;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 107, 53, 0.3);
-            max-width: 500px;
-            width: 100%;
-        }
-
-        .register-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .register-logo {
-            font-size: 3rem;
-            color: #ff6b35;
-            margin-bottom: 1rem;
-        }
-
-        .register-title {
-            color: white;
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-
-        .register-subtitle {
-            color: #b3b3b3;
-            font-size: 1rem;
-        }
-
-        .form-floating {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-control {
-            background-color: rgba(255, 255, 255, 0.1) !important;
-            border: 1px solid rgba(255, 107, 53, 0.3) !important;
-            color: white !important;
-            border-radius: 10px !important;
-        }
-
-        .form-control:focus {
-            background-color: rgba(255, 255, 255, 0.15) !important;
-            border-color: #ff6b35 !important;
-            box-shadow: 0 0 0 0.25rem rgba(255, 107, 53, 0.25) !important;
-            color: white !important;
-        }
-
-        .form-floating label {
-            color: #b3b3b3 !important;
-        }
-
-        .btn-register {
-            background: linear-gradient(135deg, #ff6b35, #e55a30);
-            border: none;
-            border-radius: 10px;
-            padding: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-register:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
-        }
-
-        .alert {
-            border-radius: 10px;
-            border: none;
-            margin-bottom: 1.5rem;
-        }
-
-        .login-link {
-            text-align: center;
-            margin-top: 2rem;
-            color: #b3b3b3;
-        }
-
-        .login-link a {
-            color: #ff6b35;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .login-link a:hover {
-            color: #e55a30;
-        }
-
-        .field-error {
-            color: #dc3545;
-            font-size: 0.875rem;
-            margin-top: 0.25rem;
-        }
-    </style>
 </head>
 <body>
-    <div class="register-container">
-        <div class="register-header">
-            <i class="fas fa-user-plus register-logo"></i>
-            <h2 class="register-title">PelisApp</h2>
-            <p class="register-subtitle">Crear Nueva Cuenta</p>
-        </div>
+    <div class="auth-page" style="padding: 2rem 1rem;">
+        <div class="auth-card" style="max-width:480px;">
 
-        <!-- Mostrar mensajes de error -->
-        <div th:if="${error}" class="alert alert-danger" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <span th:text="${error}">Error</span>
-        </div>
-
-        <!-- Formulario de registro -->
-        <form th:action="@{/register}" method="post" th:object="${user}">
-            <div class="form-floating">
-                <input type="text"
-                       class="form-control"
-                       id="username"
-                       th:field="*{username}"
-                       placeholder="Usuario"
-                       required
-                       minlength="3"
-                       maxlength="20"
-                       pattern="^[a-zA-Z0-9_]+$">
-                <label for="username">
-                    <i class="fas fa-user me-2"></i>Usuario
-                </label>
-                <div class="field-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></div>
-                <div class="field-error" th:if="${errorUsername}" th:text="${errorUsername}"></div>
-                <small class="text-muted">3-20 caracteres, solo letras, números y guiones bajos</small>
+            <div class="auth-logo">
+                <div class="auth-logo-icon"><i class="fas fa-user-plus"></i></div>
+                <h1 class="auth-logo-name">PelisApp</h1>
+                <p class="auth-logo-subtitle">Crea tu cuenta gratuita</p>
             </div>
 
-            <div class="form-floating">
-                <input type="email"
-                       class="form-control"
-                       id="email"
-                       th:field="*{email}"
-                       placeholder="Correo Electrónico"
-                       required>
-                <label for="email">
-                    <i class="fas fa-envelope me-2"></i>Correo Electrónico
-                </label>
-                <div class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></div>
-                <div class="field-error" th:if="${errorEmail}" th:text="${errorEmail}"></div>
+            <div th:if="${error}" class="alert-msg alert-msg-danger">
+                <i class="fas fa-exclamation-circle"></i>
+                <span th:text="${error}"></span>
             </div>
 
-            <div class="form-floating">
-                <input type="text"
-                       class="form-control"
-                       id="displayName"
-                       th:field="*{displayName}"
-                       placeholder="Nombre Completo (Opcional)">
-                <label for="displayName">
-                    <i class="fas fa-id-card me-2"></i>Nombre Completo (Opcional)
-                </label>
-                <div class="field-error" th:if="${#fields.hasErrors('displayName')}" th:errors="*{displayName}"></div>
+            <form th:action="@{/register}" method="post" th:object="${user}">
+
+                <div class="form-field">
+                    <label class="form-label" for="username">Usuario</label>
+                    <input type="text" class="form-input" id="username" th:field="*{username}"
+                           placeholder="3-20 caracteres" required minlength="3" maxlength="20"
+                           pattern="^[a-zA-Z0-9_]+$" autocomplete="username">
+                    <span class="form-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></span>
+                    <span class="form-error" th:if="${errorUsername}" th:text="${errorUsername}"></span>
+                    <span class="form-hint">Solo letras, números y guiones bajos</span>
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label" for="email">Correo electrónico</label>
+                    <input type="email" class="form-input" id="email" th:field="*{email}"
+                           placeholder="tu@email.com" required autocomplete="email">
+                    <span class="form-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
+                    <span class="form-error" th:if="${errorEmail}" th:text="${errorEmail}"></span>
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label" for="displayName">
+                        Nombre visible
+                        <span style="color:var(--text-muted);font-size:0.75rem;text-transform:none;letter-spacing:0;font-weight:400;">(opcional)</span>
+                    </label>
+                    <input type="text" class="form-input" id="displayName" th:field="*{displayName}"
+                           placeholder="Como quieres que te llamen" autocomplete="name">
+                    <span class="form-error" th:if="${#fields.hasErrors('displayName')}" th:errors="*{displayName}"></span>
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label" for="password">Contraseña</label>
+                    <input type="password" class="form-input" id="password" th:field="*{password}"
+                           placeholder="Mínimo 8 caracteres" required minlength="8" maxlength="128"
+                           autocomplete="new-password">
+                    <span class="form-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></span>
+                    <span class="form-error" th:if="${errorPasswordWeak}" th:text="${errorPasswordWeak}"></span>
+                    <span class="form-hint">Mayúscula, minúscula, número y carácter especial</span>
+                </div>
+
+                <div class="form-field">
+                    <label class="form-label" for="confirmPassword">Confirmar contraseña</label>
+                    <input type="password" class="form-input" id="confirmPassword" name="confirmPassword"
+                           placeholder="Repite tu contraseña" required autocomplete="new-password">
+                    <span class="form-error" th:if="${errorPassword}" th:text="${errorPassword}"></span>
+                </div>
+
+                <div style="display:flex;align-items:flex-start;gap:0.5rem;margin-bottom:1.5rem;">
+                    <input type="checkbox" id="acceptTerms" required
+                           style="margin-top:3px;width:1rem;height:1rem;accent-color:var(--accent);cursor:pointer;flex-shrink:0;">
+                    <label for="acceptTerms" style="font-size:0.85rem;color:var(--text-muted);cursor:pointer;line-height:1.4;">
+                        Acepto los <a href="#" style="color:var(--text-secondary);">términos y condiciones</a>
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-accent" style="width:100%;justify-content:center;">
+                    <i class="fas fa-user-plus"></i> Crear cuenta
+                </button>
+            </form>
+
+            <div class="auth-footer">
+                ¿Ya tienes cuenta? <a th:href="@{/login}">Iniciar sesión</a>
+                &nbsp;·&nbsp;
+                <a th:href="@{/}"><i class="fas fa-arrow-left"></i> Inicio</a>
             </div>
-
-            <div class="form-floating">
-                <input type="password"
-                       class="form-control"
-                       id="password"
-                       th:field="*{password}"
-                       placeholder="Contraseña"
-                       required
-                       minlength="8"
-                       maxlength="128">
-                <label for="password">
-                    <i class="fas fa-lock me-2"></i>Contraseña
-                </label>
-                <div class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></div>
-                <div class="field-error" th:if="${errorPasswordWeak}" th:text="${errorPasswordWeak}"></div>
-                <small class="text-muted">Mínimo 8 caracteres con mayúscula, minúscula, número y carácter especial</small>
-            </div>
-
-            <div class="form-floating">
-                <input type="password"
-                       class="form-control"
-                       id="confirmPassword"
-                       name="confirmPassword"
-                       placeholder="Confirmar Contraseña"
-                       required>
-                <label for="confirmPassword">
-                    <i class="fas fa-lock me-2"></i>Confirmar Contraseña
-                </label>
-                <div class="field-error" th:if="${errorPassword}" th:text="${errorPassword}"></div>
-            </div>
-
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="acceptTerms" required>
-                <label class="form-check-label text-light" for="acceptTerms">
-                    Acepto los <a href="#" class="text-decoration-none" style="color: #ff6b35;">términos y condiciones</a>
-                    y confirmo que la información proporcionada es correcta
-                </label>
-            </div>
-
-            <button type="submit" class="btn btn-register w-100">
-                <i class="fas fa-user-plus me-2"></i>
-                Crear Cuenta Segura
-            </button>
-        </form>
-
-        <div class="login-link">
-            <p>¿Ya tienes una cuenta?</p>
-            <a th:href="@{/login}">
-                <i class="fas fa-sign-in-alt me-1"></i>
-                Iniciar Sesión
-            </a>
-            <br><br>
-            <a th:href="@{/}">
-                <i class="fas fa-arrow-left me-1"></i>
-                Volver al Inicio
-            </a>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Validación de confirmación de contraseña
         document.addEventListener('DOMContentLoaded', function() {
             const password = document.getElementById('password');
             const confirmPassword = document.getElementById('confirmPassword');
-            const form = document.querySelector('form');
-
             function validatePasswords() {
-                if (password.value !== confirmPassword.value) {
-                    confirmPassword.setCustomValidity('Las contraseñas no coinciden');
-                } else {
-                    confirmPassword.setCustomValidity('');
-                }
+                confirmPassword.setCustomValidity(
+                    password.value !== confirmPassword.value ? 'Las contraseñas no coinciden' : ''
+                );
             }
-
             password.addEventListener('change', validatePasswords);
             confirmPassword.addEventListener('keyup', validatePasswords);
-
-            // Animación de entrada
-            const container = document.querySelector('.register-container');
-            container.style.opacity = '0';
-            container.style.transform = 'translateY(-20px)';
-
-            setTimeout(function() {
-                container.style.transition = 'all 0.5s ease-out';
-                container.style.opacity = '1';
-                container.style.transform = 'translateY(0)';
-            }, 100);
         });
     </script>
 </body>

@@ -4,412 +4,323 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Moderación IA - Admin PelisApp</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #1e1e1e 0%, #2c2c2c 100%);
-            min-height: 100vh;
-            color: white;
-        }
-        .navbar {
-            background: rgba(0, 0, 0, 0.8) !important;
-            backdrop-filter: blur(10px);
-        }
-        .card {
-            background: rgba(44, 44, 44, 0.9);
-            border: 1px solid rgba(255, 107, 53, 0.3);
-            border-radius: 15px;
-        }
-        .status-card {
-            background: rgba(44, 44, 44, 0.9);
-            border: 1px solid rgba(255, 107, 53, 0.3);
-            border-radius: 15px;
-            transition: transform 0.3s ease;
-        }
-        .status-card:hover {
-            transform: translateY(-2px);
-        }
-        .table-dark {
-            background: rgba(33, 37, 41, 0.8);
-        }
-
-        .ai-status {
-            padding: 10px;
-            border-radius: 10px;
-            margin-bottom: 15px;
-        }
-        .ai-status.active {
-            background: rgba(40, 167, 69, 0.2);
-            border: 1px solid #28a745;
-        }
-        .log-container {
-            background: #000;
-            color: #00ff00;
-            font-family: 'Courier New', monospace;
-            padding: 15px;
-            border-radius: 5px;
-            max-height: 300px;
-            overflow-y: auto;
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>
 <body>
-    <nav class="navbar navbar-dark navbar-expand-lg">
+    <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-film me-2 text-warning"></i>
-                <span class="fw-bold">PelisApp</span>
-                <span class="badge bg-danger ms-2">ADMIN</span>
+                <i class="fas fa-film"></i> PelisApp
+                <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
             </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" th:href="@{/admin}">
-                    <i class="fas fa-arrow-left me-1"></i>Volver al Panel
-                </a>
-                <a class="nav-link" th:href="@{/}">
-                    <i class="fas fa-home me-1"></i>Ir a la App
-                </a>
-                <a class="nav-link" th:href="@{/logout}">
-                    <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
-                </a>
+            <div class="navbar-nav-links">
+                <a th:href="@{/admin}"><i class="fas fa-arrow-left"></i> Panel</a>
+                <a th:href="@{/}"><i class="fas fa-home"></i> App</a>
+                <a th:href="@{/logout}"><i class="fas fa-sign-out-alt"></i> Salir</a>
             </div>
         </div>
     </nav>
 
-    <div class="container mt-4">
-        <div class="row mb-4">
-            <div class="col-12">
-                <h1 class="display-5 mb-3">
-                    <i class="fas fa-shield-alt me-3 text-danger"></i>
-                    Sistema de Moderación IA
-                </h1>
-                <p class="lead text-muted">Gestiona la moderación automática de contenido con Inteligencia Artificial</p>
+    <div class="admin-wrapper">
+        <div class="admin-page-title"><i class="fas fa-shield-alt" style="color:var(--accent);margin-right:0.5rem"></i>Sistema de Moderación IA</div>
+        <div class="admin-page-subtitle">Moderación automática de contenido con Inteligencia Artificial</div>
+
+        <!-- Stats -->
+        <div class="admin-grid-4">
+            <div class="admin-stat-card">
+                <div class="stat-label">Total</div>
+                <div class="stat-value" id="statTotal">–</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label">Pendientes</div>
+                <div class="stat-value" id="statPending" style="color:#fde68a">–</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label">Aprobadas</div>
+                <div class="stat-value" id="statApproved" style="color:#86efac">–</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label">Rechazadas</div>
+                <div class="stat-value" id="statRejected" style="color:#fca5a5">–</div>
             </div>
         </div>
 
-        <!-- Status Overview -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-3">
-                <div class="card status-card text-white">
-                    <div class="card-body text-center">
-                        <i class="fas fa-robot fa-2x text-primary mb-2"></i>
-                        <h6>Ollama IA</h6>
-                        <span class="badge bg-success">Activo</span>
+        <!-- Two-column layout -->
+        <div class="admin-grid-2">
+            <!-- Config panel -->
+            <div class="admin-section" style="margin-bottom:0">
+                <div class="admin-section-title"><i class="fas fa-cog"></i>Configuración</div>
+
+                <div class="form-field" style="margin-bottom:1.25rem">
+                    <label style="font-size:0.8rem;color:var(--text-muted);display:flex;justify-content:space-between;margin-bottom:0.4rem">
+                        <span>Umbral de Toxicidad</span>
+                        <span id="toxicityValue" style="color:var(--text-primary)">0.7</span>
+                    </label>
+                    <input type="range" id="toxicityThreshold" min="0" max="1" step="0.1" value="0.7"
+                           style="width:100%;accent-color:var(--accent)" aria-label="Umbral de toxicidad">
+                    <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem">
+                        <span>Permisivo</span><span>Estricto</span>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card status-card text-white">
-                    <div class="card-body text-center">
-                        <i class="fas fa-brain fa-2x text-warning mb-2"></i>
-                        <h6>Modelo</h6>
-                        <small>llama3</small>
+
+                <div class="form-field" style="margin-bottom:1.25rem">
+                    <label style="font-size:0.8rem;color:var(--text-muted);display:flex;justify-content:space-between;margin-bottom:0.4rem">
+                        <span>Umbral de Reseñas</span>
+                        <span id="reviewValue" style="color:var(--text-primary)">0.5</span>
+                    </label>
+                    <input type="range" id="reviewThreshold" min="0" max="1" step="0.1" value="0.5"
+                           style="width:100%;accent-color:var(--accent)" aria-label="Umbral de reseñas">
+                    <div style="display:flex;justify-content:space-between;font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem">
+                        <span>Permisivo</span><span>Estricto</span>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card status-card text-white">
-                    <div class="card-body text-center">
-                        <i class="fas fa-filter fa-2x text-info mb-2"></i>
-                        <h6>Reviews Analizadas</h6>
-                        <h5>1,247</h5>
-                    </div>
+
+                <div style="display:flex;gap:1.5rem;margin-bottom:1.5rem">
+                    <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer">
+                        <input type="checkbox" id="enableModeration" checked style="accent-color:var(--accent)">
+                        Moderación automática
+                    </label>
+                    <label style="display:flex;align-items:center;gap:0.5rem;font-size:0.85rem;cursor:pointer">
+                        <input type="checkbox" id="enableFallback" checked style="accent-color:var(--accent)">
+                        Modo fallback
+                    </label>
                 </div>
-            </div>
-            <div class="col-md-3 mb-3">
-                <div class="card status-card text-white">
-                    <div class="card-body text-center">
-                        <i class="fas fa-ban fa-2x text-danger mb-2"></i>
-                        <h6>Bloqueadas</h6>
-                        <h5>23</h5>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <div class="row">
-            <!-- Configuration Panel -->
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-cog me-2"></i>Configuración de Moderación</h5>
-                    </div>
-                    <div class="card-body">
-                        <form id="moderationConfigForm">
-                            <div class="mb-3">
-                                <label class="form-label">Umbral de Toxicidad</label>
-                                <input type="range" class="form-range" id="toxicityThreshold" min="0" max="1" step="0.1" value="0.7" aria-label="Umbral de Toxicidad">
-                                <div class="d-flex justify-content-between">
-                                    <small>Permisivo</small>
-                                    <small id="toxicityValue">0.7</small>
-                                    <small>Estricto</small>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Umbral de Reviews</label>
-                                <input type="range" class="form-range" id="reviewThreshold" min="0" max="1" step="0.1" value="0.5" aria-label="Umbral de Reviews">
-                                <div class="d-flex justify-content-between">
-                                    <small>Permisivo</small>
-                                    <small id="reviewValue">0.5</small>
-                                    <small>Estricto</small>
-                                </div>
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">URL de Ollama</label>
-                                <input type="url" class="form-control" id="ollamaUrl" value="http://localhost:11434" aria-label="URL de Ollama">
-                            </div>
-
-                            <div class="mb-3">
-                                <label class="form-label">Modelo IA</label>
-                                <select class="form-select" id="aiModel" aria-label="Modelo IA">
-                                    <option value="llama3" selected>Llama 3</option>
-                                    <option value="llama2">Llama 2</option>
-                                    <option value="mistral">Mistral</option>
-                                </select>
-                            </div>
-
-                            <div class="mb-3 form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="enableModeration" checked>
-                                <label class="form-check-label" for="enableModeration">
-                                    Activar moderación automática
-                                </label>
-                            </div>
-
-                            <div class="mb-3 form-check form-switch">
-                                <input class="form-check-input" type="checkbox" id="enableFallback" checked>
-                                <label class="form-check-label" for="enableFallback">
-                                    Activar modo fallback
-                                </label>
-                            </div>
-
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-save me-2"></i>Guardar Configuración
-                            </button>
-                        </form>
-                    </div>
-                </div>
+                <button onclick="saveConfig()" class="btn-accent" style="width:100%">
+                    <i class="fas fa-save" style="margin-right:0.4rem"></i>Guardar Configuración
+                </button>
             </div>
 
-            <!-- AI Status and Test -->
-            <div class="col-md-6">
-                <div class="card mb-3">
-                    <div class="card-header">
-                        <h5><i class="fas fa-heartbeat me-2"></i>Estado del Sistema</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="ai-status active">
-                            <h6><i class="fas fa-check-circle me-2 text-success"></i>Ollama Conectado</h6>
-                            <small>Última verificación: hace 2 minutos</small>
-                        </div>
-
-                        <div class="ai-status active">
-                            <h6><i class="fas fa-check-circle me-2 text-success"></i>Modelo Cargado</h6>
-                            <small>llama3 - 7B parámetros</small>
-                        </div>
-
-                        <button class="btn btn-outline-primary w-100 mt-3" onclick="testAI()">
-                            <i class="fas fa-vial me-2"></i>Probar Conexión IA
-                        </button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-flask me-2"></i>Test de Moderación</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">Texto a analizar:</label>
-                            <textarea class="form-control" id="testText" rows="3" placeholder="Escribe aquí el texto que quieres que la IA analice..." aria-label="Texto a analizar"></textarea>
-                        </div>
-                        <button class="btn btn-warning w-100" onclick="testModeration()">
-                            <i class="fas fa-robot me-2"></i>Analizar con IA
-                        </button>
-                        <div id="testResult" class="mt-3"></div>
-                    </div>
+            <!-- Pending table -->
+            <div class="admin-section" style="margin-bottom:0">
+                <div class="admin-section-title"><i class="fas fa-hourglass-half"></i>Moderaciones Pendientes</div>
+                <div style="overflow-x:auto">
+                    <table class="admin-table">
+                        <thead>
+                            <tr>
+                                <th>Reseña</th>
+                                <th style="width:60px">★</th>
+                                <th>Toxicidad</th>
+                                <th>Fecha</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentActions">
+                            <tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Cargando…</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <!-- Recent Moderation Actions -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-history me-2"></i>Acciones de Moderación Recientes</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-dark table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Fecha</th>
-                                        <th>Usuario</th>
-                                        <th>Tipo</th>
-                                        <th>Puntuación IA</th>
-                                        <th>Acción</th>
-                                        <th>Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>2026-02-05 16:20</td>
-                                        <td>usuario123</td>
-                                        <td>Review</td>
-                                        <td><span class="badge bg-danger">0.85</span></td>
-                                        <td>Bloqueado</td>
-                                        <td><span class="badge bg-success">Procesado</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>2026-02-05 16:18</td>
-                                        <td>cinefilo_pro</td>
-                                        <td>Comentario</td>
-                                        <td><span class="badge bg-warning">0.65</span></td>
-                                        <td>Revisión manual</td>
-                                        <td><span class="badge bg-warning">Pendiente</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>2026-02-05 16:15</td>
-                                        <td>movie_lover</td>
-                                        <td>Review</td>
-                                        <td><span class="badge bg-success">0.15</span></td>
-                                        <td>Aprobado</td>
-                                        <td><span class="badge bg-success">Procesado</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>2026-02-05 16:12</td>
-                                        <td>critico_duro</td>
-                                        <td>Review</td>
-                                        <td><span class="badge bg-danger">0.92</span></td>
-                                        <td>Bloqueado</td>
-                                        <td><span class="badge bg-success">Procesado</span></td>
-                                    </tr>
-                                    <tr>
-                                        <td>2026-02-05 16:10</td>
-                                        <td>casual_viewer</td>
-                                        <td>Comentario</td>
-                                        <td><span class="badge bg-success">0.25</span></td>
-                                        <td>Aprobado</td>
-                                        <td><span class="badge bg-success">Procesado</span></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+        <!-- All Reviews -->
+        <div class="admin-section">
+            <div class="admin-section-title" style="justify-content:space-between">
+                <span><i class="fas fa-comments"></i>Todas las Reseñas</span>
+                <div style="display:flex;gap:0.5rem;align-items:center">
+                    <span style="font-size:0.78rem;color:var(--text-muted)" id="reviewsTotalLabel"></span>
+                    <button onclick="prevReviewsPage()" class="btn-ghost" style="font-size:0.78rem;padding:0.2rem 0.55rem" id="reviewsPrevBtn" disabled>‹</button>
+                    <span style="font-size:0.78rem;color:var(--text-muted)" id="reviewsPageLabel">–</span>
+                    <button onclick="nextReviewsPage()" class="btn-ghost" style="font-size:0.78rem;padding:0.2rem 0.55rem" id="reviewsNextBtn" disabled>›</button>
                 </div>
+            </div>
+            <div style="overflow-x:auto">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Reseña</th>
+                            <th style="width:70px">★</th>
+                            <th>Fecha</th>
+                            <th style="width:90px">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="allReviewsBody">
+                        <tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Cargando…</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- System Logs -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5><i class="fas fa-terminal me-2"></i>Logs del Sistema</h5>
-                        <button class="btn btn-sm btn-outline-primary" onclick="clearLogs()">
-                            <i class="fas fa-trash me-1"></i>Limpiar
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <div class="log-container" id="systemLogs">
-                            [2026-02-05 16:25:30] INFO: Sistema de moderación iniciado
-                            [2026-02-05 16:25:32] INFO: Conexión con Ollama establecida (http://localhost:11434)
-                            [2026-02-05 16:25:35] INFO: Modelo llama3 cargado exitosamente
-                            [2026-02-05 16:25:40] INFO: Configuración aplicada - Umbral toxicidad: 0.7
-                            [2026-02-05 16:26:15] WARN: Review detectada con puntuación alta (0.85) - Usuario: usuario123
-                            [2026-02-05 16:26:16] INFO: Contenido bloqueado automáticamente
-                            [2026-02-05 16:27:22] INFO: Review aprobada (0.15) - Usuario: movie_lover
-                            [2026-02-05 16:28:05] WARN: Review detectada con puntuación alta (0.92) - Usuario: critico_duro
-                            [2026-02-05 16:28:06] INFO: Contenido bloqueado automáticamente
-                            [2026-02-05 16:29:10] INFO: Sistema funcionando correctamente - 247 análisis completados hoy
-                        </div>
-                    </div>
-                </div>
+        <!-- Logs -->
+        <div class="admin-section">
+            <div class="admin-section-title" style="justify-content:space-between">
+                <span><i class="fas fa-terminal"></i>Logs del Sistema</span>
+                <button onclick="clearLogs()" class="btn-ghost" style="font-size:0.75rem;padding:0.25rem 0.65rem">
+                    <i class="fas fa-trash" style="margin-right:0.3rem"></i>Limpiar
+                </button>
             </div>
+            <div class="admin-log-box" id="systemLogs">[INFO] Sistema de moderación listo</div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Update threshold values
         document.getElementById('toxicityThreshold').addEventListener('input', function() {
             document.getElementById('toxicityValue').textContent = this.value;
         });
-
         document.getElementById('reviewThreshold').addEventListener('input', function() {
             document.getElementById('reviewValue').textContent = this.value;
         });
 
-        // Save configuration
-        document.getElementById('moderationConfigForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            alert('Configuración guardada exitosamente');
-        });
-
-        // Test AI connection
-        function testAI() {
-            const button = event.target;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Probando...';
-            button.disabled = true;
-
-            setTimeout(() => {
-                button.innerHTML = '<i class="fas fa-check me-2"></i>Conexión OK';
-                button.className = 'btn btn-success w-100 mt-3';
-
-                setTimeout(() => {
-                    button.innerHTML = '<i class="fas fa-vial me-2"></i>Probar Conexión IA';
-                    button.className = 'btn btn-outline-primary w-100 mt-3';
-                    button.disabled = false;
-                }, 2000);
-            }, 2000);
+        function saveConfig() {
+            addLog('[INFO] Configuración guardada');
         }
 
-        // Test moderation
-        function testModeration() {
-            const text = document.getElementById('testText').value;
-            const resultDiv = document.getElementById('testResult');
-
-            if (!text.trim()) {
-                resultDiv.innerHTML = '<div class="alert alert-warning">Por favor, introduce algún texto para analizar.</div>';
-                return;
-            }
-
-            resultDiv.innerHTML = '<div class="alert alert-info"><i class="fas fa-spinner fa-spin me-2"></i>Analizando con IA...</div>';
-
-            setTimeout(() => {
-                const score = Math.random().toFixed(2);
-                let badgeClass = 'bg-success';
-                let status = 'Aprobado';
-
-                if (score > 0.7) {
-                    badgeClass = 'bg-danger';
-                    status = 'Bloqueado';
-                } else if (score > 0.5) {
-                    badgeClass = 'bg-warning';
-                    status = 'Revisión manual';
-                }
-
-                resultDiv.innerHTML = `
-                    <div class="alert alert-primary">
-                        <h6>Resultado del análisis:</h6>
-                        <p><strong>Puntuación de toxicidad:</strong> <span class="badge ${badgeClass}">${score}</span></p>
-                        <p><strong>Decisión:</strong> ${status}</p>
-                        <small class="text-muted">Análisis completado con modelo llama3</small>
-                    </div>
-                `;
-            }, 3000);
-        }
-
-        // Clear logs
         function clearLogs() {
-            document.getElementById('systemLogs').innerHTML = '[' + new Date().toISOString().slice(0, 19).replace('T', ' ') + '] INFO: Logs limpiados por el administrador';
+            document.getElementById('systemLogs').textContent = '[' + new Date().toISOString().slice(0,19).replace('T',' ') + '] INFO: Logs limpiados';
         }
 
-        // Auto-scroll logs
-        const logsContainer = document.getElementById('systemLogs');
-        logsContainer.scrollTop = logsContainer.scrollHeight;
+        function addLog(msg) {
+            const box = document.getElementById('systemLogs');
+            box.textContent += '\n' + msg;
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function loadStats() {
+            fetch('/api/admin/moderation/stats')
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('statTotal').textContent    = data.total_moderations ?? '0';
+                    document.getElementById('statPending').textContent  = data.pending           ?? '0';
+                    document.getElementById('statApproved').textContent = data.approved          ?? '0';
+                    document.getElementById('statRejected').textContent = data.rejected          ?? '0';
+                })
+                .catch(() => ['statTotal','statPending','statApproved','statRejected'].forEach(id => {
+                    document.getElementById(id).textContent = 'Error';
+                }));
+        }
+
+        function loadPending() {
+            fetch('/api/admin/moderation/pending')
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('recentActions');
+                    if (!data.length) {
+                        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">Sin moderaciones pendientes</td></tr>';
+                        return;
+                    }
+                    tbody.innerHTML = data.map(m => {
+                        const movieLink = m.reviewMovieId
+                            ? `<a href="/pelicula/${m.reviewMovieId}" target="_blank" style="color:var(--accent);font-size:0.75rem">${esc(m.reviewMovieTitle || '–')}</a>`
+                            : `<span style="font-size:0.75rem;color:var(--text-muted)">${esc(m.reviewMovieTitle || '–')}</span>`;
+                        const toxScore = m.toxicityScore != null
+                            ? `<span class="${m.toxicityScore >= 0.7 ? 'badge-err' : m.toxicityScore >= 0.4 ? 'badge-warn' : 'badge-ok'}">${(m.toxicityScore * 100).toFixed(0)}%</span>`
+                            : `<span class="badge-muted">–</span>`;
+                        const stars = m.reviewStars ? '★'.repeat(m.reviewStars) + '☆'.repeat(5 - m.reviewStars) : '–';
+                        const reviewText = m.reviewText ? esc(m.reviewText).substring(0, 120) + (m.reviewText.length > 120 ? '…' : '') : '<em style="color:var(--text-muted)">sin texto</em>';
+                        return `<tr>
+                            <td>
+                                <div style="font-size:0.82rem;color:var(--text-primary);margin-bottom:0.2rem">${reviewText}</div>
+                                <div style="font-size:0.73rem;color:var(--text-muted)">por <strong style="color:var(--text-secondary)">${esc(m.reviewUsername || '–')}</strong> · ${movieLink}</div>
+                                ${m.moderationReason ? `<div style="font-size:0.72rem;color:#fde68a;margin-top:0.2rem"><i class="fas fa-robot" style="margin-right:0.2rem"></i>${esc(m.moderationReason)}</div>` : ''}
+                            </td>
+                            <td style="font-size:0.8rem;color:#fde68a;white-space:nowrap">${stars}</td>
+                            <td>${toxScore}</td>
+                            <td style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap">${m.createdAt ? new Date(m.createdAt).toLocaleString('es-ES') : '–'}</td>
+                            <td>
+                                <div style="display:flex;flex-direction:column;gap:0.3rem">
+                                    <button class="btn-accent" style="font-size:0.72rem;padding:0.2rem 0.55rem" onclick="approve(${m.id})"><i class="fas fa-check" style="margin-right:0.25rem"></i>Aprobar</button>
+                                    <button class="btn-ghost"  style="font-size:0.72rem;padding:0.2rem 0.55rem;color:#fde68a;border-color:rgba(251,191,36,0.3)" onclick="reject(${m.id})"><i class="fas fa-times" style="margin-right:0.25rem"></i>Rechazar</button>
+                                    ${m.reviewId ? `<button class="btn-ghost" style="font-size:0.72rem;padding:0.2rem 0.55rem;color:#fca5a5;border-color:rgba(230,57,70,0.3)" onclick="deleteReview(${m.reviewId}, ${m.id})"><i class="fas fa-trash" style="margin-right:0.25rem"></i>Eliminar</button>` : ''}
+                                </div>
+                            </td>
+                        </tr>`;
+                    }).join('');
+                })
+                .catch(err => {
+                    document.getElementById('recentActions').innerHTML =
+                        '<tr><td colspan="5" style="text-align:center;color:#fca5a5">Error cargando datos: ' + err.message + '</td></tr>';
+                });
+        }
+
+        function esc(str) {
+            const d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        function approve(id) {
+            fetch('/api/admin/moderation/' + id + '/approve', { method: 'POST' })
+                .then(r => r.text())
+                .then(msg => { loadStats(); loadPending(); addLog('[OK] Aprobada — ' + msg); })
+                .catch(err => addLog('[ERROR] ' + err.message));
+        }
+
+        function reject(id) {
+            fetch('/api/admin/moderation/' + id + '/reject', { method: 'POST' })
+                .then(r => r.text())
+                .then(msg => { loadStats(); loadPending(); addLog('[REJECT] Rechazada — ' + msg); })
+                .catch(err => addLog('[ERROR] ' + err.message));
+        }
+
+        function deleteReview(reviewId, moderationId) {
+            if (!confirm('¿Eliminar esta reseña permanentemente? Esta acción no se puede deshacer.')) return;
+            fetch('/api/admin/reviews/' + reviewId + '/delete', { method: 'POST' })
+                .then(r => r.text())
+                .then(msg => {
+                    loadStats();
+                    loadPending();
+                    loadAllReviews(reviewsPage);
+                    addLog('[DELETE] Reseña #' + reviewId + ' eliminada — ' + msg);
+                })
+                .catch(err => addLog('[ERROR] ' + err.message));
+        }
+
+        let reviewsPage = 0;
+        const reviewsPageSize = 20;
+
+        function loadAllReviews(page) {
+            reviewsPage = page;
+            fetch('/api/admin/reviews?page=' + page + '&size=' + reviewsPageSize)
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('allReviewsBody');
+                    const items = data.content || [];
+                    if (!items.length) {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text-muted)">Sin reseñas</td></tr>';
+                    } else {
+                        tbody.innerHTML = items.map(r => {
+                            const movieLink = r.movieId
+                                ? `<a href="/pelicula/${r.movieId}" target="_blank" style="color:var(--accent);font-size:0.75rem">${esc(r.movieTitle || '–')}</a>`
+                                : `<span style="font-size:0.75rem;color:var(--text-muted)">${esc(r.movieTitle || '–')}</span>`;
+                            const stars = r.stars ? '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars) : '–';
+                            const reviewText = r.text ? esc(r.text).substring(0, 100) + (r.text.length > 100 ? '…' : '') : '<em style="color:var(--text-muted)">sin texto</em>';
+                            return `<tr>
+                                <td>
+                                    <div style="font-size:0.82rem;color:var(--text-primary);margin-bottom:0.15rem">${reviewText}</div>
+                                    <div style="font-size:0.73rem;color:var(--text-muted)">por <strong style="color:var(--text-secondary)">${esc(r.username || '–')}</strong> · ${movieLink}</div>
+                                </td>
+                                <td style="font-size:0.8rem;color:#fde68a;white-space:nowrap">${stars}</td>
+                                <td style="font-size:0.75rem;color:var(--text-muted);white-space:nowrap">${r.createdAt ? new Date(r.createdAt).toLocaleString('es-ES') : '–'}</td>
+                                <td>
+                                    <button class="btn-ghost" style="font-size:0.72rem;padding:0.2rem 0.55rem;color:#fca5a5;border-color:rgba(230,57,70,0.3)" onclick="deleteReview(${r.id}, null)">
+                                        <i class="fas fa-trash" style="margin-right:0.25rem"></i>Eliminar
+                                    </button>
+                                </td>
+                            </tr>`;
+                        }).join('');
+                    }
+                    const total = data.totalElements || 0;
+                    const totalPages = data.totalPages || 0;
+                    document.getElementById('reviewsTotalLabel').textContent = total + ' reseñas';
+                    document.getElementById('reviewsPageLabel').textContent = (page + 1) + '/' + (totalPages || 1);
+                    document.getElementById('reviewsPrevBtn').disabled = page <= 0;
+                    document.getElementById('reviewsNextBtn').disabled = page >= totalPages - 1;
+                })
+                .catch(err => {
+                    document.getElementById('allReviewsBody').innerHTML =
+                        '<tr><td colspan="4" style="text-align:center;color:#fca5a5">Error: ' + err.message + '</td></tr>';
+                });
+        }
+
+        function prevReviewsPage() { if (reviewsPage > 0) loadAllReviews(reviewsPage - 1); }
+        function nextReviewsPage() { loadAllReviews(reviewsPage + 1); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadStats();
+            loadPending();
+            loadAllReviews(0);
+        });
     </script>
 </body>
 </html>

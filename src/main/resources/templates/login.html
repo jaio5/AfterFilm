@@ -3,253 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Iniciar Sesión - PelisApp</title>
+    <title>Iniciar Sesión — PelisApp</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
-    <style>
-        body {
-            background: linear-gradient(135deg, #1e1e1e 0%, #2c2c2c 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .login-container {
-            background: rgba(44, 44, 44, 0.95);
-            backdrop-filter: blur(10px);
-            border-radius: 20px;
-            padding: 3rem;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 107, 53, 0.3);
-            max-width: 450px;
-            width: 100%;
-        }
-
-        .login-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .login-logo {
-            font-size: 3rem;
-            color: #ff6b35;
-            margin-bottom: 1rem;
-        }
-
-        .login-title {
-            color: white;
-            font-size: 1.8rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-        }
-
-        .login-subtitle {
-            color: #b3b3b3;
-            font-size: 1rem;
-        }
-
-        .form-floating {
-            margin-bottom: 1.5rem;
-        }
-
-        .form-control {
-            background-color: rgba(255, 255, 255, 0.1) !important;
-            border: 1px solid rgba(255, 107, 53, 0.3) !important;
-            color: white !important;
-            border-radius: 10px !important;
-        }
-
-        .form-control:focus {
-            background-color: rgba(255, 255, 255, 0.15) !important;
-            border-color: #ff6b35 !important;
-            box-shadow: 0 0 0 0.25rem rgba(255, 107, 53, 0.25) !important;
-            color: white !important;
-        }
-
-        .form-floating label {
-            color: #b3b3b3 !important;
-        }
-
-        .btn-login {
-            background: linear-gradient(135deg, #ff6b35, #e55a30);
-            border: none;
-            border-radius: 10px;
-            padding: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
-        }
-
-        .alert {
-            border-radius: 10px;
-            border: none;
-            margin-bottom: 1.5rem;
-        }
-
-        .social-login {
-            margin-top: 2rem;
-            text-align: center;
-        }
-
-        .divider {
-            position: relative;
-            text-align: center;
-            margin: 2rem 0;
-            color: #b3b3b3;
-        }
-
-        .divider::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(to right, transparent, #444, transparent);
-        }
-
-        .divider span {
-            background: #2c2c2c;
-            padding: 0 1rem;
-        }
-
-        .register-link {
-            text-align: center;
-            margin-top: 2rem;
-            color: #b3b3b3;
-        }
-
-        .register-link a {
-            color: #ff6b35;
-            text-decoration: none;
-            font-weight: bold;
-        }
-
-        .register-link a:hover {
-            color: #e55a30;
-        }
-    </style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="login-header">
-            <i class="fas fa-film login-logo"></i>
-            <h2 class="login-title">PelisApp</h2>
-            <p class="login-subtitle">Iniciar Sesión en tu Cuenta</p>
-        </div>
+    <div class="auth-page">
+        <div class="auth-card">
 
-        <!-- Mostrar mensajes de error específicos -->
-        <div th:if="${param.error}" class="alert alert-danger" role="alert">
-            <i class="fas fa-exclamation-triangle me-2"></i>
-            <strong>Error de inicio de sesión:</strong><br>
-            <span th:if="${param.error[0] == 'true'}">Credenciales incorrectas o cuenta no confirmada.</span>
-            <span th:unless="${param.error[0] == 'true'}" th:text="${param.error[0]}">Error desconocido</span>
-            <br><small>Si no has confirmado tu cuenta, revisa tu email.</small>
-            <div class="mt-2" id="resend-confirmation-section">
-                <button type="button" class="btn btn-warning btn-sm w-100" onclick="showResendForm()">
-                    <i class="fas fa-envelope"></i> Reenviar email de confirmación
-                </button>
-                <form id="resendForm" class="mt-2 d-none" onsubmit="return resendConfirmation(event)">
-                    <div class="input-group">
-                        <label for="resendEmail" class="visually-hidden">Email para reenviar confirmación</label>
-                        <input type="email" class="form-control" id="resendEmail" name="resendEmail" placeholder="Tu email" required aria-label="Email para reenviar confirmación">
-                        <button class="btn btn-primary" type="submit">Reenviar</button>
+            <div class="auth-logo">
+                <div class="auth-logo-icon"><i class="fas fa-film"></i></div>
+                <h1 class="auth-logo-name">PelisApp</h1>
+                <p class="auth-logo-subtitle">Inicia sesión en tu cuenta</p>
+            </div>
+
+            <div th:if="${param.error}" class="alert-msg alert-msg-danger">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>
+                    <span th:if="${param.error[0] == 'true'}">Credenciales incorrectas o cuenta no confirmada.</span>
+                    <span th:unless="${param.error[0] == 'true'}" th:text="${param.error[0]}">Error</span>
+                    <div class="resend-section">
+                        <button type="button" class="btn-text" style="font-size:0.8rem;margin-top:0.5rem;" onclick="showResendForm()">
+                            <i class="fas fa-envelope"></i> Reenviar confirmación
+                        </button>
+                        <form id="resendForm" class="d-none" style="margin-top:0.75rem;" onsubmit="return resendConfirmation(event)">
+                            <div style="display:flex;gap:0.5rem;">
+                                <input type="email" class="form-input" id="resendEmail" name="resendEmail" placeholder="Tu email" required style="flex:1">
+                                <button type="submit" class="btn-accent btn-sm">Reenviar</button>
+                            </div>
+                            <div id="resendResult" class="form-hint" style="margin-top:0.4rem;"></div>
+                        </form>
                     </div>
-                    <div id="resendResult" class="mt-2"></div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Mostrar mensaje de logout -->
-        <div th:if="${param.logout}" class="alert alert-success" role="alert">
-            <i class="fas fa-check-circle me-2"></i>
-            <strong>Sesión cerrada:</strong> Has cerrado sesión correctamente.
-        </div>
-
-        <!-- Mostrar mensaje de éxito tras registro -->
-        <div th:if="${success != null and !success.isEmpty()}" class="alert alert-success" role="alert">
-            <i class="fas fa-check-circle me-2"></i>
-            <span th:text="${success}">Mensaje de éxito</span>
-        </div>
-
-        <!-- Mostrar mensaje de confirmación -->
-        <div th:if="${param.confirmed}" class="alert alert-success" role="alert">
-            <i class="fas fa-envelope-check me-2"></i>
-            <strong>¡Cuenta confirmada!</strong> Ahora puedes iniciar sesión.
-        </div>
-
-        <!-- Formulario de login -->
-        <form th:action="@{/login}" method="post">
-            <div class="form-floating">
-                <input type="text" class="form-control" id="username" name="username" placeholder="Usuario" required>
-                <label for="username">
-                    <i class="fas fa-user me-2"></i>Usuario
-                </label>
+                </div>
             </div>
 
-            <div class="form-floating">
-                <input type="password" class="form-control" id="password" name="password" placeholder="Contraseña" required>
-                <label for="password">
-                    <i class="fas fa-lock me-2"></i>Contraseña
-                </label>
+            <div th:if="${param.logout}" class="alert-msg alert-msg-success">
+                <i class="fas fa-check-circle"></i>
+                Sesión cerrada correctamente.
             </div>
 
-            <div class="form-check mb-3">
-                <input class="form-check-input" type="checkbox" id="remember-me" name="remember-me">
-                <label class="form-check-label text-light" for="remember-me">
-                    Recordarme
-                </label>
+            <div th:if="${success != null and !success.isEmpty()}" class="alert-msg alert-msg-success">
+                <i class="fas fa-check-circle"></i>
+                <span th:text="${success}"></span>
             </div>
 
-            <button type="submit" class="btn btn-login w-100">
-                <i class="fas fa-sign-in-alt me-2"></i>
-                Iniciar Sesión
-            </button>
-        </form>
+            <div th:if="${param.confirmed}" class="alert-msg alert-msg-success">
+                <i class="fas fa-check-circle"></i>
+                ¡Cuenta confirmada! Ya puedes iniciar sesión.
+            </div>
 
-        <div class="divider">
-            <span>o</span>
-        </div>
+            <form th:action="@{/login}" method="post">
+                <div class="form-field">
+                    <label class="form-label" for="username">Usuario</label>
+                    <input type="text" class="form-input" id="username" name="username"
+                           placeholder="Tu nombre de usuario" required autocomplete="username">
+                </div>
+                <div class="form-field">
+                    <label class="form-label" for="password">Contraseña</label>
+                    <input type="password" class="form-input" id="password" name="password"
+                           placeholder="Tu contraseña" required autocomplete="current-password">
+                </div>
+                <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1.5rem;">
+                    <input type="checkbox" id="remember-me" name="remember-me"
+                           style="width:1rem;height:1rem;accent-color:var(--accent);cursor:pointer;flex-shrink:0;">
+                    <label for="remember-me" style="font-size:0.85rem;color:var(--text-muted);margin:0;cursor:pointer;">Recordarme</label>
+                </div>
+                <button type="submit" class="btn-accent" style="width:100%;justify-content:center;">
+                    Iniciar Sesión
+                </button>
+            </form>
 
-        <div class="social-login">
-            <p class="text-muted mb-3">¿Aún no tienes cuenta?</p>
-            <a th:href="@{/register}" class="btn btn-outline-light w-100" style="border-radius: 10px;">
-                <i class="fas fa-user-plus me-2"></i>
-                Crear Cuenta Nueva
+            <div class="auth-divider">o</div>
+
+            <a th:href="@{/register}" class="btn-ghost" style="width:100%;justify-content:center;">
+                <i class="fas fa-user-plus"></i> Crear cuenta nueva
             </a>
-        </div>
 
-        <div class="register-link">
-            <a th:href="@{/}">
-                <i class="fas fa-arrow-left me-1"></i>
-                Volver al Inicio
-            </a>
+            <div class="auth-footer">
+                <a th:href="@{/}"><i class="fas fa-arrow-left"></i> Volver al inicio</a>
+            </div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Animación de entrada
-        document.addEventListener('DOMContentLoaded', function() {
-            const container = document.querySelector('.login-container');
-            container.style.opacity = '0';
-            container.style.transform = 'translateY(-20px)';
-
-            setTimeout(function() {
-                container.style.transition = 'all 0.5s ease-out';
-                container.style.opacity = '1';
-                container.style.transform = 'translateY(0)';
-            }, 100);
-        });
-
         function showResendForm() {
             document.getElementById('resendForm').classList.remove('d-none');
         }
@@ -258,7 +96,7 @@
             event.preventDefault();
             const email = document.getElementById('resendEmail').value;
             const resultDiv = document.getElementById('resendResult');
-            resultDiv.innerHTML = '<span class="text-info">Enviando...</span>';
+            resultDiv.textContent = 'Enviando...';
             fetch('/resend-confirmation', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -266,15 +104,10 @@
             })
             .then(r => r.json())
             .then(data => {
-                if (data.success) {
-                    resultDiv.innerHTML = '<span class="text-success">' + data.message + '</span>';
-                } else {
-                    resultDiv.innerHTML = '<span class="text-danger">' + data.message + '</span>';
-                }
+                resultDiv.textContent = data.message;
+                resultDiv.style.color = data.success ? 'var(--text-secondary)' : '#fca5a5';
             })
-            .catch(() => {
-                resultDiv.innerHTML = '<span class="text-danger">Error reenviando el email.</span>';
-            });
+            .catch(() => { resultDiv.textContent = 'Error reenviando el email.'; });
             return false;
         }
     </script>

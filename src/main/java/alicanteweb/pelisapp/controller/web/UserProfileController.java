@@ -35,9 +35,14 @@ public class UserProfileController {
             // Logros
             var archivements = user.getUsuarioArchievements();
             // Carátulas de películas (ya accesibles desde review.getMovie().getPosterLocalPath())
+            double avgRating = userReviews.stream()
+                    .mapToInt(Review::getStars)
+                    .average()
+                    .orElse(0.0);
             model.addAttribute("user", user);
             model.addAttribute("reviews", userReviews);
             model.addAttribute("reviewCount", userReviews.size());
+            model.addAttribute("avgRating", avgRating);
             model.addAttribute("followersCount", followersCount);
             model.addAttribute("followingCount", followingCount);
             model.addAttribute("archivements", archivements);

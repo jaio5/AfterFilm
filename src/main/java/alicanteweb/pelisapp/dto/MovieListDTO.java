@@ -23,4 +23,6 @@ public class MovieListDTO {
     private Integer runtimeMinutes;
     private Long tmdbId;
     private List<String> categories;
+    private Double avgRating;
+    private Integer reviewCount;
 }

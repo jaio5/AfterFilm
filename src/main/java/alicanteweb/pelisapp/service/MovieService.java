@@ -8,19 +8,20 @@ import alicanteweb.pelisapp.entity.Actor;
 import alicanteweb.pelisapp.entity.CategoryEntity;
 import alicanteweb.pelisapp.entity.Director;
 import alicanteweb.pelisapp.entity.Movie;
-import alicanteweb.pelisapp.repository.ActorRepository;
-import alicanteweb.pelisapp.repository.DirectorRepository;
 import alicanteweb.pelisapp.repository.MovieRepository;
-import alicanteweb.pelisapp.repository.CommentRepository;
 import alicanteweb.pelisapp.tmdb.TMDBClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -34,11 +35,7 @@ public class MovieService {
 
     private final TMDBClient tmdbClient;
     private final MovieRepository movieRepository;
-    private final CommentRepository commentRepository;
     private final MovieImportService movieImportService;
-    private final ActorRepository actorRepository;
-    private final DirectorRepository directorRepository;
-    private final ImageStorageService imageStorageService;
 
     public MovieDetailsDTO getCombinedByMovieId(Long id) {
         Optional<Movie> opt = movieRepository.findByIdWithCastAndDirectors(id);
@@ -220,6 +217,12 @@ public class MovieService {
     private String getImageUrl(String localPath, String remotePath) {
         // Priorizar imagen local
         if (localPath != null && !localPath.isEmpty()) {
+            // ImageStorageService already returns full URL path (e.g. "/images/profiles/actor.jpg")
+            // ImageStorage (via ImageService) returns relative path (e.g. "profiles/actor.jpg")
+            // Handle both formats to avoid double-prefix
+            if (localPath.startsWith("/")) {
+                return localPath;
+            }
             return "/images/" + localPath;
         }
 
@@ -235,39 +238,75 @@ public class MovieService {
 
     public Page<MovieListDTO> getAllMovies(Pageable pageable) {
         Page<Movie> moviePage = movieRepository.findAll(pageable);
-        List<MovieListDTO> movieDTOs = moviePage.getContent().stream().map(movie -> {
-            MovieListDTO dto = new MovieListDTO();
-            dto.setId(movie.getId());
-            dto.setTmdbId(movie.getTmdbId());
-            dto.setTitle(movie.getTitle());
-            dto.setDescription(movie.getDescription());
-            dto.setPosterPath(movie.getPosterPath());
-            dto.setPosterLocalPath(movie.getPosterLocalPath());
-            dto.setReleaseDate(movie.getReleaseDate());
-            dto.setRuntimeMinutes(movie.getRuntimeMinutes());
-            List<String> categories = movie.getCategories().stream().map(CategoryEntity::getName).toList();
-            dto.setCategories(categories);
-            return dto;
-        }).toList();
-        return new org.springframework.data.domain.PageImpl<>(movieDTOs, pageable, moviePage.getTotalElements());
+        List<MovieListDTO> movieDTOs = mapWithRatingStats(moviePage.getContent());
+        return new PageImpl<>(movieDTOs, pageable, moviePage.getTotalElements());
     }
 
     public Page<MovieListDTO> getMoviesByCategory(String category, Pageable pageable) {
         Page<Movie> moviePage = movieRepository.findByCategories_Name(category, pageable);
-        List<MovieListDTO> movieDTOs = moviePage.getContent().stream().map(movie -> {
-            MovieListDTO dto = new MovieListDTO();
-            dto.setId(movie.getId());
-            dto.setTmdbId(movie.getTmdbId());
-            dto.setTitle(movie.getTitle());
-            dto.setDescription(movie.getDescription());
-            dto.setPosterPath(movie.getPosterPath());
-            dto.setPosterLocalPath(movie.getPosterLocalPath());
-            dto.setReleaseDate(movie.getReleaseDate());
-            dto.setRuntimeMinutes(movie.getRuntimeMinutes());
-            List<String> categories = movie.getCategories().stream().map(CategoryEntity::getName).toList();
-            dto.setCategories(categories);
-            return dto;
-        }).toList();
+        List<MovieListDTO> movieDTOs = mapWithRatingStats(moviePage.getContent());
         return new PageImpl<>(movieDTOs, pageable, moviePage.getTotalElements());
+    }
+
+    public List<MovieListDTO> searchMovies(String query) {
+        return mapWithRatingStats(
+            movieRepository.findByTitleContainingIgnoreCase(query, PageRequest.of(0, 50)).getContent()
+        );
+    }
+
+    private List<MovieListDTO> mapWithRatingStats(List<Movie> movies) {
+        if (movies.isEmpty()) return List.of();
+        List<Long> ids = movies.stream().map(Movie::getId).toList();
+        Map<Long, double[]> ratingMap = buildRatingMap(movieRepository.findRatingStatsByIds(ids));
+        return movies.stream().map(m -> toMovieListDTO(m, ratingMap.get(m.getId()))).toList();
+    }
+
+    private Map<Long, double[]> buildRatingMap(List<Object[]> rows) {
+        Map<Long, double[]> map = new HashMap<>();
+        for (Object[] row : rows) {
+            Long id = ((Number) row[0]).longValue();
+            Double avg = row[1] != null ? ((Number) row[1]).doubleValue() : null;
+            long count = ((Number) row[2]).longValue();
+            map.put(id, new double[]{avg != null ? avg : 0.0, count});
+        }
+        return map;
+    }
+
+    private MovieListDTO toMovieListDTO(Movie movie, double[] stats) {
+        MovieListDTO dto = new MovieListDTO();
+        dto.setId(movie.getId());
+        dto.setTmdbId(movie.getTmdbId());
+        dto.setTitle(movie.getTitle());
+        dto.setDescription(movie.getDescription());
+        dto.setPosterPath(movie.getPosterPath());
+        dto.setPosterLocalPath(movie.getPosterLocalPath());
+        dto.setReleaseDate(movie.getReleaseDate());
+        dto.setRuntimeMinutes(movie.getRuntimeMinutes());
+        dto.setCategories(movie.getCategories().stream().map(CategoryEntity::getName).toList());
+        if (stats != null && stats[1] > 0) {
+            dto.setReviewCount((int) stats[1]);
+            dto.setAvgRating(stats[0]);
+        } else {
+            dto.setReviewCount(0);
+        }
+        return dto;
+    }
+
+    private MovieListDTO toMovieListDTO(Movie movie) {
+        return toMovieListDTO(movie, null);
+    }
+
+    public Optional<MovieListDTO> getTopRatedThisMonth() {
+        Instant startOfMonth = LocalDate.now().withDayOfMonth(1)
+            .atStartOfDay(ZoneOffset.UTC).toInstant();
+        List<Movie> movies = movieRepository.findTopRatedThisMonth(
+            startOfMonth, PageRequest.of(0, 1));
+        if (!movies.isEmpty()) {
+            return Optional.of(mapWithRatingStats(movies).get(0));
+        }
+        Page<Movie> page = movieRepository.findAll(PageRequest.of(0, 1));
+        return page.getContent().isEmpty()
+            ? Optional.empty()
+            : Optional.of(mapWithRatingStats(page.getContent()).get(0));
     }
 }

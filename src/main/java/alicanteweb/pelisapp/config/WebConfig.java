@@ -1,5 +1,6 @@
 package alicanteweb.pelisapp.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
@@ -9,6 +10,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
  * Configuración para servir archivos estáticos de imágenes y videos
  */
 @Configuration
+@Slf4j
 public class WebConfig implements WebMvcConfigurer {
 
     @Value("${app.images.storage-path:./data/images}")
@@ -39,7 +41,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .addResourceLocations(movieResourceLocation)
                 .setCachePeriod(0); // Sin cache para videos
 
-        System.out.println("✅ Configurado servido de imágenes: " + imagePathPattern + " -> " + imageResourceLocation);
-        System.out.println("✅ Configurado servido de videos: " + moviePathPattern + " -> " + movieResourceLocation);
+        log.info("Configurado servido de imágenes: {} -> {}", imagePathPattern, imageResourceLocation);
+        log.info("Configurado servido de videos: {} -> {}", moviePathPattern, movieResourceLocation);
     }
 }

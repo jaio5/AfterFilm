@@ -3,12 +3,19 @@ package alicanteweb.pelisapp.controller;
 import alicanteweb.pelisapp.dto.ReviewCreateRequest;
 import alicanteweb.pelisapp.dto.ReviewDTO;
 import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.entity.User;
+import alicanteweb.pelisapp.repository.UserRepository;
 import alicanteweb.pelisapp.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.security.Principal;
 import java.util.List;
 
 @RestController
@@ -16,18 +23,31 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ReviewApiController {
     private final ReviewService reviewService;
+    private final UserRepository userRepository;
 
     @PostMapping("")
-    public ResponseEntity<ReviewDTO> createReview(@Valid @RequestBody ReviewCreateRequest req) {
-        Review review = reviewService.createReview(req.getUserId(), req.getMovieId(), req.getText(), req.getStars());
-        ReviewDTO dto = ReviewApiController.toDto(review);
-        return ResponseEntity.ok(dto);
+    public ResponseEntity<ReviewDTO> createReview(
+            @Valid @RequestBody ReviewCreateRequest req,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
+        User user = userRepository.findByUsername(userDetails.getUsername())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        Review review = reviewService.createReview(user.getId(), req.getMovieId(), req.getText(), req.getStars());
+        return ResponseEntity.ok(toDto(review));
     }
 
     @PostMapping("/{id}/like")
-    public ResponseEntity<Void> likeReview(@PathVariable("id") Long reviewId, @RequestParam("userId") Long userId) {
-        reviewService.likeReview(userId, reviewId);
+    public ResponseEntity<Void> likeReview(@PathVariable("id") Long reviewId, Principal principal) {
+        if (principal == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
+        User user = userRepository.findByUsername(principal.getName())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        reviewService.likeReview(user.getId(), reviewId);
         return ResponseEntity.ok().build();
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
     }
 
     @GetMapping("/movie/{movieId}")

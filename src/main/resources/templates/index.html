@@ -3,258 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PelisApp - Red Social de Películas</title>
+    <title>PelisApp — Catálogo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
-    <style>
-        :root {
-            --primary-color: #1e1e1e;
-            --secondary-color: #2c2c2c;
-            --accent-color: #ff6b35;
-            --text-color: #ffffff;
-            --muted-color: #b3b3b3;
-        }
-
-        body {
-            background-color: var(--primary-color);
-            color: var(--text-color);
-            font-family: 'Arial', sans-serif;
-        }
-
-        .navbar {
-            background-color: var(--secondary-color) !important;
-            border-bottom: 2px solid var(--accent-color);
-        }
-
-        .navbar-brand {
-            color: var(--accent-color) !important;
-            font-weight: bold;
-            font-size: 1.8rem;
-        }
-
-        .movie-card {
-            background-color: var(--secondary-color);
-            border-radius: 10px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-            border: 1px solid #444;
-            margin-bottom: 2rem;
-        }
-
-        .movie-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(255, 107, 53, 0.3);
-        }
-
-        .movie-poster {
-            width: 100%;
-            height: 300px;
-            object-fit: cover;
-            background-color: #333;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .movie-poster img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .placeholder-poster {
-            background: linear-gradient(135deg, #555, #333);
-            color: var(--muted-color);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 3rem;
-        }
-
-        .movie-info {
-            padding: 1rem;
-        }
-
-        .movie-title {
-            color: var(--text-color);
-            font-size: 1.1rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-            text-decoration: none;
-            display: block;
-        }
-
-        .movie-title:hover {
-            color: var(--accent-color);
-            text-decoration: none;
-        }
-
-        .movie-year {
-            color: var(--muted-color);
-            font-size: 0.9rem;
-        }
-
-        .genre-filter {
-            background-color: var(--secondary-color);
-            padding: 1rem;
-            border-radius: 10px;
-            margin-bottom: 2rem;
-        }
-
-        .btn-primary {
-            background-color: var(--accent-color);
-            border-color: var(--accent-color);
-        }
-
-        .btn-primary:hover {
-            background-color: #e55a30;
-            border-color: #e55a30;
-        }
-
-        .stats-card {
-            background: linear-gradient(135deg, var(--accent-color), #e55a30);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 10px;
-            text-align: center;
-            margin-bottom: 1rem;
-        }
-
-        .hero-section {
-            background: linear-gradient(rgba(30, 30, 30, 0.8), rgba(30, 30, 30, 0.8)), url('https://images.unsplash.com/photo-1489599511976-7b1259c2767b?w=1200') center/cover;
-            padding: 4rem 0;
-            text-align: center;
-            margin-bottom: 3rem;
-        }
-
-        .hero-title {
-            font-size: 3rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-        }
-
-        .hero-subtitle {
-            font-size: 1.2rem;
-            color: var(--muted-color);
-            margin-bottom: 2rem;
-        }
-    </style>
 </head>
 <body>
+
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark">
+    <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-film me-2"></i>PelisApp
+            <a class="navbar-brand" th:href="@{/}">
+                <i class="fas fa-film"></i> PelisApp
             </a>
-            <form class="d-flex ms-3" id="searchForm" style="flex:1;max-width:400px;">
-                <input class="form-control me-2" type="search" placeholder="Buscar películas..." aria-label="Buscar" id="searchInput">
-                <button class="btn btn-outline-light" type="submit"><i class="fas fa-search"></i></button>
-            </form>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link active" th:href="@{/}">
-                            <i class="fas fa-home me-1"></i>Inicio
-                        </a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item" th:if="${#authentication != null and #authentication.authenticated}">
-                        <a class="nav-link" th:href="@{/perfil}">
-                            <i class="fas fa-user me-1"></i>Mi Perfil
-                        </a>
-                    </li>
-                    <li class="nav-item" th:if="${#authentication == null or !#authentication.authenticated}">
-                        <a class="nav-link" th:href="@{/login}">
-                            <i class="fas fa-sign-in-alt me-1"></i>Iniciar Sesión
-                        </a>
-                    </li>
-                    <li class="nav-item" th:if="${#authentication == null or !#authentication.authenticated}">
-                        <a class="nav-link" th:href="@{/register}">
-                            <i class="fas fa-user-plus me-1"></i>Registrarse
-                        </a>
-                    </li>
-                    <li class="nav-item" th:if="${#authentication != null and #authentication.authenticated}">
-                        <form th:action="@{/logout}" method="post" style="display: inline;">
-                            <button type="submit" class="btn nav-link" style="border: none; background: none; color: inherit;">
-                                <i class="fas fa-sign-out-alt me-1"></i>Cerrar Sesión
-                            </button>
-                        </form>
-                    </li>
-                </ul>
+            <div class="navbar-search">
+                <form id="searchForm">
+                    <input type="search" id="searchInput" placeholder="Buscar películas..." autocomplete="off">
+                    <button type="submit"><i class="fas fa-search"></i></button>
+                </form>
+            </div>
+            <div class="navbar-nav-links">
+                <a th:href="@{/perfil}" th:if="${#authentication != null and #authentication.authenticated}">
+                    <i class="fas fa-user"></i> Perfil
+                </a>
+                <a th:href="@{/login}" th:if="${#authentication == null or !#authentication.authenticated}">Entrar</a>
+                <a th:href="@{/register}" th:if="${#authentication == null or !#authentication.authenticated}" class="btn-accent btn-sm">Registrarse</a>
+                <form th:if="${#authentication != null and #authentication.authenticated}"
+                      th:action="@{/logout}" method="post" style="margin:0">
+                    <button type="submit" class="btn-text">Cerrar sesión</button>
+                </form>
             </div>
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <section class="hero-section">
-        <div class="container">
-            <h1 class="hero-title">Descubre y Comparte</h1>
-            <p class="hero-subtitle">La red social definitiva para amantes del cine</p>
-            <a th:href="@{/login}" class="btn btn-primary btn-lg">
-                <i class="fas fa-star me-2"></i>Únete Ahora
-            </a>
+    <!-- Hero -->
+    <section class="hero-section" id="heroSection" style="display:none">
+        <div class="hero-backdrop" id="heroBackdrop"></div>
+        <div class="hero-gradient"></div>
+        <div class="hero-content">
+            <div class="hero-eyebrow" id="heroEyebrow"></div>
+            <h2 class="hero-title" id="heroTitle"></h2>
+            <p class="hero-synopsis" id="heroSynopsis"></p>
+            <div class="hero-actions">
+                <a class="btn-accent" id="heroWatchLink" href="#"><i class="fas fa-star"></i> Ver reseñas</a>
+                <a class="btn-ghost" id="heroInfoLink" href="#">+ Más info</a>
+            </div>
         </div>
     </section>
 
-    <div class="container">
-        <div class="row">
-            <!-- Sidebar con filtros -->
-            <div class="col-md-3">
-                <div class="genre-filter">
-                    <h5><i class="fas fa-filter me-2"></i>Filtrar por Género</h5>
-                    <div class="d-grid gap-2">
-                        <a th:href="@{/}" class="btn btn-outline-light btn-sm"
-                           th:classappend="${selectedGenre == null ? ' active' : ''}">
-                            Todas las Películas
-                        </a>
-                        <a th:each="cat : ${categories}"
-                           th:href="@{/(genre=${cat.name})}"
-                           th:text="${cat.name}"
-                           th:classappend="${selectedGenre != null && selectedGenre == cat.name ? ' active' : ''}"
-                           class="btn btn-outline-light btn-sm">
-                            Género
-                        </a>
-                    </div>
-                </div>
+    <!-- Main -->
+    <div class="container-main">
 
-                <!-- Stats Card -->
-                <div class="stats-card">
-                    <h6><i class="fas fa-chart-bar me-2"></i>Estadísticas</h6>
-                    <p class="mb-1">Total Películas: <span th:text="${moviesPage?.totalElements ?: 0}">0</span></p>
-                    <p class="mb-0">Página: <span th:text="${(moviesPage?.number ?: 0) + 1}">1</span> de <span th:text="${moviesPage?.totalPages ?: 1}">1</span></p>
-                </div>
-            </div>
-
-            <!-- Contenido Principal -->
-            <div class="col-md-9">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h2>
-                        <i class="fas fa-film me-2 text-warning"></i>
-                        <span id="catalog-title">Catálogo de Películas</span>
-                    </h2>
-                    <small class="text-muted" id="catalog-info"></small>
-                </div>
-                <div id="movies-container" class="row"></div>
-                <div id="pagination-container" class="mt-4"></div>
-            </div>
+        <!-- Filter bar -->
+        <div class="filter-bar" id="filterBar">
+            <button class="filter-pill active" data-genre="">Todas</button>
+            <button th:each="cat : ${categories}"
+                    class="filter-pill"
+                    th:attr="data-genre=${cat.name}"
+                    th:text="${cat.name}">Género</button>
         </div>
+
+        <!-- Catalog bar -->
+        <div class="catalog-bar">
+            <span class="catalog-title" id="catalog-title">Catálogo</span>
+            <span class="catalog-count" id="catalog-info"></span>
+        </div>
+
+        <!-- Movies grid -->
+        <div id="movies-container" class="movies-grid"></div>
+
+        <!-- Pagination -->
+        <div id="pagination-container"></div>
+
     </div>
 
-    <!-- Footer -->
-    <footer class="text-center py-4 mt-5" style="background-color: var(--secondary-color); border-top: 1px solid #444;">
-        <div class="container">
-            <p class="mb-0 text-muted">
-                © 2026 PelisApp - Red Social de Películas |
-                <i class="fas fa-heart text-danger"></i>
-                Hecho con pasión por el cine
-            </p>
-        </div>
+    <footer class="site-footer">
+        © 2026 PelisApp — Hecho con <i class="fas fa-heart text-accent"></i> por el cine
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -268,44 +92,72 @@ let currentPage = 0;
 let currentGenre = null;
 
 function loadMovies(page = 0, genre = null) {
-    let url;
-    if (genre) {
-        url = `/api/movies/by-category?category=${encodeURIComponent(genre)}&page=${page}`;
-    } else {
-        url = `/api/movies?page=${page}`;
-    }
+    const url = genre
+        ? `/api/movies/by-category?category=${encodeURIComponent(genre)}&page=${page}`
+        : `/api/movies?page=${page}`;
     fetch(url)
         .then(res => res.json())
         .then(data => {
             renderMovies(data.content);
             renderPagination(data);
-            catalogTitle.textContent = genre ? `Películas de ${genre}` : 'Catálogo de Películas';
-            catalogInfo.textContent = `Mostrando ${data.numberOfElements} de ${data.totalElements} películas`;
+            catalogTitle.textContent = genre ? genre : 'Catálogo';
+            catalogInfo.textContent = `${data.numberOfElements} de ${data.totalElements} películas`;
             currentPage = data.number;
             currentGenre = genre;
         });
 }
 
+function populateHero(movie) {
+    const poster = movie.posterLocalPath
+        ? movie.posterLocalPath
+        : (movie.posterPath
+            ? (movie.posterPath.startsWith('http') ? movie.posterPath : 'https://image.tmdb.org/t/p/original' + movie.posterPath)
+            : null);
+    if (!poster) return;
+    document.getElementById('heroBackdrop').style.backgroundImage = `url('${poster}')`;
+    document.getElementById('heroEyebrow').textContent = '★ Mejor valorada del mes';
+    document.getElementById('heroTitle').textContent = movie.title || '';
+    document.getElementById('heroSynopsis').textContent = movie.description || movie.overview || '';
+    const url = `/pelicula/${movie.id}`;
+    document.getElementById('heroWatchLink').href = url;
+    document.getElementById('heroInfoLink').href = url;
+    document.getElementById('heroSection').style.display = '';
+}
+
 function renderMovies(movies) {
     moviesContainer.innerHTML = '';
     if (!movies || movies.length === 0) {
-        moviesContainer.innerHTML = `<div class='text-center py-5'><i class='fas fa-film fa-3x text-muted mb-3'></i><h4 class='text-muted'>No hay películas disponibles</h4><p class='text-muted'>Intenta cambiar los filtros o vuelve más tarde.</p></div>`;
+        moviesContainer.innerHTML = `
+            <div class="empty-state" style="grid-column:1/-1">
+                <i class="fas fa-film"></i>
+                <p>No hay películas disponibles</p>
+            </div>`;
         return;
     }
     movies.forEach(movie => {
+        const poster = movie.posterLocalPath
+            ? movie.posterLocalPath
+            : (movie.posterPath
+                ? (movie.posterPath.startsWith('http') ? movie.posterPath : 'https://image.tmdb.org/t/p/w500' + movie.posterPath)
+                : null);
         moviesContainer.innerHTML += `
-        <div class="col-md-4 col-sm-6">
-            <div class="movie-card">
-                <div class="movie-poster">
-                    ${movie.posterLocalPath ? `<img src="${movie.posterLocalPath}" alt="${movie.title}" class="img-fluid">` : (movie.posterPath ? `<img src="${movie.posterPath.startsWith('http') ? movie.posterPath : 'https://image.tmdb.org/t/p/w500' + movie.posterPath}" alt="${movie.title}" class="img-fluid">` : `<div class='placeholder-poster'><i class='fas fa-film'></i></div>`)}
+        <div class="movie-card">
+            <a href="/pelicula/${movie.id}" class="movie-card-link">
+                <div class="movie-poster-wrap">
+                    ${poster
+                        ? `<img src="${poster}" alt="${movie.title}" loading="lazy">`
+                        : `<div class="movie-poster-placeholder"><i class="fas fa-film"></i></div>`}
+                    ${movie.avgRating ? `<div class="movie-rating-badge">
+                        <i class="fas fa-star"></i> ${Number(movie.avgRating).toFixed(1)}
+                    </div>` : ''}
+                    <div class="movie-card-overlay">
+                        <div class="movie-card-overlay-info">
+                            <div class="movie-card-overlay-title">${movie.title || 'Sin título'}</div>
+                            <div class="movie-card-overlay-year">${getYear(movie.releaseDate)}</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="movie-info">
-                    <a href="/pelicula/${movie.id}" class="movie-title">${movie.title || 'Título Desconocido'}</a>
-                    <div class="movie-year"><i class="fas fa-calendar-alt me-1"></i>${getYear(movie.releaseDate)}</div>
-                    <div class="mt-2">${movie.categories && movie.categories.length ? movie.categories.map(cat => `<span class="badge bg-secondary me-1">${typeof cat === 'string' ? cat : (cat.name || cat)}</span>`).join('') : ''}</div>
-                    <div class="mt-2"><a href="/pelicula/${movie.id}" class="btn btn-primary btn-sm"><i class="fas fa-eye me-1"></i>Ver Detalles</a></div>
-                </div>
-            </div>
+            </a>
         </div>`;
     });
 }
@@ -313,98 +165,99 @@ function renderMovies(movies) {
 function renderPagination(data) {
     paginationContainer.innerHTML = '';
     if (data.totalPages <= 1) return;
-    let html = `<nav aria-label="Paginación de películas"><ul class="pagination justify-content-center">`;
-    html += `<li class="page-item${data.number === 0 ? ' disabled' : ''}"><a class="page-link" href="#" onclick="loadMovies(0, currentGenre);return false;" title="Primera página"><i class="fas fa-angle-double-left"></i></a></li>`;
-    html += `<li class="page-item${!data.hasPrevious ? ' disabled' : ''}"><a class="page-link" href="#" onclick="loadMovies(${data.number - 1}, currentGenre);return false;" tabindex="-1"><i class="fas fa-chevron-left"></i> Anterior</a></li>`;
+    let html = `<nav aria-label="Paginación"><ul class="pagination">`;
+    html += `<li class="page-item${data.first ? ' disabled' : ''}"><a class="page-link" href="#" onclick="loadMovies(${data.number - 1}, currentGenre);return false;"><i class="fas fa-chevron-left"></i></a></li>`;
 
-    const maxPagesToShow = 5;
-    let startPage = Math.max(0, data.number - 2);
-    let endPage = Math.min(data.totalPages - 1, data.number + 2);
-    if (data.number <= 2) {
-        endPage = Math.min(data.totalPages - 1, maxPagesToShow - 1);
-    }
-    if (data.number >= data.totalPages - 3) {
-        startPage = Math.max(0, data.totalPages - maxPagesToShow);
-    }
+    const maxPages = 5;
+    let start = Math.max(0, data.number - 2);
+    let end = Math.min(data.totalPages - 1, data.number + 2);
+    if (data.number <= 2) end = Math.min(data.totalPages - 1, maxPages - 1);
+    if (data.number >= data.totalPages - 3) start = Math.max(0, data.totalPages - maxPages);
 
-    if (startPage > 0) {
+    if (start > 0) {
         html += `<li class="page-item"><a class="page-link" href="#" onclick="loadMovies(0, currentGenre);return false;">1</a></li>`;
-        if (startPage > 1) {
-            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-        }
+        if (start > 1) html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
     }
-    for (let i = startPage; i <= endPage; i++) {
+    for (let i = start; i <= end; i++) {
         html += `<li class="page-item${i === data.number ? ' active' : ''}"><a class="page-link" href="#" onclick="loadMovies(${i}, currentGenre);return false;">${i + 1}</a></li>`;
     }
-    if (endPage < data.totalPages - 1) {
-        if (endPage < data.totalPages - 2) {
-            html += `<li class="page-item disabled"><span class="page-link">...</span></li>`;
-        }
+    if (end < data.totalPages - 1) {
+        if (end < data.totalPages - 2) html += `<li class="page-item disabled"><span class="page-link">…</span></li>`;
         html += `<li class="page-item"><a class="page-link" href="#" onclick="loadMovies(${data.totalPages - 1}, currentGenre);return false;">${data.totalPages}</a></li>`;
     }
-
-    html += `<li class="page-item${!data.hasNext ? ' disabled' : ''}"><a class="page-link" href="#" onclick="loadMovies(${data.number + 1}, currentGenre);return false;">Siguiente <i class="fas fa-chevron-right"></i></a></li>`;
-    html += `<li class="page-item${data.number === data.totalPages - 1 ? ' disabled' : ''}"><a class="page-link" href="#" onclick="loadMovies(${data.totalPages - 1}, currentGenre);return false;" title="Última página"><i class="fas fa-angle-double-right"></i></a></li>`;
+    html += `<li class="page-item${data.last ? ' disabled' : ''}"><a class="page-link" href="#" onclick="loadMovies(${data.number + 1}, currentGenre);return false;"><i class="fas fa-chevron-right"></i></a></li>`;
     html += `</ul></nav>`;
     paginationContainer.innerHTML = html;
 }
 
 function getYear(releaseDate) {
-    if (!releaseDate) return 'Año desconocido';
+    if (!releaseDate) return '';
     if (Array.isArray(releaseDate) && releaseDate.length > 0) return releaseDate[0];
-    if (typeof releaseDate === 'string' && releaseDate.length >= 4) return releaseDate.substring(0,4);
-    return 'Año desconocido';
+    if (typeof releaseDate === 'string' && releaseDate.length >= 4) return releaseDate.substring(0, 4);
+    return '';
 }
 
 window.loadMovies = loadMovies;
+
 document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.genre-filter a.btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            // Quitar la clase 'active' de todos los botones
-            document.querySelectorAll('.genre-filter a.btn').forEach(b => b.classList.remove('active'));
-            // Añadir la clase 'active' al botón pulsado
+    // Cargar hero independientemente del catálogo
+    fetch('/api/movies/top-rated-this-month')
+        .then(res => res.ok ? res.json() : null)
+        .then(movie => { if (movie) populateHero(movie); });
+
+    document.querySelectorAll('#filterBar .filter-pill').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#filterBar .filter-pill').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            const genre = this.textContent.trim();
-            if (genre === 'Todas las Películas') {
-                loadMovies(0, null);
+            const genre = this.dataset.genre;
+            if (genre) {
+                document.getElementById('heroSection').style.display = 'none';
             } else {
-                loadMovies(0, genre);
+                document.getElementById('heroSection').style.display = '';
             }
+            loadMovies(0, genre || null);
         });
     });
-    loadMovies(0, null);
-});
 
-const searchForm = document.getElementById('searchForm');
-const searchInput = document.getElementById('searchInput');
-let lastSearchQuery = '';
-searchForm.addEventListener('submit', function(e) {
-    e.preventDefault();
-    const query = searchInput.value.trim();
-    lastSearchQuery = query;
-    if (query.length === 0) {
-        loadMovies(0, currentGenre);
-        return;
-    }
-    fetch(`/api/movies/search?query=${encodeURIComponent(query)}`)
-        .then(res => res.json())
-        .then(data => {
-            renderMovies(data);
-            paginationContainer.innerHTML = '';
-            catalogTitle.textContent = `Resultados para "${query}"`;
-            catalogInfo.textContent = `Mostrando ${data.length} resultados`;
-            if (!data || data.length === 0) {
-                moviesContainer.innerHTML += `<div class='text-center py-3'><button class='btn btn-outline-primary mt-2' onclick='window.loadMovies(0, null);searchInput.value="";'>Volver al catálogo completo</button></div>`;
-            }
-        })
-        .catch(() => {
-            renderMovies([]);
-            paginationContainer.innerHTML = '';
-            catalogTitle.textContent = `Resultados para "${query}"`;
-            catalogInfo.textContent = `No se pudo realizar la búsqueda`;
-            moviesContainer.innerHTML += `<div class='text-center py-3'><button class='btn btn-outline-primary mt-2' onclick='window.loadMovies(0, null);searchInput.value="";'>Volver al catálogo completo</button></div>`;
+    const searchForm = document.getElementById('searchForm');
+    const searchInput = document.getElementById('searchInput');
+    if (searchForm && searchInput) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (!query) { loadMovies(0, currentGenre); return; }
+            fetch(`/api/movies/search?query=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('heroSection').style.display = 'none';
+                    renderMovies(data);
+                    paginationContainer.innerHTML = '';
+                    catalogTitle.textContent = `"${query}"`;
+                    catalogInfo.textContent = `${data.length} resultado${data.length !== 1 ? 's' : ''}`;
+                    if (!data || data.length === 0) {
+                        moviesContainer.innerHTML += `
+                            <div style="grid-column:1/-1;text-align:center;padding-top:1rem;">
+                                <button class="btn-ghost btn-sm" onclick="loadMovies(0,null);document.getElementById('searchInput').value='';">
+                                    <i class="fas fa-arrow-left"></i> Ver catálogo completo
+                                </button>
+                            </div>`;
+                    }
+                })
+                .catch(() => {
+                    renderMovies([]);
+                    paginationContainer.innerHTML = '';
+                    catalogTitle.textContent = `"${query}"`;
+                    catalogInfo.textContent = 'No se pudo realizar la búsqueda';
+                });
         });
+
+        // También limpiar resultados cuando se borra la búsqueda con la X del input
+        searchInput.addEventListener('search', function() {
+            if (!this.value) loadMovies(0, currentGenre);
+        });
+    }
+
+    loadMovies(0, null);
 });
     </script>
 </body>

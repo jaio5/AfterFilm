@@ -33,59 +33,15 @@ public class AdminApiController {
     private final SystemHealthService systemHealthService;
     private final AuthService authService; // Agregado para búsqueda de usuarios
     private final MoviePosterRedownloadService moviePosterRedownloadService;
+    private final MovieImportService movieImportService;
 
     // Repositories
     private final MovieRepository movieRepository;
     private final UserRepository userRepository;
     private final CommentModerationRepository commentModerationRepository;
+    private final ReviewRepository reviewRepository;
 
     // ============= USER MANAGEMENT =============
-
-    /*
-    @PostMapping("/users/{userId}/roles")
-    public ResponseEntity<Void> assignRole(@PathVariable Long userId, @Valid @RequestBody AssignRoleRequest request) {
-        try {
-            adminUserService.assignRole(userId, request);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.warn("Error asignando rol: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @DeleteMapping("/users/{userId}/roles/{roleId}")
-    public ResponseEntity<Void> removeRole(@PathVariable Long userId, @PathVariable Long roleId) {
-        try {
-            adminUserService.removeRole(userId, roleId);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.warn("Error removiendo rol: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @PostMapping("/users/{userId}/tags")
-    public ResponseEntity<Void> assignTag(@PathVariable Long userId, @Valid @RequestBody AssignTagRequest request) {
-        try {
-            adminUserService.assignTag(userId, request);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.warn("Error asignando etiqueta: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
-    }
-
-    @DeleteMapping("/users/{userId}/tags/{tagId}")
-    public ResponseEntity<Void> removeTag(@PathVariable Long userId, @PathVariable Long tagId) {
-        try {
-            adminUserService.removeTag(userId, tagId);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            log.warn("Error removiendo etiqueta: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        }
-    }
-    */
 
     @PostMapping("/users/{userId}/confirm-email")
     public ResponseEntity<String> confirmUserEmail(@PathVariable Long userId) {
@@ -259,36 +215,6 @@ public class AdminApiController {
 
     // ============= TMDB INTEGRATION =============
 
-    /*
-    @GetMapping("/tmdb/test")
-    public String testTMDB() {
-        try {
-            log.info("Probando conexión con TMDB...");
-
-            JsonNode movieDetails = tmdbClient.getMovieDetails(155L); // The Dark Knight
-
-            if (movieDetails != null) {
-                String title = movieDetails.path("title").asText("Sin título");
-                boolean hasCredits = movieDetails.has("credits");
-                int castSize = hasCredits ? movieDetails.path("credits").path("cast").size() : 0;
-                int crewSize = hasCredits ? movieDetails.path("credits").path("crew").size() : 0;
-
-                return String.format("✅ TMDB conectado correctamente!\n" +
-                    "Película de prueba: %s\n" +
-                    "Tiene créditos: %s\n" +
-                    "Actores: %d\n" +
-                    "Crew: %d",
-                    title, hasCredits, castSize, crewSize);
-            } else {
-                return "❌ No se pudo conectar con TMDB";
-            }
-        } catch (Exception e) {
-            log.error("Error probando TMDB: {}", e.getMessage());
-            return "❌ Error conectando con TMDB: " + e.getMessage();
-        }
-    }
-    */
-
     @PostMapping("/tmdb/load-movie/{tmdbId}")
     public ResponseEntity<Map<String, Object>> loadMovieFromTMDB(@PathVariable Long tmdbId) {
         try {
@@ -400,24 +326,20 @@ public class AdminApiController {
 
     @PostMapping("/cast/movie/{movieId}/reload")
     public ResponseEntity<Map<String, Object>> reloadMovieCast(@PathVariable Long movieId) {
+        Movie movie = movieRepository.findById(movieId).orElse(null);
+        if (movie == null) return ResponseEntity.notFound().build();
+        if (movie.getTmdbId() == null) {
+            return ResponseEntity.badRequest().body(Map.of(
+                "success", false, "message", "La película no tiene TMDB ID"));
+        }
         try {
-            Movie movie = movieRepository.findById(movieId).orElse(null);
-            if (movie == null) {
-                return ResponseEntity.notFound().build();
-            }
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("success", true);
-            result.put("message", "Proceso de actualización de reparto iniciado");
-            result.put("movieId", movieId);
-
-            return ResponseEntity.ok(result);
+            movieImportService.importOrUpdateByTmdb(movie.getTmdbId());
+            return ResponseEntity.ok(Map.of("success", true,
+                "message", "Reparto actualizado desde TMDB", "movieId", movieId));
         } catch (Exception e) {
-            log.error("Error recargando reparto: {}", e.getMessage());
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
+            log.error("Error recargando reparto para película {}: {}", movieId, e.getMessage());
+            return ResponseEntity.ok(Map.of("success", false,
+                "message", "Error: " + e.getMessage()));
         }
     }
 
@@ -438,18 +360,91 @@ public class AdminApiController {
     }
 
     @GetMapping("/moderation/pending")
-    public ResponseEntity<List<CommentModeration>> getPendingModerations() {
+    public ResponseEntity<List<Map<String, Object>>> getPendingModerations() {
+        List<CommentModeration> pending = commentModerationRepository
+                .findByStatusOrderByCreatedAsc(CommentModeration.ModerationStatus.PENDING);
+        List<Map<String, Object>> result = pending.stream().map(m -> {
+            Map<String, Object> dto = new HashMap<>();
+            dto.put("id", m.getId());
+            dto.put("status", m.getStatus());
+            dto.put("toxicityScore", m.getToxicityScore());
+            dto.put("moderationReason", m.getModerationReason());
+            dto.put("createdAt", m.getCreatedAt());
+            dto.put("aiProcessed", m.getAiProcessed());
+            try {
+                Review review = m.getReview();
+                if (review != null) {
+                    dto.put("reviewId", review.getId());
+                    dto.put("reviewText", review.getText() != null ? review.getText() : "");
+                    dto.put("reviewStars", review.getStars());
+                    dto.put("reviewUsername", review.getUser() != null ? review.getUser().getUsername() : "–");
+                    dto.put("reviewMovieTitle", review.getMovie() != null ? review.getMovie().getTitle() : "–");
+                    dto.put("reviewMovieId", review.getMovie() != null ? review.getMovie().getId() : null);
+                }
+            } catch (Exception e) {
+                log.warn("Error loading review details for moderation {}: {}", m.getId(), e.getMessage());
+            }
+            return dto;
+        }).toList();
+        return ResponseEntity.ok(result);
+    }
 
-        // Simplificado - retornar lista vacía por ahora
-        return ResponseEntity.ok(List.of());
+    @GetMapping("/reviews")
+    public ResponseEntity<Map<String, Object>> getAllReviews(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var pageable = PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by("createdAt").descending());
+        var reviewsPage = reviewRepository.findAll(pageable);
+        var content = reviewsPage.getContent().stream().map(r -> {
+            Map<String, Object> dto = new HashMap<>();
+            dto.put("id", r.getId());
+            dto.put("text", r.getText() != null ? r.getText() : "");
+            dto.put("stars", r.getStars());
+            dto.put("createdAt", r.getCreatedAt());
+            dto.put("username", r.getUser() != null ? r.getUser().getUsername() : "–");
+            dto.put("movieId", r.getMovie() != null ? r.getMovie().getId() : null);
+            dto.put("movieTitle", r.getMovie() != null ? r.getMovie().getTitle() : "–");
+            dto.put("likesCount", r.getLikesCount());
+            return dto;
+        }).toList();
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", content);
+        result.put("totalElements", reviewsPage.getTotalElements());
+        result.put("totalPages", reviewsPage.getTotalPages());
+        result.put("page", page);
+        result.put("size", size);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/reviews/{reviewId}/delete")
+    public ResponseEntity<String> deleteReviewAsAdmin(@PathVariable Long reviewId) {
+        try {
+            Review review = reviewRepository.findById(reviewId).orElse(null);
+            if (review == null) return ResponseEntity.notFound().build();
+            String username = review.getUser() != null ? review.getUser().getUsername() : "?";
+            String movieTitle = review.getMovie() != null ? review.getMovie().getTitle() : "?";
+            reviewRepository.delete(review);
+            log.info("Admin deleted review {} by user '{}' for movie '{}'", reviewId, username, movieTitle);
+            return ResponseEntity.ok("Reseña eliminada correctamente");
+        } catch (Exception e) {
+            log.error("Error deleting review {}: {}", reviewId, e.getMessage());
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
     }
 
     @PostMapping("/moderation/{moderationId}/approve")
     public ResponseEntity<String> approveModerationManually(@PathVariable Long moderationId) {
         try {
-            // Simplificado por ahora
-            log.info("Aprobación manual de moderación {} solicitada", moderationId);
-            return ResponseEntity.ok("Moderación aprobada exitosamente");
+            return commentModerationRepository.findById(moderationId)
+                    .map(moderation -> {
+                        moderation.setStatus(CommentModeration.ModerationStatus.APPROVED);
+                        moderation.setReviewedAt(java.time.Instant.now());
+                        commentModerationRepository.save(moderation);
+                        log.info("Moderación {} aprobada manualmente", moderationId);
+                        return ResponseEntity.ok("Moderación aprobada exitosamente");
+                    })
+                    .orElse(ResponseEntity.notFound().<String>build());
         } catch (Exception e) {
             log.error("Error aprobando moderación {}: {}", moderationId, e.getMessage());
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
@@ -459,10 +454,15 @@ public class AdminApiController {
     @PostMapping("/moderation/{moderationId}/reject")
     public ResponseEntity<String> rejectModerationManually(@PathVariable Long moderationId) {
         try {
-            // Simplificado por ahora
-            log.info("Rechazo manual de moderación {} solicitado", moderationId);
-            return ResponseEntity.ok("Moderación rechazada exitosamente");
-
+            return commentModerationRepository.findById(moderationId)
+                    .map(moderation -> {
+                        moderation.setStatus(CommentModeration.ModerationStatus.REJECTED);
+                        moderation.setReviewedAt(java.time.Instant.now());
+                        commentModerationRepository.save(moderation);
+                        log.info("Moderación {} rechazada manualmente", moderationId);
+                        return ResponseEntity.ok("Moderación rechazada exitosamente");
+                    })
+                    .orElse(ResponseEntity.notFound().<String>build());
         } catch (Exception e) {
             log.error("Error rechazando moderación {}: {}", moderationId, e.getMessage());
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
@@ -493,24 +493,6 @@ public class AdminApiController {
         } catch (Exception e) {
             result.put("error", "Error: " + e.getMessage());
             return result;
-        }
-    }
-
-    // ============= EMAIL DIAGNOSTICS =============
-
-    @GetMapping("/email/diagnostic")
-    public ResponseEntity<Map<String, Object>> getEmailDiagnostic() {
-        try {
-            Map<String, Object> diagnostic = new HashMap<>();
-            diagnostic.put("success", true);
-            diagnostic.put("message", "Diagnóstico de email no implementado completamente");
-            return ResponseEntity.ok(diagnostic);
-        } catch (Exception e) {
-            log.error("Error en diagnóstico de email: {}", e.getMessage());
-            Map<String, Object> error = new HashMap<>();
-            error.put("success", false);
-            error.put("error", e.getMessage());
-            return ResponseEntity.badRequest().body(error);
         }
     }
 

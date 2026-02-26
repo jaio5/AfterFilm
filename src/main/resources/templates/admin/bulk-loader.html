@@ -3,469 +3,263 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Carga Masiva de Películas - TMDB</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Carga Masiva - Admin PelisApp</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
     <style>
-        .loading-status {
-            transition: all 0.3s ease;
-        }
-        .progress-container {
-            height: 300px;
-            overflow-y: auto;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 0.375rem;
-            padding: 1rem;
-        }
-        .preset-card {
-            transition: transform 0.2s ease;
-            cursor: pointer;
-        }
-        .preset-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .stats-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-        .progress {
-            height: 25px;
-        }
-        .log-entry {
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 12px;
-            padding: 2px 0;
-            border-bottom: 1px solid #eee;
-        }
-        .btn-preset {
-            min-height: 120px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
+        .progress-bar-track { height: 6px; background: var(--bg-elevated); border-radius: 3px; overflow: hidden; margin: 0.75rem 0; }
+        .progress-bar-fill  { height: 100%; background: var(--accent); border-radius: 3px; width: 0%; transition: width 0.3s; }
+        .preset-card { cursor: pointer; transition: border-color var(--transition), transform var(--transition); }
+        .preset-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+        .preset-emoji { font-size: 2rem; margin-bottom: 0.5rem; display: block; }
+        /* Custom config panel (hidden by default) */
+        #customPanel { display: none; }
     </style>
 </head>
-<body class="bg-light">
-    <div class="container-fluid py-4">
-        <div class="row">
-            <div class="col-12">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h1 class="display-6 mb-1">🎬 Carga Masiva de Películas</h1>
-                        <p class="text-muted">Sistema de paginación para cargar todas las películas de TMDB</p>
-                    </div>
-                    <div>
-                        <a href="/admin" class="btn btn-outline-secondary me-2">← Volver al Admin</a>
-                        <button id="refreshBtn" class="btn btn-outline-primary">🔄 Actualizar</button>
-                    </div>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" th:href="@{/}">
+                <i class="fas fa-film"></i> PelisApp
+                <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
+            </a>
+            <div class="navbar-nav-links">
+                <a th:href="@{/admin}"><i class="fas fa-arrow-left"></i> Panel</a>
+                <a th:href="@{/}"><i class="fas fa-home"></i> App</a>
+                <a th:href="@{/logout}"><i class="fas fa-sign-out-alt"></i> Salir</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="admin-wrapper">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">
+            <div>
+                <div class="admin-page-title"><i class="fas fa-cloud-download-alt" style="color:var(--accent);margin-right:0.5rem"></i>Carga Masiva de Películas</div>
+                <div class="admin-page-subtitle" style="margin-bottom:0">Sistema de paginación para importar desde TMDB</div>
+            </div>
+            <div style="display:flex;gap:0.5rem;align-items:center">
+                <div class="admin-stat-card" style="text-align:right">
+                    <div class="stat-label">En Base de Datos</div>
+                    <div class="stat-value" id="movieCountDisplay" th:text="${currentMovieCount}">0</div>
                 </div>
+                <button id="refreshBtn" onclick="updateStatus()" class="btn-ghost" style="font-size:0.8rem">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+            </div>
+        </div>
 
-                <!-- Estado Actual -->
-                <div class="row mb-4">
-                    <div class="col-md-3">
-                        <div class="card stats-card">
-                            <div class="card-body text-center">
-                                <h3 class="card-title" th:text="${currentMovieCount}">0</h3>
-                                <p class="card-text mb-0">Películas en BD</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-9">
-                        <div class="card">
-                            <div class="card-body">
-                                <div id="loadingIndicator" class="loading-status">
-                                    <div th:if="${loadingInProgress}" class="alert alert-info">
-                                        <strong>🚀 Carga en progreso...</strong>
-                                        <span th:text="${loadingStatus.type}">Tipo de carga</span>
-                                    </div>
-                                    <div th:unless="${loadingInProgress}" class="alert alert-success">
-                                        <strong>✅ Sistema listo</strong> - No hay cargas en progreso
-                                    </div>
-                                </div>
+        <!-- Loading status -->
+        <div class="admin-section" style="margin-bottom:1.5rem">
+            <div class="admin-section-title"><i class="fas fa-info-circle"></i>Estado</div>
+            <div id="loadingIndicator" style="font-size:0.9rem;color:var(--text-secondary)">
+                <span style="color:#86efac"><i class="fas fa-check-circle" style="margin-right:0.4rem"></i>Sistema listo</span>
+                — sin cargas en progreso
+            </div>
+            <div class="progress-bar-track" id="progressContainer" style="display:none">
+                <div class="progress-bar-fill" id="progressBar"></div>
+            </div>
+            <div id="progressText" style="font-size:0.78rem;color:var(--text-muted);display:none"></div>
+            <div style="margin-top:0.75rem;display:flex;gap:0.5rem">
+                <button id="cancelBtn" onclick="cancelLoading()" class="btn-ghost" style="display:none;font-size:0.8rem;color:#fca5a5;border-color:rgba(230,57,70,0.3)">
+                    <i class="fas fa-stop" style="margin-right:0.3rem"></i>Cancelar
+                </button>
+            </div>
+        </div>
 
-                                <!-- Barra de progreso -->
-                                <div id="progressContainer" style="display: none;">
-                                    <div class="progress mb-2">
-                                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated"
-                                             role="progressbar" style="width: 0%">
-                                            0%
-                                        </div>
-                                    </div>
-                                    <div id="progressText" class="small text-muted">Preparando...</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <!-- Preset cards -->
+        <div class="admin-section-title"><i class="fas fa-bolt"></i>Presets Rápidos</div>
+        <div class="admin-grid-3" style="margin-bottom:1.5rem">
+            <div class="admin-module-card preset-card" onclick="usePreset('quick')">
+                <div class="admin-icon">⚡</div>
+                <h4>RÁPIDO</h4>
+                <p>~200 películas · 2-3 min</p>
+                <span class="badge-ok">3 páginas</span>
+            </div>
+            <div class="admin-module-card preset-card" onclick="usePreset('medium')">
+                <div class="admin-icon">🎯</div>
+                <h4>MEDIO</h4>
+                <p>~1,000 películas · 8-10 min</p>
+                <span class="badge-warn">10 páginas</span>
+            </div>
+            <div class="admin-module-card preset-card" onclick="usePreset('full')">
+                <div class="admin-icon">🎬</div>
+                <h4>COMPLETO</h4>
+                <p>~4,000 películas · 20-25 min</p>
+                <span class="badge-info">20 páginas</span>
+            </div>
+            <div class="admin-module-card preset-card" onclick="usePreset('ultimate')">
+                <div class="admin-icon">🔥</div>
+                <h4>MASIVO</h4>
+                <p>~10,000 películas · 45-60 min</p>
+                <span class="badge-err">50 páginas</span>
+            </div>
+            <div class="admin-module-card preset-card" onclick="usePreset('categories')">
+                <div class="admin-icon">📊</div>
+                <h4>CATEGORÍAS</h4>
+                <p>Popular + Top Rated combinado</p>
+                <span class="badge-muted">Multi</span>
+            </div>
+            <div class="admin-module-card preset-card" onclick="toggleCustom()">
+                <div class="admin-icon">⚙️</div>
+                <h4>CUSTOM</h4>
+                <p>Configuración personalizada</p>
+                <span class="badge-muted">Manual</span>
+            </div>
+        </div>
+
+        <!-- Custom config -->
+        <div class="admin-section" id="customPanel">
+            <div class="admin-section-title"><i class="fas fa-sliders-h"></i>Configuración Personalizada</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem">
+                <div>
+                    <label style="font-size:0.8rem;color:var(--text-muted);display:block;margin-bottom:0.4rem">Tipo de Carga</label>
+                    <select id="loadType" style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;color:var(--text-primary);font-size:0.85rem">
+                        <option value="popular">Películas Populares</option>
+                        <option value="categories">Múltiples Categorías</option>
+                    </select>
                 </div>
-
-                <!-- Presets Rápidos -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <h4 class="mb-3">🚀 Presets Rápidos</h4>
-                    </div>
-                    <div class="col-md-2 col-sm-6 mb-3">
-                        <div class="card preset-card h-100" onclick="usePreset('quick')">
-                            <div class="card-body btn-preset bg-success text-white">
-                                <i class="display-6">⚡</i>
-                                <h6 class="mt-2 mb-1">RÁPIDO</h6>
-                                <small>~200 películas<br>2-3 minutos</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2 col-sm-6 mb-3">
-                        <div class="card preset-card h-100" onclick="usePreset('medium')">
-                            <div class="card-body btn-preset bg-warning text-white">
-                                <i class="display-6">🎯</i>
-                                <h6 class="mt-2 mb-1">MEDIO</h6>
-                                <small>~1,000 películas<br>8-10 minutos</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2 col-sm-6 mb-3">
-                        <div class="card preset-card h-100" onclick="usePreset('full')">
-                            <div class="card-body btn-preset bg-primary text-white">
-                                <i class="display-6">🎬</i>
-                                <h6 class="mt-2 mb-1">COMPLETO</h6>
-                                <small>~4,000 películas<br>20-25 minutos</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2 col-sm-6 mb-3">
-                        <div class="card preset-card h-100" onclick="usePreset('ultimate')">
-                            <div class="card-body btn-preset bg-danger text-white">
-                                <i class="display-6">🔥</i>
-                                <h6 class="mt-2 mb-1">MASIVO</h6>
-                                <small>~10,000 películas<br>45-60 minutos</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2 col-sm-6 mb-3">
-                        <div class="card preset-card h-100" onclick="usePreset('categories')">
-                            <div class="card-body btn-preset bg-info text-white">
-                                <i class="display-6">📊</i>
-                                <h6 class="mt-2 mb-1">CATEGORÍAS</h6>
-                                <small>Popular + Top + Trending<br>15-20 minutos</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-2 col-sm-6 mb-3">
-                        <div class="card preset-card h-100" onclick="showCustomModal()">
-                            <div class="card-body btn-preset bg-dark text-white">
-                                <i class="display-6">⚙️</i>
-                                <h6 class="mt-2 mb-1">CUSTOM</h6>
-                                <small>Configuración<br>personalizada</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Log de Estado -->
-                <div class="row">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between">
-                                <h5 class="mb-0">📊 Estado y Registro</h5>
-                                <div>
-                                    <button id="clearLogBtn" class="btn btn-sm btn-outline-secondary me-2">Limpiar</button>
-                                    <button id="cancelBtn" class="btn btn-sm btn-outline-danger" style="display: none;">❌ Cancelar</button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div id="logContainer" class="progress-container">
-                                    <div class="log-entry text-muted">Sistema iniciado - Listo para cargar películas</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div>
+                    <label style="font-size:0.8rem;color:var(--text-muted);display:flex;justify-content:space-between;margin-bottom:0.4rem">
+                        <span>Páginas</span>
+                        <span id="pageDisplay" style="color:var(--text-primary)">50 págs (~1,000 películas)</span>
+                    </label>
+                    <input type="range" id="maxPages" min="1" max="500" value="50"
+                           style="width:100%;accent-color:var(--accent)"
+                           oninput="updatePageDisplay()">
                 </div>
             </div>
+            <button onclick="startCustomLoad()" class="btn-accent" style="margin-top:1.25rem">
+                <i class="fas fa-rocket" style="margin-right:0.4rem"></i>Iniciar Carga Personalizada
+            </button>
+        </div>
+
+        <!-- Log -->
+        <div class="admin-section">
+            <div class="admin-section-title" style="justify-content:space-between">
+                <span><i class="fas fa-terminal"></i>Registro</span>
+                <button id="clearLogBtn" onclick="clearLog()" class="btn-ghost" style="font-size:0.75rem;padding:0.25rem 0.65rem">
+                    <i class="fas fa-trash" style="margin-right:0.3rem"></i>Limpiar
+                </button>
+            </div>
+            <div class="admin-log-box" id="logContainer">Sistema iniciado — listo para cargar películas</div>
         </div>
     </div>
 
-    <!-- Modal de Configuración Personalizada -->
-    <div class="modal fade" id="customModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">⚙️ Configuración Personalizada</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="customForm">
-                        <div class="mb-3">
-                            <label for="loadType" class="form-label">Tipo de Carga</label>
-                            <select id="loadType" class="form-select">
-                                <option value="popular">Películas Populares</option>
-                                <option value="categories">Múltiples Categorías</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="maxPages" class="form-label">Número de Páginas</label>
-                            <input type="range" class="form-range" id="maxPages" min="1" max="500" value="50">
-                            <div class="d-flex justify-content-between text-muted small">
-                                <span>1 página (~20 películas)</span>
-                                <span id="pageDisplay">50 páginas (~1,000 películas)</span>
-                                <span>500 páginas (~10,000 películas)</span>
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label for="delayMs" class="form-label">Delay entre páginas (ms)</label>
-                            <input type="range" class="form-range" id="delayMs" min="100" max="2000" value="500">
-                            <div class="d-flex justify-content-between text-muted small">
-                                <span>100ms (rápido)</span>
-                                <span id="delayDisplay">500ms</span>
-                                <span>2000ms (lento)</span>
-                            </div>
-                        </div>
-                        <div class="alert alert-info small">
-                            <strong>💡 Recomendaciones:</strong>
-                            <ul class="mb-0">
-                                <li>100-500 páginas para carga completa</li>
-                                <li>500-1000ms delay para evitar límites de API</li>
-                                <li>La carga es asíncrona, puedes cerrar esta página</li>
-                            </ul>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="startCustomLoad()">🚀 Iniciar Carga</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         let statusInterval;
         let isLoading = false;
 
-        // Inicializar
         document.addEventListener('DOMContentLoaded', function() {
             updateStatus();
-            startStatusPolling();
-
-            // Event listeners para sliders
-            document.getElementById('maxPages').addEventListener('input', updatePageDisplay);
-            document.getElementById('delayMs').addEventListener('input', updateDelayDisplay);
-
-            // Botones
-            document.getElementById('refreshBtn').addEventListener('click', updateStatus);
-            document.getElementById('clearLogBtn').addEventListener('click', clearLog);
-            document.getElementById('cancelBtn').addEventListener('click', cancelLoading);
+            statusInterval = setInterval(updateStatus, 4000);
         });
-
-        // Polling del estado cada 2 segundos
-        function startStatusPolling() {
-            statusInterval = setInterval(updateStatus, 2000);
-        }
 
         function updateStatus() {
             fetch('/admin/bulk-loader/status')
-                .then(response => response.json())
+                .then(r => r.json())
                 .then(data => {
                     isLoading = data.isLoading;
                     updateUI(data);
                 })
-                .catch(error => {
-                    console.error('Error updating status:', error);
-                    addLog('❌ Error actualizando estado: ' + error.message);
-                });
+                .catch(err => addLog('Error actualizando estado: ' + err.message));
         }
 
         function updateUI(data) {
-            const indicator = document.getElementById('loadingIndicator');
-            const progressContainer = document.getElementById('progressContainer');
-            const progressBar = document.getElementById('progressBar');
-            const progressText = document.getElementById('progressText');
-            const cancelBtn = document.getElementById('cancelBtn');
+            const indicator  = document.getElementById('loadingIndicator');
+            const progCont   = document.getElementById('progressContainer');
+            const progBar    = document.getElementById('progressBar');
+            const progText   = document.getElementById('progressText');
+            const cancelBtn  = document.getElementById('cancelBtn');
+            const countEl    = document.getElementById('movieCountDisplay');
+
+            if (countEl) countEl.textContent = data.currentMovieCount || 0;
 
             if (data.isLoading) {
-                indicator.innerHTML = `
-                    <div class="alert alert-info">
-                        <strong>🚀 Carga en progreso:</strong> ${data.type || 'Cargando películas'}
-                    </div>
-                `;
-
-                progressContainer.style.display = 'block';
-                cancelBtn.style.display = 'inline-block';
-
-                const progress = data.progress || 0;
-                progressBar.style.width = progress + '%';
-                progressBar.textContent = Math.round(progress) + '%';
-
-                progressText.innerHTML = `
-                    📄 Página ${data.currentPage || 0}/${data.totalPages || 0}
-                    | 🎬 ${data.processedMovies || 0} procesadas
-                    | ⏭️ ${data.skippedMovies || 0} omitidas
-                    | 📊 ${data.totalMoviesAvailable || 0} disponibles en TMDB
-                `;
-
-                // Actualizar log con progreso
-                if (data.currentPage && data.currentPage > 0) {
-                    const logMsg = `📄 Página ${data.currentPage}/${data.totalPages} - ${data.processedMovies} procesadas`;
-                    addLog(logMsg, true); // true = actualizar última línea
-                }
-
+                indicator.innerHTML = '<span style="color:#fde68a"><i class="fas fa-spinner fa-spin" style="margin-right:0.4rem"></i>Carga en progreso…</span>';
+                progCont.style.display = 'block';
+                progText.style.display = 'block';
+                cancelBtn.style.display = 'inline-flex';
+                const pct = data.progress || 0;
+                progBar.style.width = pct + '%';
+                progText.textContent = 'Página ' + (data.currentPage || 0) + '/' + (data.totalPages || 0) +
+                    ' · ' + (data.processedMovies || 0) + ' procesadas';
             } else {
-                indicator.innerHTML = `
-                    <div class="alert alert-success">
-                        <strong>✅ Sistema listo</strong> - ${data.currentMovieCount} películas en base de datos
-                    </div>
-                `;
-                progressContainer.style.display = 'none';
+                indicator.innerHTML = '<span style="color:#86efac"><i class="fas fa-check-circle" style="margin-right:0.4rem"></i>Sistema listo</span> — ' +
+                    (data.currentMovieCount || 0) + ' películas en base de datos';
+                progCont.style.display = 'none';
+                progText.style.display = 'none';
                 cancelBtn.style.display = 'none';
-
-                if (data.completed) {
-                    addLog('🎉 ¡Carga completada exitosamente!');
-                }
-            }
-
-            // Actualizar contador de películas en la tarjeta
-            const movieCountElement = document.querySelector('.stats-card h3');
-            if (movieCountElement) {
-                movieCountElement.textContent = data.currentMovieCount || 0;
             }
         }
 
-        function addLog(message, updateLast = false) {
-            const container = document.getElementById('logContainer');
-            const timestamp = new Date().toLocaleTimeString();
-            const logHtml = `<div class="log-entry">[${timestamp}] ${message}</div>`;
-
-            if (updateLast && container.lastElementChild) {
-                container.lastElementChild.innerHTML = `[${timestamp}] ${message}`;
-            } else {
-                container.insertAdjacentHTML('beforeend', logHtml);
-            }
-
-            container.scrollTop = container.scrollHeight;
+        function addLog(msg) {
+            const box = document.getElementById('logContainer');
+            const ts  = new Date().toLocaleTimeString('es-ES');
+            box.textContent += '\n[' + ts + '] ' + msg;
+            box.scrollTop = box.scrollHeight;
         }
 
         function clearLog() {
-            document.getElementById('logContainer').innerHTML =
-                '<div class="log-entry text-muted">Log limpiado - ' + new Date().toLocaleTimeString() + '</div>';
+            document.getElementById('logContainer').textContent =
+                '[' + new Date().toLocaleTimeString('es-ES') + '] Log limpiado';
         }
 
-        // Presets
-        function usePreset(presetName) {
-            if (isLoading) {
-                alert('Ya hay una carga en progreso. Espera a que termine o cancélala.');
-                return;
-            }
-
-            const presetNames = {
-                'quick': 'Carga Rápida',
-                'medium': 'Carga Media',
-                'full': 'Carga Completa',
-                'ultimate': 'Carga Masiva',
-                'categories': 'Carga de Categorías'
-            };
-
-            if (confirm(`¿Iniciar ${presetNames[presetName]}?\n\nEsto puede tardar varios minutos.`)) {
-                addLog(`🚀 Iniciando preset: ${presetNames[presetName]}`);
-
-                fetch(`/admin/bulk-loader/preset/${presetName}`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'}
-                })
-                .then(response => response.json())
+        function usePreset(name) {
+            if (isLoading) { alert('Ya hay una carga en progreso.'); return; }
+            const labels = { quick:'Carga Rápida', medium:'Carga Media', full:'Carga Completa', ultimate:'Carga Masiva', categories:'Categorías' };
+            if (!confirm('¿Iniciar ' + (labels[name] || name) + '?')) return;
+            addLog('Iniciando preset: ' + (labels[name] || name));
+            fetch('/admin/bulk-loader/preset/' + name, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                .then(r => r.json())
                 .then(data => {
-                    if (data.success) {
-                        addLog(`✅ ${data.message}`);
-                        updateStatus();
-                    } else {
-                        addLog(`❌ ${data.message}`);
-                    }
+                    addLog(data.success ? '✅ ' + data.message : '❌ ' + data.message);
+                    updateStatus();
                 })
-                .catch(error => {
-                    console.error('Error:', error);
-                    addLog(`❌ Error iniciando preset: ${error.message}`);
-                });
-            }
+                .catch(err => addLog('❌ Error: ' + err.message));
         }
 
-        // Modal personalizado
-        function showCustomModal() {
-            if (isLoading) {
-                alert('Ya hay una carga en progreso. Espera a que termine o cancélala.');
-                return;
-            }
-            new bootstrap.Modal(document.getElementById('customModal')).show();
+        function toggleCustom() {
+            const panel = document.getElementById('customPanel');
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
         }
 
         function startCustomLoad() {
             const loadType = document.getElementById('loadType').value;
             const maxPages = document.getElementById('maxPages').value;
-            const delayMs = document.getElementById('delayMs').value;
-
             const endpoint = loadType === 'popular'
                 ? '/admin/bulk-loader/start-popular'
                 : '/admin/bulk-loader/start-categories';
-
             const params = loadType === 'popular'
-                ? `maxPages=${maxPages}&delayMs=${delayMs}`
-                : `pagesPerCategory=${maxPages}&delayMs=${delayMs}`;
-
-            addLog(`⚙️ Iniciando carga personalizada: ${maxPages} páginas, delay ${delayMs}ms`);
-
-            fetch(`${endpoint}?${params}`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'}
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    addLog(`✅ ${data.message}`);
-                    bootstrap.Modal.getInstance(document.getElementById('customModal')).hide();
+                ? 'maxPages=' + maxPages
+                : 'pagesPerCategory=' + maxPages;
+            addLog('Iniciando carga personalizada: ' + maxPages + ' páginas (' + loadType + ')');
+            fetch(endpoint + '?' + params, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+                .then(r => r.json())
+                .then(data => {
+                    addLog(data.success ? '✅ ' + data.message : '❌ ' + data.message);
                     updateStatus();
-                } else {
-                    addLog(`❌ ${data.message}`);
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                addLog(`❌ Error iniciando carga: ${error.message}`);
-            });
+                })
+                .catch(err => addLog('❌ Error: ' + err.message));
         }
 
         function cancelLoading() {
-            if (confirm('¿Estás seguro de que quieres cancelar la carga?')) {
-                fetch('/admin/bulk-loader/cancel', {
-                    method: 'POST'
-                })
-                .then(response => response.json())
+            if (!confirm('¿Cancelar la carga?')) return;
+            fetch('/admin/bulk-loader/cancel', { method: 'POST' })
+                .then(r => r.json())
                 .then(data => {
                     addLog(data.success ? '🛑 Carga cancelada' : '❌ No se pudo cancelar');
                     updateStatus();
                 })
-                .catch(error => {
-                    addLog('❌ Error cancelando: ' + error.message);
-                });
-            }
+                .catch(err => addLog('❌ Error: ' + err.message));
         }
 
-        // Actualizar displays de sliders
         function updatePageDisplay() {
-            const pages = document.getElementById('maxPages').value;
-            const movies = pages * 20;
+            const pages  = document.getElementById('maxPages').value;
             document.getElementById('pageDisplay').textContent =
-                `${pages} páginas (~${movies.toLocaleString()} películas)`;
+                pages + ' págs (~' + (pages * 20).toLocaleString('es-ES') + ' películas)';
         }
 
-        function updateDelayDisplay() {
-            const delay = document.getElementById('delayMs').value;
-            document.getElementById('delayDisplay').textContent = `${delay}ms`;
-        }
-
-        // Cleanup al cerrar página
-        window.addEventListener('beforeunload', function() {
-            if (statusInterval) {
-                clearInterval(statusInterval);
-            }
-        });
+        window.addEventListener('beforeunload', () => { if (statusInterval) clearInterval(statusInterval); });
     </script>
 </body>
 </html>

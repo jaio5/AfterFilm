@@ -3,410 +3,227 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administración - PelisApp</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Películas - Admin PelisApp</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #1e1e1e, #2c2c2c);
-            color: white;
-            min-height: 100vh;
-        }
-
-        .admin-container {
-            background: rgba(44, 44, 44, 0.95);
-            border-radius: 15px;
-            padding: 2rem;
-            margin: 2rem auto;
-            max-width: 800px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 107, 53, 0.3);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #ff6b35, #e55a30);
-            border: none;
-            border-radius: 8px;
-            padding: 0.75rem 1.5rem;
-            font-weight: bold;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(255, 107, 53, 0.4);
-        }
-
-        .status-display {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1rem;
-            min-height: 100px;
-            border: 1px solid #444;
-        }
-
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #ff6b35;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>
 <body>
-    <div class="container">
-        <div class="admin-container">
-            <div class="text-center mb-4">
-                <h1><i class="fas fa-cogs me-2"></i>Panel de Administración - PelisApp</h1>
-                <p class="text-muted">Gestión de películas desde TMDB</p>
-                <div class="alert alert-info">
-                    <strong>Películas actuales:</strong> <span th:text="${movieCount}">0</span>
-                </div>
-                <div class="mb-3">
-                    <a th:href="@{/admin/email-config}" class="btn btn-outline-warning">
-                        <i class="fas fa-envelope me-2"></i>Configurar Email
-                    </a>
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" th:href="@{/}">
+                <i class="fas fa-film"></i> PelisApp
+                <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
+            </a>
+            <div class="navbar-nav-links">
+                <a th:href="@{/admin}"><i class="fas fa-arrow-left"></i> Panel</a>
+                <a th:href="@{/}"><i class="fas fa-home"></i> App</a>
+                <a th:href="@{/logout}"><i class="fas fa-sign-out-alt"></i> Salir</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="admin-wrapper">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:2rem;flex-wrap:wrap;gap:1rem">
+            <div>
+                <div class="admin-page-title"><i class="fas fa-film" style="color:var(--accent);margin-right:0.5rem"></i>Gestión de Películas</div>
+                <div class="admin-page-subtitle" style="margin-bottom:0">Catálogo y mantenimiento de contenido</div>
+            </div>
+            <div class="admin-stat-card" style="text-align:right">
+                <div class="stat-label">Películas en BD</div>
+                <div class="stat-value" th:text="${movieCount}">0</div>
+            </div>
+        </div>
+
+        <!-- Quick load actions -->
+        <div class="admin-section-title"><i class="fas fa-cloud-download-alt"></i>Carga desde TMDB</div>
+        <div class="admin-grid-4" style="margin-bottom:1.5rem">
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-fire"></i></div>
+                <h4>Populares</h4>
+                <p>Las películas más populares</p>
+                <button onclick="loadMovies('popular', 3)" class="btn-accent" style="width:100%">Cargar (3 págs)</button>
+            </div>
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-star"></i></div>
+                <h4>Mejor Valoradas</h4>
+                <p>Top rated de TMDB</p>
+                <button onclick="loadMovies('top-rated', 3)" class="btn-accent" style="width:100%">Cargar (3 págs)</button>
+            </div>
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-chart-line"></i></div>
+                <h4>Tendencias</h4>
+                <p>Trending de la semana</p>
+                <button onclick="loadMovies('trending', 1)" class="btn-accent" style="width:100%">Cargar (1 pág)</button>
+            </div>
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-magic"></i></div>
+                <h4>Carga Auto</h4>
+                <p>Varias categorías combinadas</p>
+                <button onclick="loadMoreAuto()" class="btn-accent" style="width:100%">Carga Automática</button>
+            </div>
+        </div>
+
+        <!-- Poster maintenance -->
+        <div class="admin-section-title"><i class="fas fa-images"></i>Mantenimiento de Imágenes</div>
+        <div class="admin-grid-2" style="margin-bottom:1.5rem">
+            <div class="admin-section" style="margin-bottom:0">
+                <div class="admin-section-title" style="margin-bottom:1rem"><i class="fas fa-image"></i>Carátulas</div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+                    <button onclick="downloadMissingPosters()" class="btn-ghost" style="font-size:0.82rem">
+                        <i class="fas fa-lightbulb" style="margin-right:0.3rem"></i>Solo faltantes
+                    </button>
+                    <button onclick="redownloadPosters()" class="btn-ghost" style="font-size:0.82rem">
+                        <i class="fas fa-sync-alt" style="margin-right:0.3rem"></i>Redescargar todas
+                    </button>
+                    <button onclick="redownloadPostersAsync()" class="btn-ghost" style="font-size:0.82rem">
+                        <i class="fas fa-clock" style="margin-right:0.3rem"></i>Async
+                    </button>
+                    <button onclick="getPosterStats()" class="btn-ghost" style="font-size:0.82rem">
+                        <i class="fas fa-chart-bar" style="margin-right:0.3rem"></i>Estadísticas
+                    </button>
                 </div>
             </div>
+            <div class="admin-section" style="margin-bottom:0">
+                <div class="admin-section-title" style="margin-bottom:1rem"><i class="fas fa-users"></i>Reparto y Directores</div>
+                <div style="display:flex;flex-wrap:wrap;gap:0.5rem">
+                    <button onclick="redownloadCastDirectorImages()" class="btn-ghost" style="font-size:0.82rem">
+                        <i class="fas fa-sync-alt" style="margin-right:0.3rem"></i>Redescargar reparto/director
+                    </button>
+                    <button onclick="deleteDuplicateImages()" class="btn-ghost" style="font-size:0.82rem">
+                        <i class="fas fa-broom" style="margin-right:0.3rem"></i>Eliminar duplicados
+                    </button>
+                </div>
+            </div>
+        </div>
 
-            <!-- Nueva sección para redescarga de carátulas -->
-            <hr class="my-4" style="border-color: rgba(255, 107, 53, 0.5);">
-            <h4 class="mb-3"><i class="fas fa-film me-2 text-warning"></i>Lista de Películas</h4>
-            <div class="table-responsive">
-                <table class="table table-dark table-striped table-hover align-middle" aria-label="Lista de películas">
+        <!-- Movie table -->
+        <div class="admin-section">
+            <div class="admin-section-title"><i class="fas fa-list"></i>Listado de Películas (primeras 100)</div>
+            <div style="overflow-x:auto">
+                <table class="admin-table" aria-label="Lista de películas">
                     <thead>
                         <tr>
-                            <th scope="col">Poster</th>
-                            <th scope="col">Título</th>
-                            <th scope="col">Estado</th>
-                            <th scope="col">Acciones</th>
+                            <th style="width:60px">Poster</th>
+                            <th>Título</th>
+                            <th>Carátula</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr th:each="movie : ${movies}">
                             <td>
-                                <img th:src="@{'/data/images/posters/' + ${movie.posterLocalPath}}" alt="Poster de [[${movie.title}]]" style="width: 60px; border-radius: 8px;" />
-                            </td>
-                            <td th:text="${movie.title}"></td>
-                            <td>
-                                <span th:if="${movie.posterLocalPath} != null" class="badge bg-success">Carátula OK</span>
-                                <span th:if="${movie.posterLocalPath} == null" class="badge bg-danger">Sin carátula</span>
+                                <img th:src="@{'/data/images/posters/' + ${movie.posterLocalPath}}"
+                                     th:alt="${movie.title}"
+                                     style="width:44px;height:66px;object-fit:cover;border-radius:4px;background:var(--bg-elevated)" />
                             </td>
                             <td>
-                                <button class="btn btn-warning btn-sm" th:onclick="'redownloadPoster(' + ${movie.id} + ')'" aria-label="Redescargar carátula">
-                                    <i class="fas fa-sync-alt"></i>
-                                </button>
-                                <button class="btn btn-danger btn-sm" th:onclick="'redownloadCastDirectorImages()'" aria-label="Redescargar reparto/director">
-                                    <i class="fas fa-users"></i>
+                                <a th:href="@{'/pelicula/' + ${movie.id}}" style="color:var(--text-primary);font-weight:500" th:text="${movie.title}">Título</a>
+                            </td>
+                            <td>
+                                <span th:if="${movie.posterLocalPath != null}" class="badge-ok"><i class="fas fa-check"></i> OK</span>
+                                <span th:if="${movie.posterLocalPath == null}" class="badge-err"><i class="fas fa-times"></i> Falta</span>
+                            </td>
+                            <td>
+                                <button class="btn-ghost" style="font-size:0.75rem;padding:0.25rem 0.6rem"
+                                        th:onclick="'reloadCast(' + ${movie.id} + ')'">
+                                    <i class="fas fa-sync-alt"></i> Reparto
                                 </button>
                             </td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(movies)}">
+                            <td colspan="4" style="text-align:center;color:var(--text-muted)">No hay películas</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
-            <hr class="my-4" style="border-color: rgba(255, 107, 53, 0.5);">
+        </div>
 
-            <div class="row">
-                <div class="col-md-3 mb-3">
-                    <div class="card bg-dark border-success">
-                        <div class="card-body text-center">
-                            <h5><i class="fas fa-brain me-2"></i>Descarga Inteligente</h5>
-                            <p class="small">Solo descarga carátulas faltantes</p>
-                            <button onclick="downloadMissingPosters()" class="btn btn-success">
-                                <i class="fas fa-lightbulb me-2"></i>Solo Faltantes
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-3 mb-3">
-                    <div class="card bg-dark border-warning">
-                        <div class="card-body text-center">
-                            <h5><i class="fas fa-download me-2"></i>Redescargar Todas</h5>
-                            <p class="small">Redescarga todas las carátulas de películas</p>
-                            <button onclick="redownloadPosters()" class="btn btn-warning">
-                                <i class="fas fa-sync-alt me-2"></i>Redescargar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-3 mb-3">
-                    <div class="card bg-dark border-info">
-                        <div class="card-body text-center">
-                            <h5><i class="fas fa-clock me-2"></i>Redescarga Async</h5>
-                            <p class="small">Redescarga en segundo plano</p>
-                            <button onclick="redownloadPostersAsync()" class="btn btn-info">
-                                <i class="fas fa-play me-2"></i>Async
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-3 mb-3">
-                    <div class="card bg-dark border-secondary">
-                        <div class="card-body text-center">
-                            <h5><i class="fas fa-chart-bar me-2"></i>Estadísticas</h5>
-                            <p class="small">Ver estadísticas de imágenes</p>
-                            <button onclick="getPosterStats()" class="btn btn-secondary">
-                                <i class="fas fa-info me-2"></i>Ver Stats
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <div class="card bg-dark border-primary">
-                        <div class="card-body text-center">
-                            <h5><i class="fas fa-fire me-2"></i>Películas Populares</h5>
-                            <p class="small">Carga películas más populares de TMDB</p>
-                            <button onclick="loadMovies('popular', 3)" class="btn btn-primary">
-                                Cargar Populares
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6 mb-3">
-                    <div class="card bg-dark border-warning">
-                        <div class="card-body text-center">
-                            <h5><i class="fas fa-star me-2"></i>Mejor Valoradas</h5>
-                            <p class="small">Carga películas mejor valoradas</p>
-                            <button onclick="loadMovies('top-rated', 3)" class="btn btn-primary">
-                                Cargar Top Rated
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6 mb-3">
-                    <div class="card bg-dark border-success">
-                        <div class="card-body text-center">
-                            <h5><i class="fas fa-trending-up me-2"></i>Tendencias</h5>
-                            <p class="small">Carga películas trending de la semana</p>
-                            <button onclick="loadMovies('trending', 1)" class="btn btn-primary">
-                                Cargar Trending
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-6 mb-3">
-                    <div class="card bg-dark border-info">
-                        <div class="card-body text-center">
-                            <h5><i class="fas fa-magic me-2"></i>Carga Automática</h5>
-                            <p class="small">Carga varias categorías automáticamente</p>
-                            <button onclick="loadMoreAuto()" class="btn btn-primary btn-lg">
-                                🚀 Cargar Más Películas
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="row">
-                <div class="col-md-3 mb-3">
-                    <div class="card bg-dark border-danger">
-                        <div class="card-body text-center">
-                            <h5><i class="fas fa-users me-2"></i>Redescargar Reparto/Director</h5>
-                            <p class="small">Redescarga imágenes de actores y directores</p>
-                            <button onclick="redownloadCastDirectorImages()" class="btn btn-danger">
-                                <i class="fas fa-sync-alt me-2"></i>Redescargar Reparto/Director
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-3 mb-3">
-                    <div class="card bg-dark border-danger">
-                        <div class="card-body text-center">
-                            <h5><i class="fas fa-trash-alt me-2"></i>Eliminar Fotos Duplicadas</h5>
-                            <p class="small">Elimina todas las fotos duplicadas de carátulas, directores y actores</p>
-                            <button onclick="deleteDuplicateImages()" class="btn btn-danger">
-                                <i class="fas fa-broom me-2"></i>Eliminar Duplicados
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="status-display">
-                <h6><i class="fas fa-terminal me-2"></i>Estado de Carga:</h6>
-                <div id="status">Listo para cargar películas...</div>
-            </div>
-
-            <div class="text-center mt-4">
-                <a href="/" class="btn btn-outline-light">
-                    <i class="fas fa-home me-2"></i>Volver a Inicio
-                </a>
-            </div>
+        <!-- Status log -->
+        <div class="admin-section">
+            <div class="admin-section-title"><i class="fas fa-terminal"></i>Estado de Carga</div>
+            <div class="admin-log-box" id="status">Sistema listo para cargar películas…</div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        function updateStatus(message, isLoading = false) {
-            const status = document.getElementById('status');
-            const icon = isLoading ? '<span class="loading me-2"></span>' : '<i class="fas fa-info-circle me-2"></i>';
-            status.innerHTML = icon + message;
+        function updateStatus(message, isLoading) {
+            document.getElementById('status').textContent =
+                (isLoading ? '⏳ ' : '') + message;
         }
 
         function loadMovies(type, pages) {
-            updateStatus(`Cargando películas ${type}...`, true);
-
-            const url = `/admin/load-${type}`;
+            updateStatus('Cargando películas ' + type + '…', true);
             const data = new FormData();
             data.append('pages', pages);
-
-            fetch(url, {
-                method: 'POST',
-                body: data
-            })
-            .then(response => response.json()) // Cambiado de .text() a .json()
-            .then(result => {
-                // Mostrar el mensaje real del backend
-                updateStatus(result.message || JSON.stringify(result));
-                // Actualizar contador después de 2 segundos
-                setTimeout(() => {
-                    window.location.reload();
-                }, 2000);
-            })
-            .catch(error => {
-                updateStatus('❌ Error: ' + error.message);
-            });
+            fetch('/admin/load-' + type, { method: 'POST', body: data })
+                .then(r => r.json())
+                .then(result => {
+                    updateStatus(result.message || JSON.stringify(result), false);
+                    setTimeout(() => window.location.reload(), 2000);
+                })
+                .catch(err => updateStatus('Error: ' + err.message, false));
         }
 
         function loadMoreAuto() {
-            updateStatus('🚀 Iniciando carga automática de múltiples categorías...', true);
-
-            fetch('/admin/load-more', {
-                method: 'GET'
-            })
-            .then(response => response.text())
-            .then(result => {
-                updateStatus(result);
-                // Actualizar página después de 3 segundos
-                setTimeout(() => {
-                    window.location.reload();
-                }, 3000);
-            })
-            .catch(error => {
-                updateStatus('❌ Error en carga automática: ' + error.message);
-            });
+            updateStatus('Iniciando carga automática de múltiples categorías…', true);
+            fetch('/admin/load-more')
+                .then(r => r.text())
+                .then(result => {
+                    updateStatus(result, false);
+                    setTimeout(() => window.location.reload(), 3000);
+                })
+                .catch(err => updateStatus('Error: ' + err.message, false));
         }
 
-        // Funciones para redescarga de carátulas
         function downloadMissingPosters() {
-            updateStatus('🧠 Iniciando descarga inteligente de carátulas faltantes...', true);
-
-            fetch('/admin/download-missing-posters', {
-                method: 'POST'
-            })
-            .then(response => response.text())
-            .then(result => {
-                updateStatus(result);
-            })
-            .catch(error => {
-                updateStatus('❌ Error en descarga inteligente: ' + error.message);
-            });
+            updateStatus('Iniciando descarga de carátulas faltantes…', true);
+            fetch('/admin/download-missing-posters', { method: 'POST' })
+                .then(r => r.text()).then(r => updateStatus(r, false))
+                .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
         function redownloadPosters() {
-            updateStatus('🖼️ Iniciando redescarga de todas las carátulas...', true);
-
-            fetch('/admin/redownload-posters', {
-                method: 'POST'
-            })
-            .then(response => response.text())
-            .then(result => {
-                updateStatus(result);
-            })
-            .catch(error => {
-                updateStatus('❌ Error redescargando carátulas: ' + error.message);
-            });
+            updateStatus('Redescargando todas las carátulas…', true);
+            fetch('/admin/redownload-posters', { method: 'POST' })
+                .then(r => r.text()).then(r => updateStatus(r, false))
+                .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
         function redownloadPostersAsync() {
-            updateStatus('🔄 Iniciando redescarga asincrónica...', true);
-
-            fetch('/admin/redownload-posters-async', {
-                method: 'POST'
-            })
-            .then(response => response.text())
-            .then(result => {
-                updateStatus(result);
-            })
-            .catch(error => {
-                updateStatus('❌ Error en redescarga asincrónica: ' + error.message);
-            });
+            updateStatus('Iniciando redescarga asincrónica…', true);
+            fetch('/admin/redownload-posters-async', { method: 'POST' })
+                .then(r => r.text()).then(r => updateStatus(r, false))
+                .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
         function getPosterStats() {
-            updateStatus('📊 Obteniendo estadísticas de carátulas...', true);
-
-            fetch('/admin/poster-stats', {
-                method: 'GET'
-            })
-            .then(response => response.text())
-            .then(result => {
-                updateStatus(result);
-            })
-            .catch(error => {
-                updateStatus('❌ Error obteniendo estadísticas: ' + error.message);
-            });
+            updateStatus('Obteniendo estadísticas…', true);
+            fetch('/admin/poster-stats')
+                .then(r => r.text()).then(r => updateStatus(r, false))
+                .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
-        // Función para redescarga de imágenes del reparto y director
         function redownloadCastDirectorImages() {
-            updateStatus('🔄 Iniciando redescarga de imágenes del reparto y director...', true);
-
-            fetch('/admin/redownload-cast-director-images', {
-                method: 'POST'
-            })
-            .then(response => response.text())
-            .then(result => {
-                updateStatus(result);
-            })
-            .catch(error => {
-                updateStatus('❌ Error en redescarga de reparto/director: ' + error.message);
-            });
+            updateStatus('Redescargando imágenes de reparto y director…', true);
+            fetch('/admin/redownload-cast-director-images', { method: 'POST' })
+                .then(r => r.text()).then(r => updateStatus(r, false))
+                .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
         function deleteDuplicateImages() {
-            updateStatus('🧹 Eliminando fotos duplicadas...', true);
-            fetch('/admin/delete-duplicate-images', {
-                method: 'POST'
-            })
-            .then(response => response.text())
-            .then(result => {
-                updateStatus(result);
-            })
-            .catch(error => {
-                updateStatus('❌ Error eliminando duplicados: ' + error.message);
-            });
+            updateStatus('Eliminando fotos duplicadas…', true);
+            fetch('/admin/delete-duplicate-images', { method: 'POST' })
+                .then(r => r.text()).then(r => updateStatus(r, false))
+                .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
-        // Actualizar estado cada 30 segundos
-        setInterval(() => {
-            fetch('/admin/movies')
-                .then(response => response.text())
-                .then(data => {
-                    // Extraer número de películas del HTML de respuesta
-                    // Esto es simplificado, en producción usarías una API JSON
-                })
-                .catch(error => console.log('Error actualizando estado'));
-        }, 30000);
+        function reloadCast(movieId) {
+            updateStatus('Recargando reparto de película ' + movieId + '…', true);
+            fetch('/api/admin/cast/movie/' + movieId + '/reload', { method: 'POST' })
+                .then(r => r.json())
+                .then(r => updateStatus(r.message || 'Reparto actualizado', false))
+                .catch(e => updateStatus('Error: ' + e.message, false));
+        }
     </script>
 </body>
 </html>

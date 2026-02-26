@@ -1,323 +1,286 @@
-# Documentación completa de la API REST de PelisApp (actualizada)
+# API REST ACTUALIZADA - PelisApp
 
-Esta documentación describe todos los endpoints públicos y de administración de la API REST de PelisApp. Está orientada a desarrolladores que deseen crear aplicaciones cliente (por ejemplo, en Kotlin) y explica cómo consumir la API, distinguir tipos de usuario, manejar autenticación, roles, paginación, errores y lógica de negocio.
-
----
-
-## 1. Autenticación y flujo de usuario
+## Autenticación
 
 ### Registro
-- **POST** `/api/auth/register`
+**POST** `/api/auth/register`
 - **Body:**
 ```json
 {
-  "username": "nuevoUsuario",
-  "email": "correo@dominio.com",
-  "password": "claveSegura"
+  "username": "usuario1",
+  "email": "usuario1@email.com",
+  "password": "123456",
+  "displayName": "Usuario Uno"
 }
 ```
 - **Response:**
 ```json
 {
   "accessToken": "...",
+  "tokenType": "Bearer",
+  "expiresAt": 1700000000,
   "refreshToken": "...",
   "user": {
     "id": 1,
-    "username": "nuevoUsuario",
-    "email": "correo@dominio.com",
-    "displayName": "nuevoUsuario",
-    "criticLevel": 0,
-    "roles": ["ROLE_USER"]
+    "username": "usuario1",
+    "displayName": "Usuario Uno",
+    "criticLevel": 1,
+    "roles": ["USER"]
   }
 }
 ```
 
 ### Login
-- **POST** `/api/auth/login`
+**POST** `/api/auth/login`
 - **Body:**
 ```json
 {
   "username": "usuario1",
-  "password": "clave"
+  "password": "123456"
 }
 ```
-- **Response:** igual que registro. El campo `roles` puede contener, por ejemplo, `["ROLE_USER"]` o `["ROLE_ADMIN"]`.
+- **Response:** igual que registro.
 
 ### Refresh Token
-- **POST** `/api/auth/refresh`
+**POST** `/api/auth/refresh`
 - **Body:**
 ```json
-{ "refreshToken": "..." }
+{
+  "refreshToken": "..."
+}
 ```
 - **Response:** igual que login.
 
-### ¿Cómo distinguir un usuario admin de uno normal?
-- El campo `roles` en la respuesta de login/registro/refresh y en `/api/users/me` indica los roles del usuario.
-- Si el array incluye `ROLE_ADMIN`, el usuario es administrador. Si solo incluye `ROLE_USER`, es un usuario normal.
-- Ejemplo de usuario admin:
-```json
-{
-  "id": 2,
-  "username": "admin",
-  "email": "admin@email.com",
-  "displayName": "Administrador",
-  "criticLevel": 0,
-  "roles": ["ROLE_ADMIN", "ROLE_USER"]
-}
-```
-- En tu app Kotlin, tras el login, revisa el array `roles` para decidir a qué pantalla derivar al usuario.
+## Usuario actual
 
----
-
-## 2. Endpoints principales
-
-### Usuarios
-
-#### Obtener datos del usuario autenticado
-- **GET** `/api/users/me`
-- **Headers:** `Authorization: Bearer <token>`
+### Perfil
+**GET** `/api/users/me`
+- **Header:** `Authorization: Bearer <accessToken>`
 - **Response:**
 ```json
 {
   "id": 1,
   "username": "usuario1",
-  "email": "usuario1@email.com",
-  "displayName": "usuario1",
-  "criticLevel": 0,
-  "roles": ["ROLE_USER"]
+  "displayName": "Usuario Uno",
+  "criticLevel": 1,
+  "roles": ["USER"]
 }
 ```
 
-#### Obtener reviews del usuario autenticado (paginado)
-- **GET** `/api/users/me/reviews?page=0&size=10`
-- **Headers:** `Authorization: Bearer <token>`
+### Reviews del usuario
+**GET** `/api/users/me/reviews?page=0&size=10`
+- **Header:** `Authorization: Bearer <accessToken>`
 - **Response:**
 ```json
 {
-  "content": [ { "id": 1, "movieId": 2, "text": "Muy buena", ... }, ... ],
-  "totalElements": 20,
-  "totalPages": 2,
-  "number": 0
+  "content": [ ...reviews... ],
+  "pageable": { ... },
+  "totalPages": 1,
+  "totalElements": 2
 }
 ```
 
-#### Buscar usuario por email o username (admin)
-- **GET** `/api/admin/users/search/email?value=correo`
-- **GET** `/api/admin/users/search/username?value=nombre`
-- **Headers:** `Authorization: Bearer <token>` (admin)
+## Películas
 
----
-
-### Películas
-
-> **Nota:** La API expone los datos de películas almacenados en la base de datos propia, no directamente desde TMDB. El backend puede sincronizarse con TMDB, pero los endpoints REST trabajan sobre la base de datos local.
-
-#### Listar películas (paginado)
-- **GET** `/api/movies?page=0&size=12`
+### Listado
+**GET** `/api/movies?page=0&size=12`
 - **Response:**
 ```json
 {
   "content": [
     {
-      "id": 1,
+      "id": 123,
       "title": "Matrix",
-      "overview": "...",
-      "posterUrl": "/api/movies/1/poster",
+      "description": "Película de ciencia ficción...",
+      "posterPath": "/data/movies/movie_123.jpg",
+      "posterLocalPath": "movie_123.jpg",
       "releaseDate": "1999-03-31",
-      "categories": ["Acción", "Ciencia Ficción"]
+      "runtimeMinutes": 136,
+      "tmdbId": 603,
+      "categories": ["Acción", "Ciencia ficción"]
     }
   ],
-  "totalElements": 100,
-  "totalPages": 9,
-  "number": 0
+  "pageable": { ... },
+  "totalPages": 10,
+  "totalElements": 120
 }
 ```
 
-#### Detalles de una película
-- **GET** `/api/movies/{id}/details`
+### Por categoría
+**GET** `/api/movies/by-category?category=Acción&page=0&size=12`
+- **Response:** igual que listado.
+
+### Detalles
+**GET** `/api/movies/{id}/details`
 - **Response:**
 ```json
 {
-  "id": 1,
+  "id": 123,
+  "tmdbId": 603,
   "title": "Matrix",
-  "overview": "...",
-  "posterUrl": "/api/movies/1/poster",
+  "overview": "Película de ciencia ficción...",
+  "posterPath": "/data/movies/movie_123.jpg",
   "releaseDate": "1999-03-31",
-  "categories": ["Acción", "Ciencia Ficción"],
-  "cast": [
-    { "id": 10, "name": "Keanu Reeves", "character": "Neo", "profileUrl": "/api/actors/10/profile" }
+  "cast": ["Keanu Reeves", "Laurence Fishburne"],
+  "castMembers": [
+    {
+      "tmdbId": 12345,
+      "name": "Keanu Reeves",
+      "character": "Neo",
+      "profilePath": "/data/images/profiles/actor_12345.jpg",
+      "profileLocalPath": "actor_12345.jpg",
+      "profileUrl": "http://localhost:8080/data/images/profiles/actor_12345.jpg"
+    }
   ],
   "directors": [
-    { "id": 20, "name": "Lana Wachowski", "profileUrl": "/api/directors/20/profile" }
+    {
+      "tmdbId": 54321,
+      "name": "Lana Wachowski",
+      "job": "Director",
+      "department": "Directing",
+      "profilePath": "/data/images/profiles/director_54321.jpg",
+      "profileLocalPath": "director_54321.jpg",
+      "profileUrl": "http://localhost:8080/data/images/profiles/director_54321.jpg"
+    }
+  ],
+  "comments": [
+    {
+      "id": 1,
+      "author": "usuario1",
+      "text": "Me encantó la película",
+      "rating": 5
+    }
   ]
 }
 ```
 
-#### Obtener carátula/poster de una película
-- **GET** `/api/movies/{id}/poster`
-- **Response:** Imagen JPEG/PNG (header `Content-Type: image/jpeg`)
+## Reviews
 
-#### Archivos de una película
-- **GET** `/api/movies/{id}/files`
-- **Response:**
-```json
-{
-  "movieId": 1,
-  "files": [
-    { "name": "matrix.mp4", "size": 123456789, "downloadUrl": "/movies/download/1/matrix.mp4", "streamUrl": "/movies/stream/1/matrix.mp4" }
-  ],
-  "totalFiles": 1
-}
-```
-
-#### Películas por categoría
-- **GET** `/api/movies/by-category?category=accion&page=0&size=12`
-
----
-
-### Reviews
-
-#### Crear review
-- **POST** `/api/reviews`
+### Crear review
+**POST** `/api/reviews`
+- **Header:** `Authorization: Bearer <accessToken>`
 - **Body:**
 ```json
 {
   "userId": 1,
-  "movieId": 2,
-  "text": "Muy buena",
-  "stars": 5
+  "movieId": 123,
+  "text": "Me encantó la película, muy recomendable",
+  "stars": 4
 }
 ```
 - **Response:**
 ```json
 {
   "id": 10,
-  "userId": 1,
-  "movieId": 2,
-  "text": "Muy buena",
-  "stars": 5,
-  "createdAt": "2026-02-16T12:00:00Z"
+  "user": { "id": 1, "username": "usuario1" },
+  "movie": { "id": 123, "title": "Matrix" },
+  "text": "Me encantó la película, muy recomendable",
+  "stars": 4,
+  "createdAt": "2026-02-18T12:34:56.789Z",
+  "likesCount": 0
 }
 ```
 
-#### Like a una review
-- **POST** `/api/reviews/{id}/like?userId=1`
-
----
-
-### Salud del sistema
-
-#### Estado general
-- **GET** `/api/system/health`
+### Listar reviews por película
+**GET** `/api/reviews/movie/{movieId}`
 - **Response:**
 ```json
+[
+  {
+    "id": 10,
+    "user": { "id": 1, "username": "usuario1" },
+    "movie": { "id": 123, "title": "Matrix" },
+    "text": "Me encantó la película, muy recomendable",
+    "stars": 4,
+    "createdAt": "2026-02-18T12:34:56.789Z",
+    "likesCount": 0
+  }
+]
+```
+
+### Like a review
+**POST** `/api/reviews/{id}/like?userId=1`
+- **Header:** `Authorization: Bearer <accessToken>`
+- **Response:** 200 OK (sin body).
+
+## Modelos de datos (DTO)
+
+### UserDTO
+- `id`: Long
+- `username`: String
+- `displayName`: String
+- `criticLevel`: Integer
+- `roles`: List<String>
+
+### MovieListDTO
+- `id`: Long
+- `title`: String
+- `description`: String
+- `posterPath`: String
+- `posterLocalPath`: String
+- `releaseDate`: String
+- `runtimeMinutes`: Integer
+- `tmdbId`: Long
+- `categories`: List<String>
+
+### MovieDetailsDTO
+- `id`: Long
+- `tmdbId`: Long
+- `title`: String
+- `overview`: String
+- `posterPath`: String
+- `releaseDate`: String
+- `cast`: List<String>
+- `castMembers`: List<CastDTO>
+- `directors`: List<CrewDTO>
+- `comments`: List<CommentDTO>
+
+### CastDTO
+- `tmdbId`: Long
+- `name`: String
+- `character`: String
+- `profilePath`: String
+- `profileLocalPath`: String
+- `profileUrl`: String
+
+### CrewDTO
+- `tmdbId`: Long
+- `name`: String
+- `job`: String
+- `department`: String
+- `profilePath`: String
+- `profileLocalPath`: String
+- `profileUrl`: String
+
+### ReviewDTO
+- `id`: Long
+- `user`: SimpleUserDTO
+- `movie`: SimpleMovieDTO
+- `text`: String
+- `stars`: Integer
+- `createdAt`: String
+- `likesCount`: Long
+
+### ReviewCreateRequest
+- `userId`: Long
+- `movieId`: Long
+- `text`: String
+- `stars`: Integer
+
+### Ejemplo de imagen de película
+- Campo `posterPath`: `"/data/movies/movie_123.jpg"`
+- Para mostrar la carátula en la app, usar la URL completa: `"http://localhost:8080/data/movies/movie_123.jpg"`
+
+## Errores
+- Formato estándar:
+```json
 {
-  "database": { "connected": true, "message": "Base de datos conectada" },
-  "tmdb": { "connected": true }
+  "error": "Mensaje de error"
 }
 ```
+- Códigos HTTP: 400, 401, 404, 500 según el caso.
 
-#### Estado de un servicio
-- **GET** `/api/system/health/{service}`
-
----
-
-## 3. Endpoints de administración (solo ADMIN)
-
-- Todos bajo `/api/admin/*` y requieren `Authorization: Bearer <token>` de admin.
-- Ejemplos:
-  - Confirmar email: `POST /api/admin/users/{userId}/confirm-email`
-  - Banear usuario: `POST /api/admin/users/{userId}/ban`
-  - Eliminar usuario: `POST /api/admin/users/{userId}/delete`
-  - Descargar película de TMDB: `POST /api/admin/tmdb/load-movie/{tmdbId}`
-  - Carga masiva de películas populares: `POST /api/admin/tmdb/bulk-load?page=1`
-  - Recargar posters: `POST /api/admin/images/reload`
-  - Moderación: `/api/admin/moderation/*`
-
----
-
-## 4. Autenticación y roles
-
-- Los endpoints protegidos requieren el header `Authorization: Bearer <token>`.
-- El token es un JWT. Se obtiene en login/registro y se refresca con `/api/auth/refresh`.
-- El campo `roles` del usuario indica si es admin (`ROLE_ADMIN`) o usuario normal (`ROLE_USER`).
-- Los endpoints `/api/admin/*` solo aceptan tokens de admin.
-
----
-
-## 5. Paginación y filtros
-
-- Los endpoints que devuelven listas usan paginación Spring: parámetros `page` y `size`.
-- El objeto de respuesta incluye `content`, `totalElements`, `totalPages`, `number`.
-- Algunos endpoints permiten filtrar por texto, categoría, usuario, etc.
-
----
-
-## 6. CRUD y lógica de negocio
-
-- Crear, editar, borrar y listar ítems (películas, reviews, usuarios) según permisos y roles.
-- Validaciones: campos obligatorios en cada operación (ver modelos de datos).
-- Relación usuario-ítems: por ejemplo, `/api/users/me/reviews` para "mis reviews".
-
----
-
-## 7. Reviews y likes
-
-- Crear review: `/api/reviews` (ver ejemplo arriba).
-- Like a review: `/api/reviews/{id}/like?userId=...`.
-- Las reviews se asocian a usuario y película por sus IDs.
-
----
-
-## 8. Archivos y multimedia
-
-- Subida/descarga/visualización de archivos asociados a películas vía `/api/movies/{id}/files`.
-- Formato: JSON con URLs de descarga y streaming.
-- Las imágenes de carátulas de películas se obtienen vía `/api/movies/{id}/poster`.
-- Las imágenes de reparto/directores vía `/api/actors/{id}/profile` y `/api/directors/{id}/profile`.
-
----
-
-## 9. Errores y estados
-
-- Errores: códigos HTTP estándar (400, 401, 403, 404, 500).
-- Cuerpo de error: `{ "success": false, "message": "..." }` o `{ "error": "..." }`.
-
----
-
-## 10. Otros endpoints
-
-- Estado del sistema: `/api/system/health` y `/api/system/health/{service}`.
-- Preferencias, notificaciones, etc.: consultar documentación específica si aplica.
-
----
-
-## 11. Ejemplo de flujo completo en Kotlin (pseudocódigo)
-
-```kotlin
-val loginResp = post("/api/auth/login", LoginRequest(...))
-val token = loginResp.accessToken
-val user = loginResp.user
-if (user.roles.contains("ROLE_ADMIN")) {
-    // Ir a pantalla de admin
-} else {
-    // Ir a pantalla de usuario normal
-}
-// Usar token en siguientes peticiones:
-val peliculas = get("/api/movies?page=0&size=12", headers = mapOf("Authorization" to "Bearer $token"))
-```
-
----
-
-## 12. Recomendaciones para clientes Kotlin
-
-- Usar librerías como Ktor o Retrofit para consumir la API.
-- Serializar/deserializar JSON con kotlinx.serialization o Moshi.
-- Añadir el header `Authorization: Bearer <token>` tras login.
-- Tras el login, revisa el campo `roles` del usuario para saber si es admin (`ROLE_ADMIN`) o usuario normal (`ROLE_USER`).
-- Manejar errores HTTP y estructura de error JSON.
-
----
-
-Para dudas o detalles adicionales, consulta el código fuente o contacta con el equipo de backend.
-
+## Notas
+- Todos los endpoints que requieren autenticación deben enviar el header `Authorization: Bearer <accessToken>`.
+- Los endpoints públicos permiten listar películas, detalles, reviews, comentarios, reparto y equipo.
+- Las imágenes de carátulas y perfiles se exponen como rutas relativas, pero se deben consumir como URLs completas desde la app Android.

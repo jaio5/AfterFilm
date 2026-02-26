@@ -19,7 +19,7 @@ public class MockEmailService implements IEmailService {
 
     @Override
     public void sendConfirmationEmail(String toEmail, String username, String confirmationToken) {
-        String confirmationUrl = baseUrl + "/confirm-account?token=" + confirmationToken;
+        String confirmationUrl = baseUrl + "/api/auth/confirm-email?token=" + confirmationToken;
 
         log.info("📧 MOCK EMAIL - Email de confirmación simulado");
         log.info("   📧 Para: {}", toEmail);

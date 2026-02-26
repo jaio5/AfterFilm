@@ -39,7 +39,7 @@ public class HomeController {
             Pageable pageable = PageRequest.of(validPage, validSize);
             Page<Movie> moviesPage;
             if (search != null && !search.trim().isEmpty()) {
-                moviesPage = movieRepository.findAll(pageable); // TODO: implementar búsqueda real
+                moviesPage = movieRepository.findByTitleContainingIgnoreCase(search.trim(), pageable);
                 model.addAttribute("searchQuery", search);
             } else {
                 if (genre != null && !genre.trim().isEmpty()) {

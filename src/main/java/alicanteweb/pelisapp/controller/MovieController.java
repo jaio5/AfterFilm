@@ -112,6 +112,18 @@ public class MovieController {
         return ResponseEntity.ok(moviesPage);
     }
 
+    @GetMapping("/search")
+    public ResponseEntity<List<MovieListDTO>> searchMovies(@RequestParam String query) {
+        return ResponseEntity.ok(movieService.searchMovies(query));
+    }
+
+    @GetMapping("/top-rated-this-month")
+    public ResponseEntity<MovieListDTO> getTopRatedThisMonth() {
+        return movieService.getTopRatedThisMonth()
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.noContent().build());
+    }
+
     private boolean isVideoFile(String fileName) {
         String lowerName = fileName.toLowerCase();
         return lowerName.endsWith(".mp4") ||
