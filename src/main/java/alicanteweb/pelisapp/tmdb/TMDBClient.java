@@ -281,6 +281,117 @@ public class TMDBClient {
         return null;
     }
 
+    // ============= TV SHOW METHODS =============
+
+    public JsonNode getTvPopular(int page) {
+        log.debug("Requesting TMDB TV popular page={}", page);
+        try {
+            return webClient.get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/tv/popular")
+                                .queryParam("page", page)
+                                .queryParam("language", "es-ES");
+                        if ((bearerToken == null || bearerToken.isBlank()) && apiKey != null && !apiKey.isBlank()) {
+                            uriBuilder.queryParam("api_key", apiKey);
+                        }
+                        return uriBuilder.build();
+                    })
+                    .headers(h -> {
+                        if (bearerToken != null && !bearerToken.isBlank()) h.setBearerAuth(bearerToken);
+                    })
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block(Duration.ofSeconds(10));
+        } catch (WebClientResponseException we) {
+            log.warn("TMDB getTvPopular failed: status={} body={}", we.getStatusCode().value(), we.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.warn("TMDB getTvPopular failed: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    public JsonNode getTvTopRated(int page) {
+        log.debug("Requesting TMDB TV top rated page={}", page);
+        try {
+            return webClient.get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/tv/top_rated")
+                                .queryParam("page", page)
+                                .queryParam("language", "es-ES");
+                        if ((bearerToken == null || bearerToken.isBlank()) && apiKey != null && !apiKey.isBlank()) {
+                            uriBuilder.queryParam("api_key", apiKey);
+                        }
+                        return uriBuilder.build();
+                    })
+                    .headers(h -> {
+                        if (bearerToken != null && !bearerToken.isBlank()) h.setBearerAuth(bearerToken);
+                    })
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block(Duration.ofSeconds(10));
+        } catch (WebClientResponseException we) {
+            log.warn("TMDB getTvTopRated failed: status={} body={}", we.getStatusCode().value(), we.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.warn("TMDB getTvTopRated failed: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    public JsonNode getTvDetails(long tmdbId) {
+        log.debug("Requesting TMDB TV details for tmdbId={}", tmdbId);
+        try {
+            return webClient.get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/tv/{id}")
+                                .queryParam("language", "es-ES")
+                                .queryParam("append_to_response", "credits");
+                        if ((bearerToken == null || bearerToken.isBlank()) && apiKey != null && !apiKey.isBlank()) {
+                            uriBuilder.queryParam("api_key", apiKey);
+                        }
+                        return uriBuilder.build(tmdbId);
+                    })
+                    .headers(h -> {
+                        if (bearerToken != null && !bearerToken.isBlank()) h.setBearerAuth(bearerToken);
+                    })
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block(Duration.ofSeconds(10));
+        } catch (WebClientResponseException we) {
+            log.warn("TMDB getTvDetails failed: status={} body={}", we.getStatusCode().value(), we.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.warn("TMDB getTvDetails failed: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    public JsonNode searchTv(String query, int page) {
+        log.debug("Searching TMDB TV for: {}", query);
+        try {
+            return webClient.get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/search/tv")
+                                .queryParam("query", query)
+                                .queryParam("page", page)
+                                .queryParam("language", "es-ES");
+                        if ((bearerToken == null || bearerToken.isBlank()) && apiKey != null && !apiKey.isBlank()) {
+                            uriBuilder.queryParam("api_key", apiKey);
+                        }
+                        return uriBuilder.build();
+                    })
+                    .headers(h -> {
+                        if (bearerToken != null && !bearerToken.isBlank()) h.setBearerAuth(bearerToken);
+                    })
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block(Duration.ofSeconds(10));
+        } catch (WebClientResponseException we) {
+            log.warn("TMDB searchTv failed: status={} body={}", we.getStatusCode().value(), we.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.warn("TMDB searchTv failed: {}", e.getMessage());
+        }
+        return null;
+    }
+
     /**
      * Obtiene información de paginación para películas populares.
      * Método de utilidad para administración y diagnóstico.

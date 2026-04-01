@@ -62,6 +62,7 @@
                             <th>Roles</th>
                             <th>Confirmado</th>
                             <th>Estado</th>
+                            <th>Infracciones</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
@@ -83,8 +84,23 @@
                                 <span th:unless="${user.emailConfirmed}" class="badge-warn"><i class="fas fa-clock"></i> Pendiente</span>
                             </td>
                             <td>
-                                <span th:if="${user.banned}"   class="badge-err"><i class="fas fa-ban"></i> Baneado</span>
-                                <span th:unless="${user.banned}" class="badge-ok"><i class="fas fa-check-circle"></i> Activo</span>
+                                <span th:if="${user.banned}" class="badge-err"><i class="fas fa-ban"></i> Permanente</span>
+                                <span th:if="${!user.banned and user.bannedUntil != null}" class="badge-warn"><i class="fas fa-clock"></i> Temporal</span>
+                                <span th:if="${!user.banned and user.bannedUntil == null}" class="badge-ok"><i class="fas fa-check-circle"></i> Activo</span>
+                            </td>
+                            <td>
+                                <div style="font-size:0.82rem">
+                                    <span th:if="${user.offenseCount > 0}"
+                                          th:class="${user.offenseCount >= 5 ? 'badge-err' : user.offenseCount >= 3 ? 'badge-warn' : 'badge-info'}"
+                                          th:text="${user.offenseCount + ' infracción' + (user.offenseCount != 1 ? 'es' : '')}">0</span>
+                                    <span th:if="${user.offenseCount == 0}" class="badge-muted">Sin infracciones</span>
+                                    <div th:if="${user.bannedUntil != null}"
+                                         style="font-size:0.72rem;color:var(--text-muted);margin-top:0.2rem"
+                                         th:text="'Hasta: ' + ${user.bannedUntil}"></div>
+                                    <div th:if="${user.banReason != null}"
+                                         style="font-size:0.72rem;color:var(--text-muted)"
+                                         th:text="${user.banReason}"></div>
+                                </div>
                             </td>
                             <td>
                                 <div style="display:flex;flex-direction:column;gap:0.3rem">
@@ -112,6 +128,14 @@
                                             th:data-user-id="${user.id}">
                                         <i class="fas fa-user-check"></i> Desbanear
                                     </button>
+                                    <button th:if="${user.offenseCount > 0}"
+                                            type="button"
+                                            class="btn-ghost reset-btn"
+                                            style="font-size:0.73rem;padding:0.2rem 0.55rem;color:#93c5fd;border-color:rgba(59,130,246,0.3)"
+                                            onclick="resetOffenses(this)"
+                                            th:data-user-id="${user.id}">
+                                        <i class="fas fa-rotate-left"></i> Resetear
+                                    </button>
                                     <button type="button"
                                             class="btn-ghost delete-btn"
                                             style="font-size:0.73rem;padding:0.2rem 0.55rem;color:#fca5a5;border-color:rgba(230,57,70,0.3)"
@@ -124,7 +148,7 @@
                             </td>
                         </tr>
                         <tr th:if="${#lists.isEmpty(users)}">
-                            <td colspan="6" style="text-align:center;color:var(--text-muted)">No hay usuarios</td>
+                            <td colspan="7" style="text-align:center;color:var(--text-muted)">No hay usuarios</td>
                         </tr>
                     </tbody>
                 </table>
@@ -167,6 +191,13 @@
             }
         }
 
+        function resetOffenses(btn) {
+            const userId = btn.getAttribute('data-user-id');
+            if (confirm('¿Resetear infracciones y ban temporal de este usuario?')) {
+                performAction('/api/admin/users/' + userId + '/reset-offenses', 'POST');
+            }
+        }
+
         function deleteUser(btn) {
             const userId   = btn.getAttribute('data-user-id');
             const username = btn.getAttribute('data-username');
@@ -194,6 +225,7 @@
                     row.querySelector('.delete-btn')?.remove();
                     row.querySelector('.ban-btn')?.remove();
                     row.querySelector('.unban-btn')?.remove();
+                    row.querySelector('.reset-btn')?.remove();
                 }
             });
         });

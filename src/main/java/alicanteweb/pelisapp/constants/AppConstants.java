@@ -7,11 +7,10 @@ package alicanteweb.pelisapp.constants;
 public final class AppConstants {
 
     private AppConstants() {
-        // Constructor privado para prevenir instanciación
     }
 
     // Constantes de paginación
-    public static final int DEFAULT_PAGE_SIZE = 12;
+    public static final int DEFAULT_PAGE_SIZE = 15;
     public static final int MAX_PAGE_SIZE = 48;
     public static final int MIN_PAGE_SIZE = 1;
     public static final int DEFAULT_PAGE_NUMBER = 0;
@@ -115,6 +114,8 @@ public final class AppConstants {
     public static final int MAX_ACTORS_PER_MOVIE = 10;
     public static final long MINIMUM_MOVIES_FOR_STARTUP = 10L;
     public static final int DEFAULT_PAGES_TO_LOAD = 5;
+    public static final long MINIMUM_SERIES_FOR_STARTUP = 10L;
+    public static final int DEFAULT_SERIES_PAGES_TO_LOAD = 3;
     public static final int DELAY_BETWEEN_REQUESTS_MS = 250;
     public static final int DELAY_BETWEEN_PAGES_MS = 300;
     public static final int MAX_PAGES_LIMIT = 500;

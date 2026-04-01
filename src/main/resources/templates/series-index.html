@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PelisApp — Series</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" th:href="@{/}">
+                <i class="fas fa-film"></i> PelisApp
+            </a>
+            <div class="navbar-search">
+                <form id="searchForm">
+                    <input type="search" id="searchInput" placeholder="Buscar series..." autocomplete="off">
+                    <button type="submit"><i class="fas fa-search"></i></button>
+                </form>
+            </div>
+            <div class="navbar-nav-links">
+                <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
+                <a th:href="@{/series}" style="color:var(--accent)"><i class="fas fa-tv"></i> Series</a>
+                <a th:href="@{/libros}"><i class="fas fa-book"></i> Libros</a>
+                <a th:href="@{/usuarios}"><i class="fas fa-users"></i> Usuarios</a>
+                <a th:href="@{/login}" sec:authorize="!isAuthenticated()">Entrar</a>
+                <a th:href="@{/register}" sec:authorize="!isAuthenticated()" class="btn-accent btn-sm">Registrarse</a>
+                <div class="user-menu" sec:authorize="isAuthenticated()">
+                    <button class="user-avatar-btn" id="userAvatarBtn">
+                        <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="user-dropdown-header">
+                            <span class="user-dropdown-name" th:text="${#authentication.name}">Usuario</span>
+                        </div>
+                        <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-user"></i> Mi perfil</a>
+                        <a th:href="@{/feed}" class="user-dropdown-item"><i class="fas fa-stream"></i> Mi feed</a>
+                        <a th:href="@{/chat}" class="user-dropdown-item"><i class="fas fa-comments"></i> Mensajes</a>
+                        <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-cog"></i> Ajustes</a>
+                        <a th:href="@{/admin}"
+                           th:if="${#authentication.authorities.?[authority == 'ROLE_ADMIN'].size() > 0}"
+                           class="user-dropdown-item user-dropdown-item-admin"><i class="fas fa-shield-alt"></i> Panel de Admin</a>
+                        <div class="user-dropdown-divider"></div>
+                        <form th:action="@{/logout}" method="post" style="margin:0">
+                            <button type="submit" class="user-dropdown-item user-dropdown-item-logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero-section" id="heroSection" style="display:none">
+        <div class="hero-backdrop" id="heroBackdrop"></div>
+        <div class="hero-gradient"></div>
+        <div class="hero-content">
+            <div class="hero-eyebrow" id="heroEyebrow"></div>
+            <h2 class="hero-title" id="heroTitle"></h2>
+            <p class="hero-synopsis" id="heroSynopsis"></p>
+            <div class="hero-actions">
+                <a class="btn-accent" id="heroWatchLink" href="#"><i class="fas fa-star"></i> Ver reseñas</a>
+                <a class="btn-ghost" id="heroInfoLink" href="#">+ Más info</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main -->
+    <div class="container-main">
+        <div class="catalog-layout">
+
+            <!-- Sidebar géneros -->
+            <aside class="catalog-sidebar" id="sidebarGenres">
+                <div class="sidebar-section-title"><i class="fas fa-th-list"></i> Géneros</div>
+                <button class="sidebar-pill active" data-genre="">Todas</button>
+            </aside>
+
+            <!-- Contenido -->
+            <div class="catalog-main">
+                <div class="catalog-bar">
+                    <span class="catalog-title" id="catalog-title">Series</span>
+                    <span class="catalog-count" id="catalog-info"></span>
+                </div>
+                <div id="series-container" class="movies-grid"></div>
+                <div id="pagination-container"></div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        © 2026 PelisApp — Hecho con <i class="fas fa-heart text-accent"></i> por las series
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+const seriesContainer = document.getElementById('series-container');
+const paginationContainer = document.getElementById('pagination-container');
+const catalogTitle = document.getElementById('catalog-title');
+const catalogInfo = document.getElementById('catalog-info');
+
+let currentPage = 0;
+let currentGenre = null;
+
+function loadSeries(page = 0, genre = currentGenre) {
+    currentGenre = genre;
+    const url = genre
+        ? `/api/series/by-genre?genre=${encodeURIComponent(genre)}&page=${page}`
+        : `/api/series?page=${page}`;
+    fetch(url)
+        .then(res => res.json())
+        .then(data => {
+            renderSeries(data.content);
+            renderPagination(data);
+            catalogInfo.textContent = `${data.numberOfElements} de ${data.totalElements} series`;
+            currentPage = data.number;
+        });
+}
+
+function populateHero(series) {
+    const poster = series.posterLocalPath
+        ? '/images/' + series.posterLocalPath
+        : (series.posterPath
+            ? (series.posterPath.startsWith('http') ? series.posterPath : 'https://image.tmdb.org/t/p/original' + series.posterPath)
+            : null);
+    if (!poster) return;
+    document.getElementById('heroBackdrop').style.backgroundImage = `url('${poster}')`;
+    document.getElementById('heroEyebrow').textContent = '★ Mejor valorada del mes';
+    document.getElementById('heroTitle').textContent = series.title || '';
+    document.getElementById('heroSynopsis').textContent = series.overview || '';
+    const url = `/serie/${series.id}`;
+    document.getElementById('heroWatchLink').href = url;
+    document.getElementById('heroInfoLink').href = url;
+    document.getElementById('heroSection').style.display = '';
+}
+
+function renderSeries(items) {
+    seriesContainer.innerHTML = '';
+    if (!items || items.length === 0) {
+        seriesContainer.innerHTML = `
+            <div class="empty-state" style="grid-column:1/-1">
+                <i class="fas fa-tv"></i>
+                <p>No hay series disponibles. Importa series desde el panel admin.</p>
+            </div>`;
+        return;
+    }
+    items.forEach(s => {
+        const poster = s.posterLocalPath
+            ? '/images/' + s.posterLocalPath
+            : (s.posterPath
+                ? (s.posterPath.startsWith('http') ? s.posterPath : 'https://image.tmdb.org/t/p/w500' + s.posterPath)
+                : null);
+        const year = s.firstAirDate
+            ? (Array.isArray(s.firstAirDate) ? s.firstAirDate[0] : String(s.firstAirDate).substring(0, 4))
+            : '';
+        seriesContainer.innerHTML += `
+        <div class="movie-card">
+            <a href="/serie/${s.id}" class="movie-card-link">
+                <div class="movie-poster-wrap">
+                    ${poster
+                        ? `<img src="${poster}" alt="${s.title}" loading="lazy">`
+                        : `<div class="movie-poster-placeholder"><i class="fas fa-tv"></i></div>`}
+                    ${s.avgRating ? `<div class="movie-rating-badge">
+                        <i class="fas fa-star"></i> ${Number(s.avgRating).toFixed(1)}
+                    </div>` : ''}
+                    <div class="movie-card-overlay">
+                        <div class="movie-card-overlay-info">
+                            <div class="movie-card-overlay-title">${s.title || 'Sin título'}</div>
+                            <div class="movie-card-overlay-year">${year}${s.numberOfSeasons ? ' · ' + s.numberOfSeasons + 'T' : ''}</div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>`;
+    });
+}
+
+function renderPagination(data) {
+    paginationContainer.innerHTML = '';
+    if (data.totalPages <= 1) return;
+    let html = `<nav><ul class="pagination">`;
+    html += `<li class="page-item${data.first ? ' disabled' : ''}"><a class="page-link" href="#" onclick="loadSeries(${data.number - 1});return false;"><i class="fas fa-chevron-left"></i></a></li>`;
+    for (let i = 0; i < data.totalPages; i++) {
+        if (Math.abs(i - data.number) <= 2) {
+            html += `<li class="page-item${i === data.number ? ' active' : ''}"><a class="page-link" href="#" onclick="loadSeries(${i});return false;">${i + 1}</a></li>`;
+        }
+    }
+    html += `<li class="page-item${data.last ? ' disabled' : ''}"><a class="page-link" href="#" onclick="loadSeries(${data.number + 1});return false;"><i class="fas fa-chevron-right"></i></a></li>`;
+    html += `</ul></nav>`;
+    paginationContainer.innerHTML = html;
+}
+
+function selectGenre(genre) {
+    document.querySelectorAll('#sidebarGenres .sidebar-pill').forEach(b => b.classList.toggle('active', b.dataset.genre === genre));
+    catalogTitle.textContent = genre || 'Series';
+    document.getElementById('heroSection').style.display = genre ? 'none' : '';
+    loadSeries(0, genre || null);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/series/top-rated-this-month')
+        .then(res => res.ok ? res.json() : null)
+        .then(s => { if (s) populateHero(s); });
+
+    // Cargar géneros en el sidebar
+    fetch('/api/series/genres')
+        .then(res => res.json())
+        .then(genres => {
+            const sidebar = document.getElementById('sidebarGenres');
+            genres.forEach(genre => {
+                const btn = document.createElement('button');
+                btn.className = 'sidebar-pill';
+                btn.dataset.genre = genre;
+                btn.textContent = genre;
+                sidebar.appendChild(btn);
+            });
+            sidebar.addEventListener('click', function(e) {
+                const btn = e.target.closest('.sidebar-pill');
+                if (!btn) return;
+                selectGenre(btn.dataset.genre);
+            });
+        });
+
+    const searchForm = document.getElementById('searchForm');
+    const searchInput = document.getElementById('searchInput');
+    if (searchForm && searchInput) {
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const query = searchInput.value.trim();
+            if (!query) { loadSeries(0, null); return; }
+            fetch(`/api/series/search?query=${encodeURIComponent(query)}`)
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('heroSection').style.display = 'none';
+                    renderSeries(data);
+                    paginationContainer.innerHTML = '';
+                    catalogTitle.textContent = `"${query}"`;
+                    catalogInfo.textContent = `${data.length} resultado${data.length !== 1 ? 's' : ''}`;
+                });
+        });
+        searchInput.addEventListener('search', function() {
+            if (!this.value) loadSeries(0, null);
+        });
+    }
+
+    loadSeries(0);
+});
+    </script>
+<script>
+(function() {
+    var btn = document.getElementById('userAvatarBtn');
+    var dd = document.getElementById('userDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e) { e.stopPropagation(); dd.classList.toggle('open'); });
+    document.addEventListener('click', function() { dd.classList.remove('open'); });
+})();
+</script>
+</body>
+</html>

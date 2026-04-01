@@ -7,6 +7,7 @@ import alicanteweb.pelisapp.repository.RoleRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -27,6 +28,9 @@ public class DataInitializer implements CommandLineRunner {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Value("${app.admin.initial-password:admin123}")
+    private String adminInitialPassword;
 
     @Override
     public void run(String... args) throws Exception {
@@ -59,10 +63,10 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void updateAdminUser(User admin) {
-        log.info("🔄 Actualizando usuario administrador...");
+        log.info("Actualizando usuario administrador...");
 
         // Asegurar que la contraseña esté correctamente encriptada
-        admin.setPassword(passwordEncoder.encode("admin123"));
+        admin.setPassword(passwordEncoder.encode(adminInitialPassword));
         admin.setEmailConfirmed(true); // Admin siempre confirmado
         admin.setDisplayName("Administrador");
         admin.setEmail("admin@pelisapp.com");
@@ -76,20 +80,17 @@ public class DataInitializer implements CommandLineRunner {
 
         userRepository.save(admin);
 
-        log.info("✅ Usuario admin actualizado exitosamente");
-        log.info("   👤 Usuario: admin");
-        log.info("   🔑 Contraseña: admin123");
-        log.info("   📧 Email: admin@pelisapp.com");
+        log.info("Usuario admin actualizado exitosamente (username: admin, email: admin@pelisapp.com)");
     }
 
     private void createAdminUser() {
-        log.info("🚀 Creando usuario administrador...");
+        log.info("Creando usuario administrador...");
 
         // Crear usuario admin
         User admin = new User();
         admin.setUsername("admin");
         admin.setEmail("admin@pelisapp.com");
-        admin.setPassword(passwordEncoder.encode("admin123"));
+        admin.setPassword(passwordEncoder.encode(adminInitialPassword));
         admin.setDisplayName("Administrador");
         admin.setRegisteredAt(Instant.now());
         admin.setEmailConfirmed(true); // Admin confirmado automáticamente
@@ -103,10 +104,6 @@ public class DataInitializer implements CommandLineRunner {
 
         userRepository.save(admin);
 
-        log.info("✅ Usuario admin creado exitosamente:");
-        log.info("   👤 Usuario: admin");
-        log.info("   🔑 Contraseña: admin123");
-        log.info("   📧 Email: admin@pelisapp.com");
-        log.info("   🔒 Roles: ADMIN, MODERATOR, SUPERADMIN");
+        log.info("Usuario admin creado exitosamente (username: admin, email: admin@pelisapp.com, roles: ADMIN, MODERATOR, SUPERADMIN)");
     }
 }

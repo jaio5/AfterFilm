@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -23,15 +23,33 @@
                 </form>
             </div>
             <div class="navbar-nav-links">
-                <a th:href="@{/perfil}" th:if="${#authentication != null and #authentication.authenticated}">
-                    <i class="fas fa-user"></i> Perfil
-                </a>
-                <a th:href="@{/login}" th:if="${#authentication == null or !#authentication.authenticated}">Entrar</a>
-                <a th:href="@{/register}" th:if="${#authentication == null or !#authentication.authenticated}" class="btn-accent btn-sm">Registrarse</a>
-                <form th:if="${#authentication != null and #authentication.authenticated}"
-                      th:action="@{/logout}" method="post" style="margin:0">
-                    <button type="submit" class="btn-text">Cerrar sesión</button>
-                </form>
+                <a th:href="@{/}" style="color:var(--accent)"><i class="fas fa-film"></i> Películas</a>
+                <a th:href="@{/series}"><i class="fas fa-tv"></i> Series</a>
+                <a th:href="@{/libros}"><i class="fas fa-book"></i> Libros</a>
+                <a th:href="@{/usuarios}"><i class="fas fa-users"></i> Usuarios</a>
+                <a th:href="@{/login}" sec:authorize="!isAuthenticated()">Entrar</a>
+                <a th:href="@{/register}" sec:authorize="!isAuthenticated()" class="btn-accent btn-sm">Registrarse</a>
+                <div class="user-menu" sec:authorize="isAuthenticated()">
+                    <button class="user-avatar-btn" id="userAvatarBtn">
+                        <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="user-dropdown-header">
+                            <span class="user-dropdown-name" th:text="${#authentication.name}">Usuario</span>
+                        </div>
+                        <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-user"></i> Mi perfil</a>
+                        <a th:href="@{/feed}" class="user-dropdown-item"><i class="fas fa-stream"></i> Mi feed</a>
+                        <a th:href="@{/chat}" class="user-dropdown-item"><i class="fas fa-comments"></i> Mensajes</a>
+                        <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-cog"></i> Ajustes</a>
+                        <a th:href="@{/admin}"
+                           th:if="${#authentication.authorities.?[authority == 'ROLE_ADMIN'].size() > 0}"
+                           class="user-dropdown-item user-dropdown-item-admin"><i class="fas fa-shield-alt"></i> Panel de Admin</a>
+                        <div class="user-dropdown-divider"></div>
+                        <form th:action="@{/logout}" method="post" style="margin:0">
+                            <button type="submit" class="user-dropdown-item user-dropdown-item-logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
@@ -53,28 +71,35 @@
 
     <!-- Main -->
     <div class="container-main">
+        <div class="catalog-layout">
 
-        <!-- Filter bar -->
-        <div class="filter-bar" id="filterBar">
-            <button class="filter-pill active" data-genre="">Todas</button>
-            <button th:each="cat : ${categories}"
-                    class="filter-pill"
-                    th:attr="data-genre=${cat.name}"
-                    th:text="${cat.name}">Género</button>
+            <!-- ── Sidebar: categorías (solo escritorio) ── -->
+            <aside class="catalog-sidebar">
+                <div class="sidebar-section-title"><i class="fas fa-th-list"></i> Géneros</div>
+                <button class="sidebar-pill active" data-genre="">Todas</button>
+                <button th:each="cat : ${categories}"
+                        class="sidebar-pill"
+                        th:attr="data-genre=${cat.name}"
+                        th:text="${cat.name}">Género</button>
+            </aside>
+
+            <!-- ── Contenido principal ── -->
+            <div class="catalog-main">
+
+                <!-- Catalog bar -->
+                <div class="catalog-bar">
+                    <span class="catalog-title" id="catalog-title">Catálogo</span>
+                    <span class="catalog-count" id="catalog-info"></span>
+                </div>
+
+                <!-- Movies grid -->
+                <div id="movies-container" class="movies-grid"></div>
+
+                <!-- Pagination -->
+                <div id="pagination-container"></div>
+
+            </div>
         </div>
-
-        <!-- Catalog bar -->
-        <div class="catalog-bar">
-            <span class="catalog-title" id="catalog-title">Catálogo</span>
-            <span class="catalog-count" id="catalog-info"></span>
-        </div>
-
-        <!-- Movies grid -->
-        <div id="movies-container" class="movies-grid"></div>
-
-        <!-- Pagination -->
-        <div id="pagination-container"></div>
-
     </div>
 
     <footer class="site-footer">
@@ -199,25 +224,25 @@ function getYear(releaseDate) {
 
 window.loadMovies = loadMovies;
 
+function selectGenre(genre) {
+    // Sincronizar sidebar y filtro móvil
+    document.querySelectorAll('.sidebar-pill').forEach(b => b.classList.toggle('active', b.dataset.genre === genre));
+    document.querySelectorAll('#filterBar .filter-pill').forEach(b => b.classList.toggle('active', b.dataset.genre === genre));
+    document.getElementById('heroSection').style.display = genre ? 'none' : '';
+    loadMovies(0, genre || null);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Cargar hero independientemente del catálogo
     fetch('/api/movies/top-rated-this-month')
         .then(res => res.ok ? res.json() : null)
         .then(movie => { if (movie) populateHero(movie); });
 
-    document.querySelectorAll('#filterBar .filter-pill').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('#filterBar .filter-pill').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            const genre = this.dataset.genre;
-            if (genre) {
-                document.getElementById('heroSection').style.display = 'none';
-            } else {
-                document.getElementById('heroSection').style.display = '';
-            }
-            loadMovies(0, genre || null);
-        });
+    // Sidebar (escritorio)
+    document.querySelectorAll('.sidebar-pill').forEach(btn => {
+        btn.addEventListener('click', function() { selectGenre(this.dataset.genre); });
     });
+
 
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
@@ -260,5 +285,14 @@ document.addEventListener('DOMContentLoaded', function() {
     loadMovies(0, null);
 });
     </script>
+<script>
+(function() {
+    var btn = document.getElementById('userAvatarBtn');
+    var dd = document.getElementById('userDropdown');
+    if (!btn || !dd) return;
+    btn.addEventListener('click', function(e) { e.stopPropagation(); dd.classList.toggle('open'); });
+    document.addEventListener('click', function() { dd.classList.remove('open'); });
+})();
+</script>
 </body>
 </html>

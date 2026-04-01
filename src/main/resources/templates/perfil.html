@@ -15,12 +15,32 @@
         <div class="container">
             <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> PelisApp</a>
             <div class="navbar-nav-links">
-                <a th:href="@{/}"><i class="fas fa-home"></i> Inicio</a>
-                <a th:href="@{/perfil}" sec:authorize="isAuthenticated()"><i class="fas fa-user"></i> Mi Perfil</a>
+                <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
+                <a th:href="@{/series}"><i class="fas fa-tv"></i> Series</a>
+                <a th:href="@{/libros}"><i class="fas fa-book"></i> Libros</a>
+                <a th:href="@{/usuarios}"><i class="fas fa-users"></i> Usuarios</a>
                 <a th:href="@{/login}" sec:authorize="!isAuthenticated()">Entrar</a>
-                <form th:action="@{/logout}" method="post" sec:authorize="isAuthenticated()" style="margin:0">
-                    <button type="submit" class="btn-text">Cerrar sesión</button>
-                </form>
+                <a th:href="@{/register}" sec:authorize="!isAuthenticated()" class="btn-accent btn-sm">Registrarse</a>
+                <div class="user-menu" sec:authorize="isAuthenticated()">
+                    <button class="user-avatar-btn" id="userAvatarBtn">
+                        <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="user-dropdown-header">
+                            <span class="user-dropdown-name" th:text="${#authentication.name}">Usuario</span>
+                        </div>
+                        <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-user"></i> Mi perfil</a>
+                        <a th:href="@{/feed}" class="user-dropdown-item"><i class="fas fa-stream"></i> Mi feed</a>
+                        <a th:href="@{/chat}" class="user-dropdown-item"><i class="fas fa-comments"></i> Mensajes</a>
+                        <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-cog"></i> Ajustes</a>
+                        <a th:href="@{/admin}" sec:authorize="hasRole('ADMIN')"
+                           class="user-dropdown-item user-dropdown-item-admin"><i class="fas fa-shield-alt"></i> Panel de Admin</a>
+                        <div class="user-dropdown-divider"></div>
+                        <form th:action="@{/logout}" method="post" style="margin:0">
+                            <button type="submit" class="user-dropdown-item user-dropdown-item-logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
@@ -36,6 +56,12 @@
                 <div class="profile-username" th:text="'@' + ${user.username}">@usuario</div>
                 <div class="profile-stats">
                     <div class="profile-stat">
+                        <strong th:text="${followersCount}">0</strong> seguidores
+                    </div>
+                    <div class="profile-stat">
+                        <strong th:text="${followingCount}">0</strong> siguiendo
+                    </div>
+                    <div class="profile-stat">
                         <strong th:text="${reviewCount}">0</strong> reseñas
                     </div>
                     <div class="profile-stat" th:if="${reviewCount > 0}">
@@ -43,7 +69,11 @@
                         <strong th:text="${#numbers.formatDecimal(avgRating, 1, 1)}">0.0</strong>
                         <i class="fas fa-star" style="color:#f59e0b;font-size:0.75rem;"></i>
                     </div>
-                    <div class="profile-stat" th:text="${user.email}">email@ejemplo.com</div>
+                </div>
+                <div style="display:flex;gap:0.75rem;margin-top:0.75rem;flex-wrap:wrap;">
+                    <a th:href="@{/feed}" class="btn-ghost btn-sm"><i class="fas fa-stream"></i> Mi feed</a>
+                    <a th:href="@{/chat}" class="btn-ghost btn-sm"><i class="fas fa-comments"></i> Mensajes</a>
+                    <a th:href="@{/usuarios}" class="btn-ghost btn-sm"><i class="fas fa-users"></i> Buscar usuarios</a>
                 </div>
             </div>
         </div>
@@ -55,24 +85,62 @@
             <i class="fas fa-arrow-left"></i> Volver
         </a>
 
-        <p class="section-title" style="margin-top:1.5rem;">Mis reseñas</p>
+        <!-- Tabs -->
+        <div style="display:flex;gap:2rem;margin-top:1.5rem;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:0.75rem;">
+            <button class="tab-btn active" id="tabReviews" onclick="showPerfilTab('reviews')">
+                <i class="fas fa-star"></i> Reseñas (<span th:text="${reviewCount}">0</span>)
+            </button>
+            <button class="tab-btn" id="tabFavorites" onclick="showPerfilTab('favorites')">
+                <i class="fas fa-heart"></i> Favoritos (<span th:text="${#lists.size(favorites)}">0</span>)
+            </button>
+            <button class="tab-btn" id="tabWatchlist" onclick="showPerfilTab('watchlist')">
+                <i class="fas fa-bookmark"></i> Quiero ver (<span th:text="${#lists.size(watchlist)}">0</span>)
+            </button>
+        </div>
 
+        <!-- ── Tab: Reseñas ── -->
+        <div id="tab-reviews">
         <div th:if="${#lists.isEmpty(reviews)}" class="empty-state">
             <i class="fas fa-film"></i>
-            <p>Aún no has valorado ninguna película.</p>
-            <a th:href="@{/}" class="btn-accent btn-sm" style="margin-top:0.75rem;">Explorar catálogo</a>
+            <p>Aún no has valorado ninguna película, serie o libro.</p>
+            <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:center;margin-top:0.75rem;">
+                <a th:href="@{/}" class="btn-accent btn-sm">Películas</a>
+                <a th:href="@{/series}" class="btn-ghost btn-sm">Series</a>
+                <a th:href="@{/libros}" class="btn-ghost btn-sm">Libros</a>
+            </div>
         </div>
 
         <div th:each="review : ${reviews}" class="profile-review-card">
-            <!-- Poster placeholder (evita lazy loading de relaciones) -->
+            <!-- Icon based on content type -->
             <div class="profile-review-poster-placeholder">
-                <i class="fas fa-film"></i>
+                <i th:class="${review.series != null ? 'fas fa-tv' : (review.book != null ? 'fas fa-book' : 'fas fa-film')}"></i>
             </div>
             <!-- Review body -->
             <div class="profile-review-body">
-                <a th:href="@{/pelicula/{id}(id=${review.movie.id})}"
+                <!-- Movie review link -->
+                <a th:if="${review.movie != null}"
+                   th:href="@{/pelicula/{id}(id=${review.movie.id})}"
                    class="profile-review-title"
-                   th:text="${review.movie.title}">Título película</a>
+                   th:text="${review.movie.title}">Título</a>
+                <!-- Series review link -->
+                <a th:if="${review.series != null}"
+                   th:href="@{/serie/{id}(id=${review.series.id})}"
+                   class="profile-review-title"
+                   th:text="${review.series.title}">Título</a>
+                <!-- Book review link -->
+                <a th:if="${review.book != null}"
+                   th:href="@{/libro/{id}(id=${review.book.id})}"
+                   class="profile-review-title"
+                   th:text="${review.book.title}">Título</a>
+                <!-- Content type badge -->
+                <span th:if="${review.series != null}"
+                      style="font-size:0.7rem;color:var(--text-muted);margin-left:0.4rem">
+                    <i class="fas fa-tv"></i> Serie
+                </span>
+                <span th:if="${review.book != null}"
+                      style="font-size:0.7rem;color:var(--text-muted);margin-left:0.4rem">
+                    <i class="fas fa-book"></i> Libro
+                </span>
                 <div class="profile-review-stars">
                     <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
                     <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"
@@ -85,15 +153,121 @@
                      th:unless="${review.text != null and !review.text.trim().isEmpty()}"
                      style="font-style:italic;color:var(--text-muted)">Sin comentario</div>
                 <div class="profile-review-date"
-                     th:text="${#temporals.format(review.createdAt, 'dd/MM/yyyy')}">01/01/2023</div>
+                     th:text="${review.createdAt != null ? #temporals.format(review.createdAt, 'dd/MM/yyyy') : ''}">01/01/2023</div>
             </div>
         </div>
-    </div>
+        </div><!-- /tab-reviews -->
+
+        <!-- ── Tab: Favoritos ── -->
+        <div id="tab-favorites" style="display:none">
+            <div th:if="${#lists.isEmpty(favorites)}" class="empty-state">
+                <i class="fas fa-heart" style="font-size:2rem;color:var(--text-muted);margin-bottom:0.75rem;"></i>
+                <p>Aún no tienes favoritos. Márcalos desde el detalle de cualquier película, serie o libro.</p>
+            </div>
+            <div class="userlist-grid">
+                <div th:each="item : ${favorites}" class="userlist-card">
+                    <div class="userlist-poster">
+                        <img th:if="${item.contentPoster != null and !item.contentPoster.isEmpty()}"
+                             th:src="${item.contentPoster}" th:alt="${item.contentTitle}">
+                        <div th:unless="${item.contentPoster != null and !item.contentPoster.isEmpty()}"
+                             class="userlist-poster-placeholder">
+                            <i th:class="${item.contentType == 'series' ? 'fas fa-tv' : (item.contentType == 'book' ? 'fas fa-book' : 'fas fa-film')}"></i>
+                        </div>
+                    </div>
+                    <div class="userlist-info">
+                        <a th:href="${item.contentType == 'movie' ? '/pelicula/' + item.contentId : (item.contentType == 'series' ? '/serie/' + item.contentId : '/libro/' + item.contentId)}"
+                           class="userlist-title" th:text="${item.contentTitle}">Título</a>
+                        <div class="userlist-type">
+                            <i th:class="${item.contentType == 'series' ? 'fas fa-tv' : (item.contentType == 'book' ? 'fas fa-book' : 'fas fa-film')}"></i>
+                            <span th:text="${item.contentType == 'movie' ? 'Película' : (item.contentType == 'series' ? 'Serie' : 'Libro')}"></span>
+                        </div>
+                        <div class="userlist-date" th:text="${#temporals.format(item.addedAt, 'dd/MM/yyyy')}"></div>
+                    </div>
+                    <button class="userlist-remove" title="Quitar de favoritos"
+                            th:attr="data-lt='FAVORITE',data-ct=${item.contentType},data-cid=${item.contentId},data-title=${item.contentTitle}"
+                            onclick="removeFromListBtn(this)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Tab: Quiero ver ── -->
+        <div id="tab-watchlist" style="display:none">
+            <div th:if="${#lists.isEmpty(watchlist)}" class="empty-state">
+                <i class="fas fa-bookmark" style="font-size:2rem;color:var(--text-muted);margin-bottom:0.75rem;"></i>
+                <p>Tu lista "Quiero ver" está vacía. Guarda contenido para no perderte nada.</p>
+            </div>
+            <div class="userlist-grid">
+                <div th:each="item : ${watchlist}" class="userlist-card">
+                    <div class="userlist-poster">
+                        <img th:if="${item.contentPoster != null and !item.contentPoster.isEmpty()}"
+                             th:src="${item.contentPoster}" th:alt="${item.contentTitle}">
+                        <div th:unless="${item.contentPoster != null and !item.contentPoster.isEmpty()}"
+                             class="userlist-poster-placeholder">
+                            <i th:class="${item.contentType == 'series' ? 'fas fa-tv' : (item.contentType == 'book' ? 'fas fa-book' : 'fas fa-film')}"></i>
+                        </div>
+                    </div>
+                    <div class="userlist-info">
+                        <a th:href="${item.contentType == 'movie' ? '/pelicula/' + item.contentId : (item.contentType == 'series' ? '/serie/' + item.contentId : '/libro/' + item.contentId)}"
+                           class="userlist-title" th:text="${item.contentTitle}">Título</a>
+                        <div class="userlist-type">
+                            <i th:class="${item.contentType == 'series' ? 'fas fa-tv' : (item.contentType == 'book' ? 'fas fa-book' : 'fas fa-film')}"></i>
+                            <span th:text="${item.contentType == 'movie' ? 'Película' : (item.contentType == 'series' ? 'Serie' : 'Libro')}"></span>
+                        </div>
+                        <div class="userlist-date" th:text="${#temporals.format(item.addedAt, 'dd/MM/yyyy')}"></div>
+                    </div>
+                    <button class="userlist-remove" title="Quitar de la lista"
+                            th:attr="data-lt='WATCHLIST',data-ct=${item.contentType},data-cid=${item.contentId},data-title=${item.contentTitle}"
+                            onclick="removeFromListBtn(this)">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /profile-content -->
 
     <footer class="site-footer">
         © 2026 PelisApp — <i class="fas fa-heart text-accent"></i> por el cine
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+(function() {
+    var btn = document.getElementById('userAvatarBtn');
+    var dd = document.getElementById('userDropdown');
+    if (btn && dd) {
+        btn.addEventListener('click', function(e) { e.stopPropagation(); dd.classList.toggle('open'); });
+        document.addEventListener('click', function() { dd.classList.remove('open'); });
+    }
+})();
+
+// Profile tabs
+window.showPerfilTab = function(name) {
+    ['reviews', 'favorites', 'watchlist'].forEach(function(t) {
+        document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
+        var tb = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (tb) tb.classList.toggle('active', t === name);
+    });
+};
+
+// Remove item from list via data attributes
+window.removeFromListBtn = function(btn) {
+    var listType = btn.dataset.lt;
+    var contentType = btn.dataset.ct;
+    var contentId = btn.dataset.cid;
+    var title = btn.dataset.title;
+    var params = new URLSearchParams({ listType, contentType, contentId, title });
+    fetch('/api/lists/toggle?' + params, { method: 'POST' })
+        .then(r => r.json())
+        .then(function(res) {
+            if (!res.active) {
+                var card = btn.closest('.userlist-card');
+                if (card) card.remove();
+            }
+        });
+};
+</script>
 </body>
 </html>

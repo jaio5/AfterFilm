@@ -15,12 +15,32 @@
         <div class="container">
             <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> PelisApp</a>
             <div class="navbar-nav-links">
-                <a th:href="@{/}"><i class="fas fa-home"></i> Inicio</a>
+                <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
+                <a th:href="@{/series}"><i class="fas fa-tv"></i> Series</a>
+                <a th:href="@{/libros}"><i class="fas fa-book"></i> Libros</a>
+                <a th:href="@{/usuarios}"><i class="fas fa-users"></i> Usuarios</a>
                 <a th:href="@{/login}" sec:authorize="!isAuthenticated()">Entrar</a>
-                <a th:href="@{/perfil}" sec:authorize="isAuthenticated()"><i class="fas fa-user"></i> Perfil</a>
-                <form th:action="@{/logout}" method="post" sec:authorize="isAuthenticated()" style="margin:0">
-                    <button type="submit" class="btn-text">Cerrar sesión</button>
-                </form>
+                <a th:href="@{/register}" sec:authorize="!isAuthenticated()" class="btn-accent btn-sm">Registrarse</a>
+                <div class="user-menu" sec:authorize="isAuthenticated()">
+                    <button class="user-avatar-btn" id="userAvatarBtn">
+                        <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="user-dropdown-header">
+                            <span class="user-dropdown-name" th:text="${#authentication.name}">Usuario</span>
+                        </div>
+                        <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-user"></i> Mi perfil</a>
+                        <a th:href="@{/feed}" class="user-dropdown-item"><i class="fas fa-stream"></i> Mi feed</a>
+                        <a th:href="@{/chat}" class="user-dropdown-item"><i class="fas fa-comments"></i> Mensajes</a>
+                        <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-cog"></i> Ajustes</a>
+                        <a th:href="@{/admin}" sec:authorize="hasRole('ADMIN')"
+                           class="user-dropdown-item user-dropdown-item-admin"><i class="fas fa-shield-alt"></i> Panel de Admin</a>
+                        <div class="user-dropdown-divider"></div>
+                        <form th:action="@{/logout}" method="post" style="margin:0">
+                            <button type="submit" class="user-dropdown-item user-dropdown-item-logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+                        </form>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
@@ -30,7 +50,7 @@
         <div class="detail-hero-backdrop"
              th:with="backdropUrl=${movie.posterLocalPath != null and !movie.posterLocalPath.isEmpty() ? '/images/' + movie.posterLocalPath : (movie.posterPath != null and !movie.posterPath.isEmpty() ? 'https://image.tmdb.org/t/p/w500' + movie.posterPath : null)}"
              th:style="${backdropUrl != null ? 'background-image: url(' + backdropUrl + ')' : 'background: var(--bg-elevated)'}">
-        </div>
+    </div>
         <div class="detail-hero-content">
 
             <!-- Poster -->
@@ -71,6 +91,17 @@
                 </div>
                 <p class="detail-synopsis"
                    th:text="${movie.description ?: 'Sin descripción disponible.'}">Sinopsis</p>
+
+                <!-- Favoritos / Quiero ver (solo usuarios autenticados) -->
+                <div class="detail-list-actions" sec:authorize="isAuthenticated()"
+                     th:attr="data-content-type='movie',data-content-id=${movie.id},data-content-title=${movie.title},data-content-poster=${movie.posterLocalPath ?: ''}">
+                    <button class="btn-list" id="btnFavorite" onclick="toggleList('FAVORITE')">
+                        <i class="far fa-heart"></i> <span>Favorito</span>
+                    </button>
+                    <button class="btn-list" id="btnWatchlist" onclick="toggleList('WATCHLIST')">
+                        <i class="far fa-bookmark"></i> <span>Quiero ver</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -165,9 +196,12 @@
             <div th:each="review : ${reviews}" class="review-item">
                 <div class="review-item-header">
                     <div class="review-item-user">
-                        <div class="review-avatar"
-                             th:text="${#strings.substring(review.user.username, 0, 1).toUpperCase()}">U</div>
-                        <span class="review-username" th:text="${review.user.username}">Usuario</span>
+                        <a th:href="@{/usuario/{u}(u=${review.user.username})}"
+                           class="review-avatar review-avatar-link"
+                           th:text="${#strings.substring(review.user.username, 0, 1).toUpperCase()}">U</a>
+                        <a th:href="@{/usuario/{u}(u=${review.user.username})}"
+                           class="review-username review-username-link"
+                           th:text="${review.user.username}">Usuario</a>
                     </div>
                     <div class="review-stars-display">
                         <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
@@ -333,5 +367,51 @@
             });
         });
     </script>
+<script>
+(function() {
+    var btn = document.getElementById('userAvatarBtn');
+    var dd = document.getElementById('userDropdown');
+    if (btn && dd) {
+        btn.addEventListener('click', function(e) { e.stopPropagation(); dd.classList.toggle('open'); });
+        document.addEventListener('click', function() { dd.classList.remove('open'); });
+    }
+
+    // ── Favoritos / Quiero ver ────────────────────────────────────────────────
+    var actions = document.querySelector('.detail-list-actions');
+    if (!actions) return;
+
+    var contentType  = actions.dataset.contentType;
+    var contentId    = actions.dataset.contentId;
+    var contentTitle = actions.dataset.contentTitle;
+    var contentPoster= actions.dataset.contentPoster;
+
+    // Load current status
+    fetch('/api/lists/status?contentType=' + contentType + '&contentId=' + contentId)
+        .then(r => r.json())
+        .then(function(s) {
+            setBtn('btnFavorite',  s.favorite,  'fa-heart',    'Favorito');
+            setBtn('btnWatchlist', s.watchlist, 'fa-bookmark', 'Quiero ver');
+        }).catch(function() {});
+
+    window.toggleList = function(listType) {
+        var params = new URLSearchParams({
+            listType, contentType, contentId, title: contentTitle, poster: contentPoster
+        });
+        fetch('/api/lists/toggle?' + params, { method: 'POST' })
+            .then(r => r.json())
+            .then(function(res) {
+                if (listType === 'FAVORITE')  setBtn('btnFavorite',  res.active, 'fa-heart',    'Favorito');
+                if (listType === 'WATCHLIST') setBtn('btnWatchlist', res.active, 'fa-bookmark', 'Quiero ver');
+            }).catch(function() {});
+    };
+
+    function setBtn(id, active, icon, label) {
+        var btn = document.getElementById(id);
+        if (!btn) return;
+        btn.innerHTML = '<i class="' + (active ? 'fas' : 'far') + ' ' + icon + '"></i> <span>' + label + '</span>';
+        btn.classList.toggle('btn-list-active', active);
+    }
+})();
+</script>
 </body>
 </html>

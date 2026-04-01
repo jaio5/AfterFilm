@@ -12,6 +12,8 @@ import java.util.Set;
 @Entity
 @Table(name = "review", indexes = {
         @Index(columnList = "movie_id"),
+        @Index(columnList = "series_id"),
+        @Index(columnList = "book_id"),
         @Index(columnList = "user_id")
 })
 @Getter
@@ -27,8 +29,16 @@ public class Review {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "movie_id", nullable = false)
+    @JoinColumn(name = "movie_id", nullable = true)
     private Movie movie;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "series_id", nullable = true)
+    private TvShow series;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "book_id", nullable = true)
+    private Book book;
 
     @Column(nullable = false, length = 2000)
     private String text;
@@ -47,4 +57,10 @@ public class Review {
 
     @OneToOne(mappedBy = "review", cascade = CascadeType.ALL)
     private CommentModeration moderation;
+
+    public String getContentType() {
+        if (series != null) return "series";
+        if (book != null) return "book";
+        return "movie";
+    }
 }

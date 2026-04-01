@@ -50,6 +50,18 @@ public class User {
     @Column(name = "banned", nullable = false)
     private boolean banned = false;
 
+    /** Number of times this user has been sanctioned by the moderation system. */
+    @Column(name = "offense_count", columnDefinition = "INT NOT NULL DEFAULT 0")
+    private int offenseCount = 0;
+
+    /** When a temporary ban expires. Null means no active temp ban. */
+    @Column(name = "banned_until")
+    private Instant bannedUntil;
+
+    /** Reason for the most recent sanction. */
+    @Column(name = "ban_reason", length = 500)
+    private String banReason;
+
     private Integer criticLevel = 0; // computed based on likes per review
 
     @OneToMany(mappedBy = "user", fetch = FetchType.LAZY, cascade = CascadeType.ALL)

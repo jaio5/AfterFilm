@@ -1,5 +1,6 @@
 package alicanteweb.pelisapp.controller;
 
+import alicanteweb.pelisapp.dto.ContentReviewRequest;
 import alicanteweb.pelisapp.dto.ReviewCreateRequest;
 import alicanteweb.pelisapp.dto.ReviewDTO;
 import alicanteweb.pelisapp.entity.Review;
@@ -12,7 +13,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.security.Principal;
@@ -45,6 +52,42 @@ public class ReviewApiController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/series/{seriesId}")
+    public ResponseEntity<ReviewDTO> createSeriesReview(
+            @PathVariable Long seriesId,
+            @Valid @RequestBody ContentReviewRequest req,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        Review review = reviewService.createSeriesReview(user.getId(), seriesId, req.getText(), req.getStars());
+        return ResponseEntity.ok(toDtoFlex(review));
+    }
+
+    @PostMapping("/books/{bookId}")
+    public ResponseEntity<ReviewDTO> createBookReview(
+            @PathVariable Long bookId,
+            @Valid @RequestBody ContentReviewRequest req,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        Review review = reviewService.createBookReview(user.getId(), bookId, req.getText(), req.getStars());
+        return ResponseEntity.ok(toDtoFlex(review));
+    }
+
+    @GetMapping("/series/{seriesId}")
+    public ResponseEntity<List<ReviewDTO>> getReviewsBySeries(@PathVariable Long seriesId) {
+        List<Review> reviews = reviewService.getReviewsBySeriesId(seriesId);
+        return ResponseEntity.ok(reviews.stream().map(ReviewApiController::toDtoFlex).toList());
+    }
+
+    @GetMapping("/books/{bookId}")
+    public ResponseEntity<List<ReviewDTO>> getReviewsByBook(@PathVariable Long bookId) {
+        List<Review> reviews = reviewService.getReviewsByBookId(bookId);
+        return ResponseEntity.ok(reviews.stream().map(ReviewApiController::toDtoFlex).toList());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(e.getMessage());
@@ -74,4 +117,25 @@ public class ReviewApiController {
         dto.setLikesCount(review.getLikesCount());
         return dto;
     }
+
+    private static ReviewDTO toDtoFlex(Review review) {
+        ReviewDTO dto = new ReviewDTO();
+        dto.setId(review.getId());
+        ReviewDTO.SimpleUserDTO userDto = new ReviewDTO.SimpleUserDTO();
+        userDto.setId(review.getUser().getId());
+        userDto.setUsername(review.getUser().getUsername());
+        dto.setUser(userDto);
+        if (review.getMovie() != null) {
+            ReviewDTO.SimpleMovieDTO movieDto = new ReviewDTO.SimpleMovieDTO();
+            movieDto.setId(review.getMovie().getId());
+            movieDto.setTitle(review.getMovie().getTitle());
+            dto.setMovie(movieDto);
+        }
+        dto.setText(review.getText());
+        dto.setStars(review.getStars());
+        dto.setCreatedAt(review.getCreatedAt());
+        dto.setLikesCount(review.getLikesCount());
+        return dto;
+    }
+
 }

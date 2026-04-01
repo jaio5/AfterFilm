@@ -26,10 +26,18 @@
         <div class="admin-page-subtitle">Hola, <span th:text="${adminUser}">admin</span> — gestiona todos los aspectos de PelisApp</div>
 
         <!-- Stats row -->
-        <div class="admin-grid-4" style="margin-bottom:1.5rem">
+        <div class="admin-grid-3" style="margin-bottom:1.5rem">
             <div class="admin-stat-card">
                 <div class="stat-label"><i class="fas fa-film" style="margin-right:0.3rem"></i>Películas</div>
                 <div class="stat-value" th:text="${totalMovies}">0</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label"><i class="fas fa-tv" style="margin-right:0.3rem"></i>Series</div>
+                <div class="stat-value" th:text="${totalSeries}">0</div>
+            </div>
+            <div class="admin-stat-card">
+                <div class="stat-label"><i class="fas fa-book" style="margin-right:0.3rem"></i>Libros</div>
+                <div class="stat-value" th:text="${totalBooks}">0</div>
             </div>
             <div class="admin-stat-card">
                 <div class="stat-label"><i class="fas fa-users" style="margin-right:0.3rem"></i>Usuarios</div>
@@ -118,6 +126,18 @@
                 <h4>Moderación IA</h4>
                 <p>Sistema de moderación automática</p>
                 <a th:href="@{/admin/moderation}" class="btn-accent"><i class="fas fa-robot"></i> Moderación</a>
+            </div>
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-tv"></i></div>
+                <h4>Gestión de Series</h4>
+                <p>Importa series desde TMDB y gestiona el catálogo</p>
+                <a th:href="@{/admin/series}" class="btn-accent"><i class="fas fa-tv"></i> Gestionar</a>
+            </div>
+            <div class="admin-module-card">
+                <div class="admin-icon"><i class="fas fa-book"></i></div>
+                <h4>Gestión de Libros</h4>
+                <p>Importa libros desde Google Books y gestiona el catálogo</p>
+                <a th:href="@{/admin/books}" class="btn-accent"><i class="fas fa-book"></i> Gestionar</a>
             </div>
             <div class="admin-module-card">
                 <div class="admin-icon"><i class="fas fa-chart-bar"></i></div>

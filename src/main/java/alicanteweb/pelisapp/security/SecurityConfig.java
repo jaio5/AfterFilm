@@ -64,6 +64,10 @@ public class SecurityConfig {
                 auth.requestMatchers("/css/**", "/js/**", "/images/**").permitAll();
                 auth.requestMatchers("/pelicula/**").permitAll();
                 auth.requestMatchers("/peliculas/**").permitAll();
+                auth.requestMatchers("/series", "/serie/**", "/libros", "/libro/**").permitAll();
+                auth.requestMatchers("/api/series/**", "/api/books/**").permitAll();
+                auth.requestMatchers("/usuarios", "/usuario/**").permitAll();
+                auth.requestMatchers("/api/social/**").permitAll();
                 auth.requestMatchers("/public/**").permitAll(); // Endpoints públicos para pruebas
 
                 // Endpoints de diagnóstico (solo en desarrollo)
@@ -77,6 +81,9 @@ public class SecurityConfig {
 
                 // Rutas que requieren autenticación
                 auth.requestMatchers("/perfil/**", "/profile/**").authenticated();
+                auth.requestMatchers("/feed", "/chat", "/chat/**").authenticated();
+                auth.requestMatchers("/api/chat/**").authenticated();
+                auth.requestMatchers("/api/lists/**").authenticated();
                 auth.requestMatchers("/review/**").authenticated();
                 auth.requestMatchers("/api/user/**").authenticated();
                 auth.requestMatchers(HttpMethod.POST, "/pelicula/*/review").authenticated();

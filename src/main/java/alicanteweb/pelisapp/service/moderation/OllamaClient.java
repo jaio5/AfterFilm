@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -59,7 +63,7 @@ public class OllamaClient {
             """
             Eres un moderador de contenido experto. Analiza el siguiente texto y determina si contiene:
             - Lenguaje tóxico, ofensivo, abusivo o de odio
-            - Insultos, amenazas o acoso
+            - Insultos, amenazas o acoso hacia otras personas
             - Contenido inapropiado para un sitio de películas
 
             Texto a analizar: "%s"
@@ -68,12 +72,13 @@ public class OllamaClient {
             {
                 "toxicity_score": [número entre 0.0 y 1.0],
                 "is_toxic": [true/false],
+                "harassment_intent": [true si el mensaje tiene intención clara de acosar o insultar a otro usuario, false en caso contrario],
                 "reason": "[explicación breve]"
             }
 
             Ejemplos:
-            - Texto limpio: {"toxicity_score": 0.1, "is_toxic": false, "reason": "Contenido apropiado"}
-            - Texto tóxico: {"toxicity_score": 0.9, "is_toxic": true, "reason": "Contiene insultos"}
+            - Texto limpio: {"toxicity_score": 0.1, "is_toxic": false, "harassment_intent": false, "reason": "Contenido apropiado"}
+            - Texto tóxico: {"toxicity_score": 0.9, "is_toxic": true, "harassment_intent": true, "reason": "Contiene insultos dirigidos a un usuario"}
             """, text);
     }
 
@@ -126,12 +131,13 @@ public class OllamaClient {
 
             double toxicityScore = analysisJson.path("toxicity_score").asDouble(0.0);
             boolean isToxic = analysisJson.path("is_toxic").asBoolean(false);
+            boolean harassmentIntent = analysisJson.path("harassment_intent").asBoolean(false);
             String reason = analysisJson.path("reason").asText("Sin razón especificada");
 
-            log.debug("✅ Análisis completado: puntuación={}, tóxico={}, razón='{}'",
-                     toxicityScore, isToxic, reason);
+            log.debug("✅ Análisis completado: puntuación={}, tóxico={}, acoso={}, razón='{}'",
+                     toxicityScore, isToxic, harassmentIntent, reason);
 
-            return new OllamaAnalysisResult(toxicityScore, reason);
+            return new OllamaAnalysisResult(toxicityScore, reason, harassmentIntent);
 
         } catch (Exception e) {
             log.error("❌ Error parseando respuesta de Ollama: {}", e.getMessage());
@@ -142,7 +148,7 @@ public class OllamaClient {
     /**
      * Resultado del análisis de Ollama.
      */
-    public record OllamaAnalysisResult(double toxicityScore, String reason) {}
+    public record OllamaAnalysisResult(double toxicityScore, String reason, boolean harassmentIntent) {}
 
     /**
      * Excepción específica para errores de Ollama.

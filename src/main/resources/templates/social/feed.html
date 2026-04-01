@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi feed — PelisApp</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <div class="container">
+        <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> PelisApp</a>
+        <div class="navbar-nav-links">
+            <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
+            <a th:href="@{/series}"><i class="fas fa-tv"></i> Series</a>
+            <a th:href="@{/libros}"><i class="fas fa-book"></i> Libros</a>
+            <a th:href="@{/usuarios}"><i class="fas fa-users"></i> Usuarios</a>
+            <div class="user-menu" sec:authorize="isAuthenticated()">
+                <button class="user-avatar-btn" id="userAvatarBtn">
+                    <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
+                </button>
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="user-dropdown-header">
+                        <span class="user-dropdown-name" th:text="${#authentication.name}">Usuario</span>
+                    </div>
+                    <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-user"></i> Mi perfil</a>
+                    <a th:href="@{/feed}" class="user-dropdown-item" style="color:var(--accent)"><i class="fas fa-stream"></i> Mi feed</a>
+                    <a th:href="@{/chat}" class="user-dropdown-item"><i class="fas fa-comments"></i> Mensajes</a>
+                    <a th:href="@{/admin}" sec:authorize="hasRole('ADMIN')"
+                       class="user-dropdown-item user-dropdown-item-admin"><i class="fas fa-shield-alt"></i> Admin</a>
+                    <div class="user-dropdown-divider"></div>
+                    <form th:action="@{/logout}" method="post" style="margin:0">
+                        <button type="submit" class="user-dropdown-item user-dropdown-item-logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Header -->
+<div class="social-hero">
+    <div class="container">
+        <h1 class="social-hero-title"><i class="fas fa-stream"></i> Mi feed</h1>
+        <p class="social-hero-sub">Las últimas reseñas de las personas que sigues</p>
+    </div>
+</div>
+
+<div class="profile-content">
+    <a href="javascript:history.back()" class="back-link"><i class="fas fa-arrow-left"></i> Volver</a>
+
+    <!-- No following anyone yet -->
+    <div th:if="${!hasFollowing}" class="empty-state" style="margin-top:2rem;">
+        <i class="fas fa-user-friends" style="font-size:2.5rem;color:var(--text-muted);margin-bottom:1rem;"></i>
+        <p>Aún no sigues a nadie. ¡Busca usuarios e inspírate!</p>
+        <a th:href="@{/usuarios}" class="btn-accent btn-sm" style="margin-top:0.75rem;">Descubrir usuarios</a>
+    </div>
+
+    <!-- Following but no reviews yet -->
+    <div th:if="${hasFollowing and #lists.isEmpty(feedReviews)}" class="empty-state" style="margin-top:2rem;">
+        <i class="fas fa-film" style="font-size:2.5rem;color:var(--text-muted);margin-bottom:1rem;"></i>
+        <p>Las personas que sigues aún no han publicado reseñas.</p>
+    </div>
+
+    <!-- Feed reviews -->
+    <div th:each="review : ${feedReviews}" class="feed-review-card">
+        <!-- User info -->
+        <div class="feed-review-author">
+            <a th:href="@{/usuario/{un}(un=${review.user.username})}" class="feed-avatar"
+               th:text="${(review.user.displayName ?: review.user.username).substring(0,1).toUpperCase()}">U</a>
+            <div>
+                <a th:href="@{/usuario/{un}(un=${review.user.username})}" class="feed-author-name"
+                   th:text="${review.user.displayName ?: review.user.username}">Nombre</a>
+                <div class="feed-author-handle" th:text="'@' + ${review.user.username}">@usuario</div>
+            </div>
+            <div class="feed-date" th:text="${#temporals.format(review.createdAt, 'dd MMM yyyy')}">01 Ene 2026</div>
+        </div>
+
+        <!-- Content link -->
+        <div class="feed-review-body">
+            <a th:if="${review.movie != null}" th:href="@{/pelicula/{id}(id=${review.movie.id})}"
+               class="feed-content-title">
+                <i class="fas fa-film"></i> <span th:text="${review.movie.title}">Título</span>
+            </a>
+            <a th:if="${review.series != null}" th:href="@{/serie/{id}(id=${review.series.id})}"
+               class="feed-content-title">
+                <i class="fas fa-tv"></i> <span th:text="${review.series.title}">Título</span>
+            </a>
+            <a th:if="${review.book != null}" th:href="@{/libro/{id}(id=${review.book.id})}"
+               class="feed-content-title">
+                <i class="fas fa-book"></i> <span th:text="${review.book.title}">Título</span>
+            </a>
+
+            <div class="feed-stars">
+                <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
+                <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"
+                      style="color:var(--bg-elevated)"></span>
+            </div>
+
+            <div th:if="${review.text != null and !review.text.trim().isEmpty()}"
+                 class="feed-review-text" th:text="${review.text}"></div>
+
+            <div class="feed-actions">
+                <span style="color:var(--text-muted);font-size:0.8rem;">
+                    <i class="fas fa-heart"></i> <span th:text="${review.likesCount}">0</span>
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<footer class="site-footer">© 2026 PelisApp — <i class="fas fa-heart text-accent"></i> por el cine</footer>
+
+<script>
+(function() {
+    var btn = document.getElementById('userAvatarBtn');
+    var dd = document.getElementById('userDropdown');
+    if (btn && dd) {
+        btn.addEventListener('click', function(e) { e.stopPropagation(); dd.classList.toggle('open'); });
+        document.addEventListener('click', function() { dd.classList.remove('open'); });
+    }
+})();
+</script>
+</body>
+</html>

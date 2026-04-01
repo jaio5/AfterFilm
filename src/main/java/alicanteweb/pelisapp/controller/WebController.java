@@ -1,8 +1,17 @@
 package alicanteweb.pelisapp.controller;
 
-import alicanteweb.pelisapp.entity.*;
-import alicanteweb.pelisapp.repository.*;
-import alicanteweb.pelisapp.service.*;
+import alicanteweb.pelisapp.entity.Movie;
+import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.entity.User;
+import alicanteweb.pelisapp.repository.BookRepository;
+import alicanteweb.pelisapp.repository.MovieRepository;
+import alicanteweb.pelisapp.repository.ReviewLikeRepository;
+import alicanteweb.pelisapp.repository.ReviewRepository;
+import alicanteweb.pelisapp.repository.TvShowRepository;
+import alicanteweb.pelisapp.repository.UserRepository;
+import alicanteweb.pelisapp.service.EmailConfirmationService;
+import alicanteweb.pelisapp.service.IEmailService;
+import alicanteweb.pelisapp.service.TMDBMovieLoaderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -38,6 +47,8 @@ public class WebController {
     private final ReviewRepository reviewRepository;
     private final ReviewLikeRepository reviewLikeRepository;
     private final UserRepository userRepository;
+    private final TvShowRepository tvShowRepository;
+    private final BookRepository bookRepository;
 
     // Services
     private final TMDBMovieLoaderService tmdbMovieLoaderService;
@@ -58,34 +69,19 @@ public class WebController {
 
 
 
-    // ============= AUTHENTICATION =============
-
-    // Elimino los métodos duplicados:
-    // @GetMapping("/register")
-    // public String showRegisterForm(...) { ... }
-    //
-    // @PostMapping("/register")
-    // public String registerUser(...) { ... }
-    //
-    // @GetMapping("/login")
-    // public String login(...) { ... }
-    //
-    // @GetMapping("/confirm-email")
-    // public String confirmEmail(...) { ... }
-
     // ============= ADMIN PAGES =============
 
     @GetMapping("/admin")
     public String adminIndex(Model model, Authentication auth) {
-        if (auth == null || auth.getAuthorities().stream()
-                .noneMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ROLE_ADMIN"))) {
-            return "redirect:/login";
-        }
+        String redirect = requireAdminOrRedirect(auth, null);
+        if (redirect != null) return redirect;
         try {
             long totalMovies = movieRepository.count();
             long totalUsers = userRepository.count();
             long totalReviews = reviewRepository.count();
-            addAdminStatsToModel(model, totalMovies, totalUsers, totalReviews, auth.getName());
+            long totalSeries = tvShowRepository.count();
+            long totalBooks = bookRepository.count();
+            addAdminStatsToModel(model, totalMovies, totalUsers, totalReviews, totalSeries, totalBooks, auth.getName());
             return "admin/index";
         } catch (Exception e) {
             return handleError(model, "Error cargando panel de admin: " + e.getMessage(), "Error cargando panel de administración");
@@ -141,6 +137,20 @@ public class WebController {
         String redirect = requireAdminOrRedirect(auth, "admin/moderation");
         if (redirect != null) return redirect;
         return "admin/moderation";
+    }
+
+    @GetMapping("/admin/series")
+    public String adminSeries(Authentication auth) {
+        String redirect = requireAdminOrRedirect(auth, null);
+        if (redirect != null) return redirect;
+        return "admin/series";
+    }
+
+    @GetMapping("/admin/books")
+    public String adminBooks(Authentication auth) {
+        String redirect = requireAdminOrRedirect(auth, null);
+        if (redirect != null) return redirect;
+        return "admin/books";
     }
 
     @GetMapping("/admin/email-config")
@@ -200,9 +210,7 @@ public class WebController {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return "❌ Sin permisos de administrador";
         try {
-            // Cargar múltiples categorías
             String result1 = bulkLoadMovies(5, "popular");
-            Thread.sleep(1000); // Pausa breve
             String result2 = bulkLoadMovies(3, "topRated");
             return "✅ Carga automática completada: " + result1 + " y " + result2;
         } catch (Exception e) {
@@ -295,8 +303,10 @@ Sin carátula: %d (%.1f%%)
             }
 
             Review review = reviewOpt.get();
-            String username = review.getUser().getUsername();
-            String movieTitle = review.getMovie().getTitle();
+            String username = review.getUser() != null ? review.getUser().getUsername() : "?";
+            String movieTitle = review.getMovie() != null ? review.getMovie().getTitle()
+                    : review.getSeries() != null ? review.getSeries().getTitle()
+                    : review.getBook() != null ? review.getBook().getTitle() : "?";
 
             // Eliminar la reseña y sus likes asociados
             reviewLikeRepository.deleteByReview_Id(reviewId);
@@ -333,21 +343,19 @@ Sin carátula: %d (%.1f%%)
     }
 
     // Método utilitario para añadir estadísticas generales al modelo
-    private void addAdminStatsToModel(Model model, long totalMovies, long totalUsers, long totalReviews, String adminUser) {
+    private void addAdminStatsToModel(Model model, long totalMovies, long totalUsers, long totalReviews,
+                                       long totalSeries, long totalBooks, String adminUser) {
         model.addAttribute("totalMovies", totalMovies);
         model.addAttribute("totalUsers", totalUsers);
         model.addAttribute("totalReviews", totalReviews);
+        model.addAttribute("totalSeries", totalSeries);
+        model.addAttribute("totalBooks", totalBooks);
         model.addAttribute("adminUser", adminUser);
     }
 
     private boolean isNotAdmin(Authentication auth) {
         return auth == null || auth.getAuthorities().stream()
-            .noneMatch(grantedAuthority -> {
-                String authority = grantedAuthority.getAuthority();
-                return authority.equals("ROLE_ADMIN") ||
-                       authority.equals("ADMIN") ||
-                       authority.equals("Administrador");
-            });
+            .noneMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
     }
 
     // Método utilitario para comprobar permisos de admin y redirigir si no lo es
@@ -463,12 +471,6 @@ Sin carátula: %d (%.1f%%)
             default -> "❌ Preset no válido: " + presetName;
         };
     }
-
-    // Uso en endpoints:
-    // return handleError(model, "Error ...", "Mensaje usuario");
-    // return handlePreset(presetName);
-    // ============= INNER CLASSES =============
-
 
 
     @PostMapping("/resend-confirmation")

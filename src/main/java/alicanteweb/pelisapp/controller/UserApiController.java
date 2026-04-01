@@ -7,6 +7,7 @@ import alicanteweb.pelisapp.service.ReviewService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,6 +26,9 @@ public class UserApiController {
     // Obtener los datos del usuario autenticado
     @GetMapping("")
     public ResponseEntity<UserDTO> getCurrentUser(@AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+        }
         UserDTO user = authService.getUserDTOByUsername(userDetails.getUsername());
         return ResponseEntity.ok(user);
     }
@@ -35,6 +39,9 @@ public class UserApiController {
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Page<Review> reviews = reviewService.getReviewsByUsername(userDetails.getUsername(), PageRequest.of(page, size));
         return ResponseEntity.ok(reviews);
     }

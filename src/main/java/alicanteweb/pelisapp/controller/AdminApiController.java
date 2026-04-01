@@ -1,16 +1,42 @@
 package alicanteweb.pelisapp.controller;
 
+import alicanteweb.pelisapp.dto.BookListDTO;
 import alicanteweb.pelisapp.dto.ConnectionStatus;
-import alicanteweb.pelisapp.entity.*;
-import alicanteweb.pelisapp.repository.*;
-import alicanteweb.pelisapp.service.*;
-
+import alicanteweb.pelisapp.dto.TvShowListDTO;
+import alicanteweb.pelisapp.entity.Book;
+import alicanteweb.pelisapp.entity.CommentModeration;
+import alicanteweb.pelisapp.entity.Movie;
+import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.entity.TvShow;
+import alicanteweb.pelisapp.entity.User;
+import alicanteweb.pelisapp.repository.BookRepository;
+import alicanteweb.pelisapp.repository.CommentModerationRepository;
+import alicanteweb.pelisapp.repository.MovieRepository;
+import alicanteweb.pelisapp.repository.ReviewRepository;
+import alicanteweb.pelisapp.repository.TvShowRepository;
+import alicanteweb.pelisapp.repository.UserRepository;
+import alicanteweb.pelisapp.service.AuthService;
+import alicanteweb.pelisapp.service.BookService;
+import alicanteweb.pelisapp.service.GoogleBooksLoaderService;
+import alicanteweb.pelisapp.service.ModerationService;
+import alicanteweb.pelisapp.service.MovieImportService;
+import alicanteweb.pelisapp.service.MoviePosterRedownloadService;
+import alicanteweb.pelisapp.service.SystemHealthService;
+import alicanteweb.pelisapp.service.TMDBMovieLoaderService;
+import alicanteweb.pelisapp.service.TMDBSeriesLoaderService;
+import alicanteweb.pelisapp.service.TvShowService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.List;
@@ -24,19 +50,25 @@ import java.util.Optional;
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasAnyRole('ADMIN', 'ROLE_ADMIN', 'Administrador')")
+@PreAuthorize("hasRole('ADMIN')")
 public class AdminApiController {
 
     // Services - Solo los esenciales
     private final TMDBMovieLoaderService tmdbMovieLoaderService;
+    private final TMDBSeriesLoaderService tmdbSeriesLoaderService;
     private final ModerationService moderationService;
     private final SystemHealthService systemHealthService;
     private final AuthService authService; // Agregado para búsqueda de usuarios
     private final MoviePosterRedownloadService moviePosterRedownloadService;
     private final MovieImportService movieImportService;
+    private final GoogleBooksLoaderService googleBooksLoaderService;
+    private final TvShowService tvShowService;
+    private final BookService bookService;
 
     // Repositories
     private final MovieRepository movieRepository;
+    private final TvShowRepository tvShowRepository;
+    private final BookRepository bookRepository;
     private final UserRepository userRepository;
     private final CommentModerationRepository commentModerationRepository;
     private final ReviewRepository reviewRepository;
@@ -95,6 +127,8 @@ public class AdminApiController {
 
             User user = userOpt.get();
             user.setBanned(false);
+            user.setBannedUntil(null);
+            user.setBanReason(null);
             userRepository.save(user);
 
             log.info("Usuario ID {} desbaneado", userId);
@@ -102,6 +136,29 @@ public class AdminApiController {
 
         } catch (Exception e) {
             log.error("Error desbaneando usuario {}: {}", userId, e.getMessage());
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/users/{userId}/reset-offenses")
+    public ResponseEntity<String> resetUserOffenses(@PathVariable Long userId) {
+        try {
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            User user = userOpt.get();
+            user.setOffenseCount(0);
+            user.setBannedUntil(null);
+            user.setBanReason(null);
+            userRepository.save(user);
+
+            log.info("Infracciones reseteadas para usuario ID: {}", userId);
+            return ResponseEntity.ok("Infracciones reseteadas exitosamente");
+
+        } catch (Exception e) {
+            log.error("Error reseteando infracciones para usuario {}: {}", userId, e.getMessage());
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
     }
@@ -196,14 +253,19 @@ public class AdminApiController {
         var pageable = PageRequest.of(page, size);
         var userPage = userRepository.findAll(pageable);
         // Evitar exponer datos sensibles, mapear a DTO básico
-        var users = userPage.getContent().stream().map(user -> Map.of(
-                "id", user.getId(),
-                "username", user.getUsername(),
-                "email", user.getEmail(),
-                "roles", user.getRoles().stream().map(role -> role.getName()).toArray(),
-                "banned", user.isBanned(),
-                "emailConfirmed", user.isEmailConfirmed()
-        )).toList();
+        var users = userPage.getContent().stream().map(user -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", user.getId());
+            m.put("username", user.getUsername());
+            m.put("email", user.getEmail());
+            m.put("roles", user.getRoles().stream().map(role -> role.getName()).toArray());
+            m.put("banned", user.isBanned());
+            m.put("emailConfirmed", user.isEmailConfirmed());
+            m.put("offenseCount", user.getOffenseCount());
+            m.put("bannedUntil", user.getBannedUntil());
+            m.put("banReason", user.getBanReason());
+            return m;
+        }).toList();
         Map<String, Object> result = new HashMap<>();
         result.put("users", users);
         result.put("totalElements", userPage.getTotalElements());
@@ -378,7 +440,10 @@ public class AdminApiController {
                     dto.put("reviewText", review.getText() != null ? review.getText() : "");
                     dto.put("reviewStars", review.getStars());
                     dto.put("reviewUsername", review.getUser() != null ? review.getUser().getUsername() : "–");
-                    dto.put("reviewMovieTitle", review.getMovie() != null ? review.getMovie().getTitle() : "–");
+                    String contentTitle = review.getMovie() != null ? review.getMovie().getTitle()
+                            : review.getSeries() != null ? review.getSeries().getTitle()
+                            : review.getBook() != null ? review.getBook().getTitle() : "–";
+                    dto.put("reviewMovieTitle", contentTitle);
                     dto.put("reviewMovieId", review.getMovie() != null ? review.getMovie().getId() : null);
                 }
             } catch (Exception e) {
@@ -393,8 +458,7 @@ public class AdminApiController {
     public ResponseEntity<Map<String, Object>> getAllReviews(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        var pageable = PageRequest.of(page, size,
-                org.springframework.data.domain.Sort.by("createdAt").descending());
+        var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         var reviewsPage = reviewRepository.findAll(pageable);
         var content = reviewsPage.getContent().stream().map(r -> {
             Map<String, Object> dto = new HashMap<>();
@@ -403,8 +467,11 @@ public class AdminApiController {
             dto.put("stars", r.getStars());
             dto.put("createdAt", r.getCreatedAt());
             dto.put("username", r.getUser() != null ? r.getUser().getUsername() : "–");
+            String contentTitle = r.getMovie() != null ? r.getMovie().getTitle()
+                    : r.getSeries() != null ? r.getSeries().getTitle()
+                    : r.getBook() != null ? r.getBook().getTitle() : "–";
             dto.put("movieId", r.getMovie() != null ? r.getMovie().getId() : null);
-            dto.put("movieTitle", r.getMovie() != null ? r.getMovie().getTitle() : "–");
+            dto.put("movieTitle", contentTitle);
             dto.put("likesCount", r.getLikesCount());
             return dto;
         }).toList();
@@ -517,37 +584,194 @@ public class AdminApiController {
         }
     }
 
+    // ============= SERIES MANAGEMENT =============
+
+    @PostMapping("/series/import/{tmdbId}")
+    public ResponseEntity<Map<String, Object>> importSeriesFromTMDB(@PathVariable Long tmdbId) {
+        try {
+            TvShow show = tmdbSeriesLoaderService.importOrUpdateByTmdb(tmdbId);
+            if (show != null) {
+                return ResponseEntity.ok(Map.of("success", true, "id", show.getId(), "title", show.getTitle()));
+            }
+            return ResponseEntity.ok(Map.of("success", false, "message", "No se pudo importar la serie"));
+        } catch (Exception e) {
+            log.error("Error importando serie {}: {}", tmdbId, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/series/import-popular")
+    public ResponseEntity<Map<String, Object>> importPopularSeries(@RequestParam(defaultValue = "2") int pages) {
+        try {
+            int count = tmdbSeriesLoaderService.importPopularSeries(Math.min(pages, 5));
+            return ResponseEntity.ok(Map.of("success", true, "imported", count));
+        } catch (Exception e) {
+            log.error("Error importando series populares: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/series/import-top-rated")
+    public ResponseEntity<Map<String, Object>> importTopRatedSeries(@RequestParam(defaultValue = "2") int pages) {
+        try {
+            int count = tmdbSeriesLoaderService.importTopRatedSeries(Math.min(pages, 5));
+            return ResponseEntity.ok(Map.of("success", true, "imported", count));
+        } catch (Exception e) {
+            log.error("Error importando series top rated: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/series")
+    public ResponseEntity<Map<String, Object>> listSeries(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var pageable = PageRequest.of(page, size);
+        var showPage = tvShowRepository.findAll(pageable);
+        var content = showPage.getContent().stream().map(s -> {
+            Map<String, Object> dto = new HashMap<>();
+            dto.put("id", s.getId());
+            dto.put("tmdbId", s.getTmdbId());
+            dto.put("title", s.getTitle());
+            dto.put("numberOfSeasons", s.getNumberOfSeasons());
+            dto.put("genres", s.getGenres());
+            dto.put("status", s.getStatus());
+            return dto;
+        }).toList();
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", content);
+        result.put("totalElements", showPage.getTotalElements());
+        result.put("totalPages", showPage.getTotalPages());
+        result.put("page", page);
+        return ResponseEntity.ok(result);
+    }
+
+    // ============= BOOKS MANAGEMENT =============
+
+    @PostMapping("/books/import/{googleId}")
+    public ResponseEntity<Map<String, Object>> importBookFromGoogle(@PathVariable String googleId) {
+        try {
+            Book book = googleBooksLoaderService.importOrUpdateByGoogleId(googleId);
+            if (book != null) {
+                return ResponseEntity.ok(Map.of("success", true, "id", book.getId(), "title", book.getTitle()));
+            }
+            return ResponseEntity.ok(Map.of("success", false, "message", "No se pudo importar el libro"));
+        } catch (Exception e) {
+            log.error("Error importando libro {}: {}", googleId, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/books/search-import")
+    public ResponseEntity<Map<String, Object>> searchAndImportBooks(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "20") int maxResults) {
+        try {
+            int count = googleBooksLoaderService.searchAndImport(q, Math.min(maxResults, 40));
+            return ResponseEntity.ok(Map.of("success", true, "imported", count));
+        } catch (Exception e) {
+            log.error("Error en búsqueda/importación de libros: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/books")
+    public ResponseEntity<Map<String, Object>> listBooks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        var pageable = PageRequest.of(page, size);
+        var bookPage = bookRepository.findAll(pageable);
+        var content = bookPage.getContent().stream().map(b -> {
+            Map<String, Object> dto = new HashMap<>();
+            dto.put("id", b.getId());
+            dto.put("googleBooksId", b.getGoogleBooksId());
+            dto.put("title", b.getTitle());
+            dto.put("authors", b.getAuthors());
+            dto.put("publisher", b.getPublisher());
+            dto.put("publishedDate", b.getPublishedDate());
+            return dto;
+        }).toList();
+        Map<String, Object> result = new HashMap<>();
+        result.put("content", content);
+        result.put("totalElements", bookPage.getTotalElements());
+        result.put("totalPages", bookPage.getTotalPages());
+        result.put("page", page);
+        return ResponseEntity.ok(result);
+    }
+
+    @PostMapping("/series/repair-posters")
+    public ResponseEntity<Map<String, Object>> repairSeriesPosters() {
+        List<TvShow> withoutPosters = tvShowRepository.findAll().stream()
+                .filter(s -> s.getPosterLocalPath() == null || s.getPosterLocalPath().isBlank())
+                .toList();
+        int repaired = 0;
+        int errors = 0;
+        for (TvShow show : withoutPosters) {
+            if (show.getTmdbId() == null) continue;
+            try {
+                TvShow updated = tmdbSeriesLoaderService.importOrUpdateByTmdb(show.getTmdbId());
+                if (updated != null && updated.getPosterLocalPath() != null) repaired++;
+                else errors++;
+            } catch (Exception e) {
+                log.warn("Error repairing poster for series id={}: {}", show.getId(), e.getMessage());
+                errors++;
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "total", withoutPosters.size(),
+                "repaired", repaired,
+                "errors", errors));
+    }
+
+    @PostMapping("/series/{seriesId}/delete")
+    public ResponseEntity<String> deleteSeries(@PathVariable Long seriesId) {
+        try {
+            TvShow show = tvShowRepository.findById(seriesId).orElse(null);
+            if (show == null) return ResponseEntity.notFound().build();
+            tvShowRepository.delete(show);
+            log.info("Admin deleted series id={} title={}", seriesId, show.getTitle());
+            return ResponseEntity.ok("Serie eliminada correctamente");
+        } catch (Exception e) {
+            log.error("Error deleting series {}: {}", seriesId, e.getMessage());
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/books/{bookId}/delete")
+    public ResponseEntity<String> deleteBook(@PathVariable Long bookId) {
+        try {
+            Book book = bookRepository.findById(bookId).orElse(null);
+            if (book == null) return ResponseEntity.notFound().build();
+            bookRepository.delete(book);
+            log.info("Admin deleted book id={} title={}", bookId, book.getTitle());
+            return ResponseEntity.ok("Libro eliminado correctamente");
+        } catch (Exception e) {
+            log.error("Error deleting book {}: {}", bookId, e.getMessage());
+            return ResponseEntity.badRequest().body("Error: " + e.getMessage());
+        }
+    }
+
     @GetMapping("/system/health/{service}")
     public ResponseEntity<ConnectionStatus> getServiceHealth(@PathVariable String service) {
         try {
             log.info("🔍 Verificando estado del servicio: {}", service);
 
-            ConnectionStatus status;
-            switch (service.toLowerCase()) {
-                case "database":
-                    status = systemHealthService.isDatabaseHealthy()
+            ConnectionStatus status = switch (service.toLowerCase()) {
+                case "database" -> systemHealthService.isDatabaseHealthy()
                         ? ConnectionStatus.builder().connected(true).message("Base de datos conectada").build()
                         : ConnectionStatus.builder().connected(false).message("Error en base de datos").build();
-                    break;
-                case "tmdb":
-                    status = systemHealthService.isTmdbHealthy()
+                case "tmdb" -> systemHealthService.isTmdbHealthy()
                         ? ConnectionStatus.builder().connected(true).message("TMDB API conectada").build()
                         : ConnectionStatus.builder().connected(false).message("Error en TMDB API").build();
-                    break;
-                case "ollama":
-                    status = systemHealthService.isOllamaHealthy()
+                case "ollama" -> systemHealthService.isOllamaHealthy()
                         ? ConnectionStatus.builder().connected(true).message("Ollama conectado").build()
                         : ConnectionStatus.builder().connected(false).message("Error en Ollama").build();
-                    break;
-                case "email":
-                    status = ConnectionStatus.builder().connected(true).message("Configuración de email").build();
-                    break;
-                case "server":
-                    status = ConnectionStatus.builder().connected(true).message("Servidor funcionando").build();
-                    break;
-                default:
-                    return ResponseEntity.notFound().build();
-            }
+                case "email" -> ConnectionStatus.builder().connected(true).message("Configuración de email").build();
+                case "server" -> ConnectionStatus.builder().connected(true).message("Servidor funcionando").build();
+                default -> null;
+            };
+            if (status == null) return ResponseEntity.notFound().build();
 
             return ResponseEntity.ok(status);
         } catch (Exception e) {

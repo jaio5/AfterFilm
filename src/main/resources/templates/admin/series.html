@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Series - PelisApp</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" th:href="@{/}">
+                <i class="fas fa-film"></i> PelisApp
+                <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
+            </a>
+            <div class="navbar-nav-links">
+                <a th:href="@{/admin}"><i class="fas fa-home"></i> Panel</a>
+                <a th:href="@{/series}"><i class="fas fa-tv"></i> Ver Series</a>
+                <a th:href="@{/logout}"><i class="fas fa-sign-out-alt"></i> Salir</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="admin-wrapper">
+        <div class="admin-page-title"><i class="fas fa-tv" style="color:var(--accent);margin-right:0.5rem"></i>Gestión de Series</div>
+        <div class="admin-page-subtitle">Importa y gestiona el catálogo de series de TV</div>
+
+        <!-- Import actions -->
+        <div class="admin-section">
+            <div class="admin-section-title"><i class="fas fa-download"></i>Importar Series desde TMDB</div>
+            <div class="admin-grid-3">
+                <div class="admin-module-card">
+                    <div class="admin-icon"><i class="fas fa-fire"></i></div>
+                    <h4>Series Populares</h4>
+                    <p>Importa las series más populares de TMDB</p>
+                    <button onclick="importPopularSeries()" class="btn-accent"><i class="fas fa-download"></i> Importar (2 págs.)</button>
+                </div>
+                <div class="admin-module-card">
+                    <div class="admin-icon"><i class="fas fa-star"></i></div>
+                    <h4>Mejor Valoradas</h4>
+                    <p>Importa las series mejor valoradas de TMDB</p>
+                    <button onclick="importTopRatedSeries()" class="btn-accent"><i class="fas fa-download"></i> Importar (2 págs.)</button>
+                </div>
+                <div class="admin-module-card">
+                    <div class="admin-icon"><i class="fas fa-search"></i></div>
+                    <h4>Importar por TMDB ID</h4>
+                    <p>Importa una serie específica por su ID de TMDB</p>
+                    <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+                        <input type="number" id="tmdbIdInput" placeholder="TMDB ID..." class="form-input" style="flex:1;padding:0.4rem 0.6rem;font-size:0.85rem">
+                        <button onclick="importByTmdbId()" class="btn-accent" style="white-space:nowrap"><i class="fas fa-plus"></i> Importar</button>
+                    </div>
+                </div>
+            </div>
+            <div id="importLog" style="margin-top:1rem;font-size:0.8rem;color:var(--text-secondary);background:var(--bg-elevated);border-radius:6px;padding:0.75rem;min-height:2.5rem;display:none;"></div>
+        </div>
+
+        <!-- Maintenance -->
+        <div class="admin-section">
+            <div class="admin-section-title"><i class="fas fa-tools"></i>Mantenimiento</div>
+            <div class="admin-grid-2">
+                <div class="admin-module-card">
+                    <div class="admin-icon"><i class="fas fa-image"></i></div>
+                    <h4>Reparar Portadas</h4>
+                    <p>Descarga las portadas faltantes desde TMDB para todas las series sin imagen local</p>
+                    <button onclick="repairPosters()" class="btn-ghost"><i class="fas fa-wrench"></i> Reparar portadas</button>
+                </div>
+                <div class="admin-module-card">
+                    <div class="admin-icon"><i class="fas fa-sync-alt"></i></div>
+                    <h4>Reimportar Serie</h4>
+                    <p>Actualiza datos de una serie específica desde TMDB (portada, info, reparto)</p>
+                    <div style="display:flex;gap:0.5rem;margin-top:0.5rem">
+                        <input type="number" id="repairTmdbIdInput" placeholder="TMDB ID..." class="form-input" style="flex:1;padding:0.4rem 0.6rem;font-size:0.85rem">
+                        <button onclick="reimportByTmdbId()" class="btn-ghost" style="white-space:nowrap"><i class="fas fa-sync"></i> Actualizar</button>
+                    </div>
+                </div>
+            </div>
+            <div id="repairLog" style="margin-top:1rem;font-size:0.8rem;color:var(--text-secondary);background:var(--bg-elevated);border-radius:6px;padding:0.75rem;min-height:2.5rem;display:none;"></div>
+        </div>
+
+        <!-- Series list -->
+        <div class="admin-section">
+            <div class="admin-section-title"><i class="fas fa-list"></i>Series en Catálogo</div>
+            <div id="seriesStats" style="margin-bottom:1rem;font-size:0.85rem;color:var(--text-muted)">Cargando...</div>
+            <table class="admin-table">
+                <thead><tr><th>ID</th><th>Título</th><th>Temporadas</th><th>Géneros</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody id="seriesTableBody">
+                    <tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Cargando...</td></tr>
+                </tbody>
+            </table>
+            <div id="seriesPagination" style="margin-top:0.75rem;display:flex;gap:0.5rem;flex-wrap:wrap"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentPage = 0;
+
+        async function loadSeries(page = 0) {
+            const res = await fetch(`/api/admin/series?page=${page}&size=20`);
+            const data = await res.json();
+            document.getElementById('seriesStats').textContent = `Total: ${data.totalElements} series`;
+            const tbody = document.getElementById('seriesTableBody');
+            if (!data.content || data.content.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Sin series. Importa algunas primero.</td></tr>';
+            } else {
+                tbody.innerHTML = data.content.map(s => `
+                    <tr>
+                        <td>${s.id}</td>
+                        <td><a href="/serie/${s.id}" style="color:var(--accent)">${s.title}</a></td>
+                        <td>${s.numberOfSeasons || '—'}</td>
+                        <td style="font-size:0.78rem">${s.genres || '—'}</td>
+                        <td><span class="badge-info">${s.status || '—'}</span></td>
+                        <td>
+                            <button onclick="deleteSeries(${s.id}, '${(s.title || '').replace(/'/g, "\\'")}')"
+                                    style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:0.78rem;padding:0.2rem 0.4rem"
+                                    title="Eliminar serie">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>`).join('');
+            }
+            const pag = document.getElementById('seriesPagination');
+            pag.innerHTML = '';
+            for (let i = 0; i < data.totalPages; i++) {
+                const btn = document.createElement('button');
+                btn.textContent = i + 1;
+                btn.className = 'btn-ghost' + (i === page ? ' btn-accent' : '');
+                btn.style.cssText = 'font-size:0.8rem;padding:0.25rem 0.6rem';
+                btn.onclick = () => loadSeries(i);
+                pag.appendChild(btn);
+            }
+            currentPage = page;
+        }
+
+        async function importPopularSeries() {
+            showLog('Importando series populares (2 páginas)...');
+            const res = await fetch('/api/admin/series/import-popular?pages=2', { method: 'POST' });
+            const data = await res.json();
+            showLog(data.success ? `✅ Importadas ${data.imported} series.` : `❌ Error: ${data.error}`, !data.success);
+            if (data.success) loadSeries(0);
+        }
+
+        async function importTopRatedSeries() {
+            showLog('Importando series mejor valoradas (2 páginas)...');
+            const res = await fetch('/api/admin/series/import-top-rated?pages=2', { method: 'POST' });
+            const data = await res.json();
+            showLog(data.success ? `✅ Importadas ${data.imported} series.` : `❌ Error: ${data.error}`, !data.success);
+            if (data.success) loadSeries(0);
+        }
+
+        async function importByTmdbId() {
+            const id = document.getElementById('tmdbIdInput').value;
+            if (!id) { alert('Introduce un TMDB ID'); return; }
+            showLog(`Importando serie TMDB ID ${id}...`);
+            const res = await fetch(`/api/admin/series/import/${id}`, { method: 'POST' });
+            const data = await res.json();
+            showLog(data.success ? `✅ Serie "${data.title}" importada (ID: ${data.id})` : `❌ Error: ${data.error || data.message}`, !data.success);
+            if (data.success) loadSeries(0);
+        }
+
+        async function reimportByTmdbId() {
+            const id = document.getElementById('repairTmdbIdInput').value;
+            if (!id) { alert('Introduce un TMDB ID'); return; }
+            showRepairLog(`Reimportando serie TMDB ID ${id}...`);
+            const res = await fetch(`/api/admin/series/import/${id}`, { method: 'POST' });
+            const data = await res.json();
+            showRepairLog(data.success ? `✅ Serie "${data.title}" actualizada` : `❌ Error: ${data.error || data.message}`, !data.success);
+            if (data.success) loadSeries(currentPage);
+        }
+
+        async function repairPosters() {
+            showRepairLog('Reparando portadas... (puede tardar varios minutos)');
+            const res = await fetch('/api/admin/series/repair-posters', { method: 'POST' });
+            const data = await res.json();
+            showRepairLog(`✅ Reparación completada. Total sin portada: ${data.total} · Reparadas: ${data.repaired} · Errores: ${data.errors}`);
+            loadSeries(currentPage);
+        }
+
+        async function deleteSeries(id, title) {
+            if (!confirm(`¿Eliminar la serie "${title}"? Esta acción no se puede deshacer.`)) return;
+            const res = await fetch(`/api/admin/series/${id}/delete`, { method: 'POST' });
+            if (res.ok) {
+                loadSeries(currentPage);
+            } else {
+                alert('Error eliminando la serie: ' + await res.text());
+            }
+        }
+
+        function showLog(msg, isError = false) {
+            const log = document.getElementById('importLog');
+            log.style.display = 'block';
+            log.style.color = isError ? '#fca5a5' : 'var(--text-secondary)';
+            log.textContent = msg;
+        }
+
+        function showRepairLog(msg, isError = false) {
+            const log = document.getElementById('repairLog');
+            log.style.display = 'block';
+            log.style.color = isError ? '#fca5a5' : 'var(--text-secondary)';
+            log.textContent = msg;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => loadSeries(0));
+    </script>
+</body>
+</html>

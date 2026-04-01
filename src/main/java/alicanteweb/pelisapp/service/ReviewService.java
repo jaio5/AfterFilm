@@ -1,13 +1,17 @@
 package alicanteweb.pelisapp.service;
 
 import alicanteweb.pelisapp.constants.AppConstants;
+import alicanteweb.pelisapp.entity.Book;
 import alicanteweb.pelisapp.entity.Movie;
 import alicanteweb.pelisapp.entity.Review;
 import alicanteweb.pelisapp.entity.ReviewLike;
+import alicanteweb.pelisapp.entity.TvShow;
 import alicanteweb.pelisapp.entity.User;
+import alicanteweb.pelisapp.repository.BookRepository;
 import alicanteweb.pelisapp.repository.MovieRepository;
 import alicanteweb.pelisapp.repository.ReviewLikeRepository;
 import alicanteweb.pelisapp.repository.ReviewRepository;
+import alicanteweb.pelisapp.repository.TvShowRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 
@@ -29,61 +34,24 @@ public class ReviewService {
     private final ReviewLikeRepository reviewLikeRepository;
     private final UserRepository userRepository;
     private final MovieRepository movieRepository;
+    private final TvShowRepository tvShowRepository;
+    private final BookRepository bookRepository;
     private final ModerationService moderationService;
     private final UserService userService;
 
     @Transactional
     public Review createReview(Long userId, Long movieId, String text, int stars) {
         validateReviewInput(stars, text);
-
         User user = findUserById(userId);
         Movie movie = findMovieById(movieId);
-
-        // *** MODERACIÓN SÍNCRONA ANTES DE GUARDAR ***
-        // Solo moderar si hay texto para analizar
-        if (text != null && !text.trim().isEmpty()) {
-            try {
-                log.debug("🛡️ Verificando contenido - Usuario: {}, Película: {}",
-                        user.getUsername(), movie.getTitle());
-
-                // Esto BLOQUEARÁ si el contenido es inapropiado
-                ModerationService.ModerationResult moderationResult = moderationService.moderateContentSync(text);
-
-                log.debug("✅ Contenido aprobado - Usuario: {}, Puntuación: {}",
-                        user.getUsername(), String.format("%.2f", moderationResult.toxicityScore()));
-
-            } catch (ModerationService.ContentModerationException e) {
-                log.warn("❌ Contenido rechazado - Usuario: {}, Razón: {}",
-                        user.getUsername(), e.getMessage());
-
-                // LANZAR EXCEPCIÓN PARA BLOQUEAR LA PUBLICACIÓN
-                throw new IllegalArgumentException("Tu comentario contiene contenido inapropiado y no puede ser publicado. " + e.getMessage());
-            }
-        } else {
-            log.debug("📝 Reseña sin texto - Usuario: {}, Solo estrellas: {}",
-                    user.getUsername(), stars);
-        }
-
-        // Solo si pasa la moderación, crear y guardar la reseña
-        Review review = buildReview(user, movie, text, stars);
-        Review savedReview = reviewRepository.save(review);
-
-        // Moderación asíncrona adicional para estadísticas (opcional)
-        moderationService.moderateReviewAsync(savedReview)
-            .thenAccept(moderation -> log.debug("📊 Moderación asíncrona completada - ID: {}, Estado: {}",
-                        savedReview.getId(), moderation.getStatus()))
-            .exceptionally(ex -> {
-                log.warn("⚠️ Error en moderación asíncrona: {}", ex.getMessage());
-                return null;
-            });
-
-        // Actualizar logros del usuario de forma asíncrona
+        checkUserBanStatus(user);
+        runModerationSync(user, text, movie.getTitle());
+        Review saved = reviewRepository.save(buildReview(user, movie, text, stars));
+        runModerationAsync(saved);
         userService.onUserPostedReview(user.getId());
-
         log.info("✅ Reseña publicada - Usuario: {}, Película: {}, Estrellas: {}",
                 user.getUsername(), movie.getTitle(), stars);
-
-        return savedReview;
+        return saved;
     }
 
     @Transactional
@@ -105,7 +73,7 @@ public class ReviewService {
         userService.onUserReceivedLike(review.getUser().getId());
 
         log.info("Like añadido - Usuario: {}, Reseña: {}, Total likes: {}",
-                liker.getUsername(), reviewId, review.getLikesCount());
+                liker.getUsername(), reviewId, review.getLikesCount() + 1);
     }
 
     public Page<Review> getReviewsByUsername(String username, Pageable pageable) {
@@ -116,6 +84,50 @@ public class ReviewService {
 
     public List<Review> getReviewsByMovieId(Long movieId) {
         return reviewRepository.findByMovieIdOrderByCreatedAtDesc(movieId);
+    }
+
+    public List<Review> getReviewsBySeriesId(Long seriesId) {
+        if (!tvShowRepository.existsById(seriesId)) {
+            throw new IllegalArgumentException("Serie no encontrada: " + seriesId);
+        }
+        return reviewRepository.findBySeriesIdOrderByCreatedAtDesc(seriesId);
+    }
+
+    public List<Review> getReviewsByBookId(Long bookId) {
+        if (!bookRepository.existsById(bookId)) {
+            throw new IllegalArgumentException("Libro no encontrado: " + bookId);
+        }
+        return reviewRepository.findByBookIdOrderByCreatedAtDesc(bookId);
+    }
+
+    @Transactional
+    public Review createSeriesReview(Long userId, Long seriesId, String text, int stars) {
+        validateReviewInput(stars, text);
+        User user = findUserById(userId);
+        TvShow series = tvShowRepository.findById(seriesId)
+                .orElseThrow(() -> new IllegalArgumentException("Serie no encontrada: " + seriesId));
+        checkUserBanStatus(user);
+        runModerationSync(user, text, series.getTitle());
+        Review saved = reviewRepository.save(buildReview(user, series, text, stars));
+        runModerationAsync(saved);
+        userService.onUserPostedReview(user.getId());
+        log.info("Reseña de serie publicada - Usuario: {}, Serie: {}, Estrellas: {}", user.getUsername(), series.getTitle(), stars);
+        return saved;
+    }
+
+    @Transactional
+    public Review createBookReview(Long userId, Long bookId, String text, int stars) {
+        validateReviewInput(stars, text);
+        User user = findUserById(userId);
+        Book book = bookRepository.findById(bookId)
+                .orElseThrow(() -> new IllegalArgumentException("Libro no encontrado: " + bookId));
+        checkUserBanStatus(user);
+        runModerationSync(user, text, book.getTitle());
+        Review saved = reviewRepository.save(buildReview(user, book, text, stars));
+        runModerationAsync(saved);
+        userService.onUserPostedReview(user.getId());
+        log.info("Reseña de libro publicada - Usuario: {}, Libro: {}, Estrellas: {}", user.getUsername(), book.getTitle(), stars);
+        return saved;
     }
 
     /**
@@ -166,9 +178,6 @@ public class ReviewService {
                 });
     }
 
-    /**
-     * Construye una nueva reseña.
-     */
     private Review buildReview(User user, Movie movie, String text, int stars) {
         Review review = new Review();
         review.setUser(user);
@@ -178,6 +187,55 @@ public class ReviewService {
         review.setCreatedAt(Instant.now());
         review.setLikesCount(0L);
         return review;
+    }
+
+    private Review buildReview(User user, TvShow series, String text, int stars) {
+        Review review = new Review();
+        review.setUser(user);
+        review.setSeries(series);
+        review.setText(text);
+        review.setStars(stars);
+        review.setCreatedAt(Instant.now());
+        review.setLikesCount(0L);
+        return review;
+    }
+
+    private Review buildReview(User user, Book book, String text, int stars) {
+        Review review = new Review();
+        review.setUser(user);
+        review.setBook(book);
+        review.setText(text);
+        review.setStars(stars);
+        review.setCreatedAt(Instant.now());
+        review.setLikesCount(0L);
+        return review;
+    }
+
+    private void runModerationSync(User user, String text, String contentTitle) {
+        if (text == null || text.trim().isEmpty()) {
+            log.debug("📝 Reseña sin texto - Usuario: {}", user.getUsername());
+            return;
+        }
+        try {
+            log.debug("🛡️ Verificando contenido - Usuario: {}, Contenido: {}", user.getUsername(), contentTitle);
+            ModerationService.ModerationResult result = moderationService.moderateContentSync(text);
+            log.debug("✅ Contenido aprobado - Usuario: {}, Puntuación: {}",
+                    user.getUsername(), String.format("%.2f", result.toxicityScore()));
+        } catch (ModerationService.ContentModerationException e) {
+            log.warn("❌ Contenido rechazado - Usuario: {}, Contenido: {}", user.getUsername(), contentTitle);
+            String banMessage = applyProgressiveBan(user, e.isHarassmentIntent());
+            throw new IllegalArgumentException("Tu comentario infringe las normas de la comunidad. " + banMessage);
+        }
+    }
+
+    private void runModerationAsync(Review saved) {
+        moderationService.moderateReviewAsync(saved)
+            .thenAccept(moderation -> log.debug("📊 Moderación asíncrona completada - ID: {}, Estado: {}",
+                    saved.getId(), moderation.getStatus()))
+            .exceptionally(ex -> {
+                log.warn("⚠️ Error en moderación asíncrona: {}", ex.getMessage());
+                return null;
+            });
     }
 
     /**
@@ -202,10 +260,75 @@ public class ReviewService {
     }
 
     /**
-     * Incrementa el contador de likes de la reseña.
+     * Incrementa atómicamente el contador de likes de la reseña.
      */
     private void incrementLikesCount(Review review) {
-        review.setLikesCount(review.getLikesCount() + 1);
-        reviewRepository.save(review);
+        reviewRepository.incrementLikesCount(review.getId());
+    }
+
+    /**
+     * Verifica si el usuario está baneado (permanente o temporal).
+     * Si el ban temporal ha expirado, lo limpia automáticamente.
+     */
+    private void checkUserBanStatus(User user) {
+        if (user.isBanned()) {
+            throw new IllegalArgumentException("Tu cuenta ha sido suspendida permanentemente y no puedes publicar reseñas.");
+        }
+        if (user.getBannedUntil() != null) {
+            if (Instant.now().isBefore(user.getBannedUntil())) {
+                throw new IllegalArgumentException(
+                    String.format("Tu cuenta está temporalmente suspendida hasta %s. Razón: %s",
+                        user.getBannedUntil(), user.getBanReason() != null ? user.getBanReason() : "Infracción de normas"));
+            } else {
+                // Ban temporal expirado — limpiar automáticamente
+                user.setBannedUntil(null);
+                user.setBanReason(null);
+                userRepository.save(user);
+                log.info("Ban temporal expirado y eliminado - Usuario: {}", user.getUsername());
+            }
+        }
+    }
+
+    /**
+     * Aplica el sistema de baneo progresivo tras detectar contenido inapropiado.
+     * Progresión: advertencia → 1d → 3d → 7d → 30d → ban permanente
+     */
+    private String applyProgressiveBan(User user, boolean isHarassment) {
+        int currentOffenses = user.getOffenseCount();
+        user.setOffenseCount(currentOffenses + 1);
+
+        String message = switch (currentOffenses) {
+            case 0 -> "Esta es tu primera advertencia. Si reincides recibirás una suspensión temporal.";
+            case 1 -> {
+                user.setBannedUntil(Instant.now().plus(1, ChronoUnit.DAYS));
+                user.setBanReason("Infracción reiterada de normas (2ª vez)");
+                yield "Has sido suspendido temporalmente durante 1 día.";
+            }
+            case 2 -> {
+                user.setBannedUntil(Instant.now().plus(3, ChronoUnit.DAYS));
+                user.setBanReason("Infracción reiterada de normas (3ª vez)");
+                yield "Has sido suspendido temporalmente durante 3 días.";
+            }
+            case 3 -> {
+                user.setBannedUntil(Instant.now().plus(7, ChronoUnit.DAYS));
+                user.setBanReason("Infracción reiterada de normas (4ª vez)");
+                yield "Has sido suspendido temporalmente durante 7 días.";
+            }
+            case 4 -> {
+                user.setBannedUntil(Instant.now().plus(30, ChronoUnit.DAYS));
+                user.setBanReason("Infracción reiterada de normas (5ª vez)");
+                yield "Has sido suspendido temporalmente durante 30 días.";
+            }
+            default -> {
+                user.setBanned(true);
+                user.setBanReason("Infracciones reiteradas de normas (" + (currentOffenses + 1) + "ª vez)");
+                yield "Tu cuenta ha sido suspendida permanentemente por infracciones reiteradas de las normas.";
+            }
+        };
+
+        userRepository.save(user);
+        log.warn("⚠️ Sanción aplicada - Usuario: {}, Infracción #{}, Acoso: {}, Mensaje: {}",
+                user.getUsername(), currentOffenses + 1, isHarassment, message);
+        return message;
     }
 }

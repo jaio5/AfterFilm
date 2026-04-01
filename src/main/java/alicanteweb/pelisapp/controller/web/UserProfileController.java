@@ -2,11 +2,14 @@ package alicanteweb.pelisapp.controller.web;
 
 import alicanteweb.pelisapp.entity.User;
 import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.entity.UserContentList;
 import alicanteweb.pelisapp.repository.UserRepository;
 import alicanteweb.pelisapp.repository.ReviewRepository;
+import alicanteweb.pelisapp.service.UserListService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import java.security.Principal;
@@ -18,8 +21,10 @@ import java.util.List;
 public class UserProfileController {
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
+    private final UserListService userListService;
 
     @GetMapping("/perfil")
+    @Transactional(readOnly = true)
     public String perfil(Model model, Principal principal) {
         if (principal == null) {
             return "redirect:/login";
@@ -39,6 +44,16 @@ public class UserProfileController {
                     .mapToInt(Review::getStars)
                     .average()
                     .orElse(0.0);
+            List<UserContentList> favorites;
+            List<UserContentList> watchlist;
+            try {
+                favorites = userListService.getList(username, UserListService.FAVORITE);
+                watchlist = userListService.getList(username, UserListService.WATCHLIST);
+            } catch (Exception e) {
+                log.warn("No se pudieron cargar las listas del usuario: {}", e.getMessage());
+                favorites = List.of();
+                watchlist = List.of();
+            }
             model.addAttribute("user", user);
             model.addAttribute("reviews", userReviews);
             model.addAttribute("reviewCount", userReviews.size());
@@ -46,10 +61,12 @@ public class UserProfileController {
             model.addAttribute("followersCount", followersCount);
             model.addAttribute("followingCount", followingCount);
             model.addAttribute("archivements", archivements);
+            model.addAttribute("favorites", favorites);
+            model.addAttribute("watchlist", watchlist);
             return model.containsAttribute("user") ? "perfil" : "error";
         } catch (Exception e) {
-            log.error("Error cargando perfil: {}", e.getMessage());
-            model.addAttribute("error", "Error cargando perfil");
+            log.error("Error cargando perfil", e);
+            model.addAttribute("error", "Error cargando perfil: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             return "error";
         }
     }

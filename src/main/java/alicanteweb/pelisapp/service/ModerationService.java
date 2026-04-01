@@ -103,7 +103,7 @@ public class ModerationService {
     public ModerationResult moderateContentSync(String text) {
         if (!moderationEnabled) {
             log.debug("Moderación deshabilitada, aprobando contenido");
-            return new ModerationResult(0.0, "Moderación deshabilitada", true);
+            return new ModerationResult(0.0, "Moderación deshabilitada", true, false);
         }
 
         try {
@@ -113,10 +113,11 @@ public class ModerationService {
             if (result.toxicityScore() >= toxicityThreshold) {
                 throw new ContentModerationException(
                     String.format("Contenido inapropiado detectado (puntuación: %.2f). %s",
-                            result.toxicityScore(), result.reason()));
+                            result.toxicityScore(), result.reason()),
+                    result.harassmentIntent());
             }
 
-            return new ModerationResult(result.toxicityScore(), result.reason(), true);
+            return new ModerationResult(result.toxicityScore(), result.reason(), true, result.harassmentIntent());
 
         } catch (OllamaClient.OllamaException e) {
             log.warn("Ollama no disponible, usando IA local ModeratingAI para moderación síncrona");
@@ -125,9 +126,9 @@ public class ModerationService {
             double iaScore = moderatingAI.analyzeText(text);
             if (iaScore < iaToxicityThreshold) {
                 throw new ContentModerationException(
-                    String.format("Contenido inapropiado detectado por IA local (puntuación: %.2f).", iaScore));
+                    String.format("Contenido inapropiado detectado por IA local (puntuación: %.2f).", iaScore), false);
             }
-            return new ModerationResult(iaScore, "Moderación por IA local (ModeratingAI)", false);
+            return new ModerationResult(iaScore, "Moderación por IA local (ModeratingAI)", false, false);
         }
     }
 
@@ -207,16 +208,22 @@ public class ModerationService {
 
     // Records y excepciones
 
-    public record ModerationResult(double toxicityScore, String reason, boolean aiProcessed) {
-        // Método de compatibilidad
+    public record ModerationResult(double toxicityScore, String reason, boolean aiProcessed, boolean harassmentIntent) {
         public boolean ollamaUsed() {
             return aiProcessed;
         }
     }
 
     public static class ContentModerationException extends RuntimeException {
-        public ContentModerationException(String message) {
+        private final boolean harassmentIntent;
+
+        public ContentModerationException(String message, boolean harassmentIntent) {
             super(message);
+            this.harassmentIntent = harassmentIntent;
+        }
+
+        public boolean isHarassmentIntent() {
+            return harassmentIntent;
         }
     }
 }

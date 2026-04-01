@@ -22,7 +22,11 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneOffset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -257,19 +261,8 @@ public class MovieService {
     private List<MovieListDTO> mapWithRatingStats(List<Movie> movies) {
         if (movies.isEmpty()) return List.of();
         List<Long> ids = movies.stream().map(Movie::getId).toList();
-        Map<Long, double[]> ratingMap = buildRatingMap(movieRepository.findRatingStatsByIds(ids));
+        Map<Long, double[]> ratingMap = RatingStatsHelper.buildRatingMap(movieRepository.findRatingStatsByIds(ids));
         return movies.stream().map(m -> toMovieListDTO(m, ratingMap.get(m.getId()))).toList();
-    }
-
-    private Map<Long, double[]> buildRatingMap(List<Object[]> rows) {
-        Map<Long, double[]> map = new HashMap<>();
-        for (Object[] row : rows) {
-            Long id = ((Number) row[0]).longValue();
-            Double avg = row[1] != null ? ((Number) row[1]).doubleValue() : null;
-            long count = ((Number) row[2]).longValue();
-            map.put(id, new double[]{avg != null ? avg : 0.0, count});
-        }
-        return map;
     }
 
     private MovieListDTO toMovieListDTO(Movie movie, double[] stats) {

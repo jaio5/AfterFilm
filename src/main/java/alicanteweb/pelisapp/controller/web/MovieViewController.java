@@ -41,28 +41,25 @@ public class MovieViewController {
             List<Review> reviews = reviewRepository.findByMovieIdOrderByCreatedAtDesc(movie.getId());
             MovieStats stats = calculateMovieStats(reviews);
             Review userReview = null;
-            if (auth != null && auth.isAuthenticated()) {
-                User user = userRepository.findByUsername(auth.getName()).orElse(null);
-                if (user != null) {
-                    userReview = reviewRepository.findByUserIdAndMovieId(user.getId(), movie.getId()).orElse(null);
+            User currentUser = null;
+            boolean isAuthenticated = auth != null && auth.isAuthenticated();
+            if (isAuthenticated) {
+                currentUser = userRepository.findByUsername(auth.getName()).orElse(null);
+                if (currentUser != null) {
+                    userReview = reviewRepository.findByUserIdAndMovieId(currentUser.getId(), movie.getId()).orElse(null);
                 }
             }
+            boolean isAdmin = isAuthenticated && auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
             model.addAttribute("movie", movie);
             model.addAttribute("movieDetails", movieDetails);
             model.addAttribute("reviews", reviews);
             model.addAttribute("movieStats", stats);
             model.addAttribute("userReview", userReview);
-            boolean isAuthenticated = auth != null && auth.isAuthenticated();
-            boolean isAdmin = isAuthenticated && auth.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
-                            || a.getAuthority().equals("ADMIN")
-                            || a.getAuthority().equals("Administrador"));
             model.addAttribute("canReview", isAuthenticated && userReview == null);
             model.addAttribute("isAuthenticated", isAuthenticated);
             model.addAttribute("isAdmin", isAdmin);
-            if (isAuthenticated) {
-                userRepository.findByUsername(auth.getName()).ifPresent(u -> model.addAttribute("currentUser", u));
-            }
+            model.addAttribute("currentUser", currentUser);
             return "movie-detail";
         } catch (Exception e) {
             log.error("Error cargando detalles de película {}: {}", id, e.getMessage());

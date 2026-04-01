@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${profile.displayName} + ' — PelisApp'">Perfil — PelisApp</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar">
+    <div class="container">
+        <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> PelisApp</a>
+        <div class="navbar-nav-links">
+            <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
+            <a th:href="@{/series}"><i class="fas fa-tv"></i> Series</a>
+            <a th:href="@{/libros}"><i class="fas fa-book"></i> Libros</a>
+            <a th:href="@{/usuarios}"><i class="fas fa-users"></i> Usuarios</a>
+            <a th:href="@{/login}" sec:authorize="!isAuthenticated()">Entrar</a>
+            <a th:href="@{/register}" sec:authorize="!isAuthenticated()" class="btn-accent btn-sm">Registrarse</a>
+            <div class="user-menu" sec:authorize="isAuthenticated()">
+                <button class="user-avatar-btn" id="userAvatarBtn">
+                    <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
+                </button>
+                <div class="user-dropdown" id="userDropdown">
+                    <div class="user-dropdown-header">
+                        <span class="user-dropdown-name" th:text="${#authentication.name}">Usuario</span>
+                    </div>
+                    <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-user"></i> Mi perfil</a>
+                    <a th:href="@{/feed}" class="user-dropdown-item"><i class="fas fa-stream"></i> Mi feed</a>
+                    <a th:href="@{/chat}" class="user-dropdown-item"><i class="fas fa-comments"></i> Mensajes</a>
+                    <a th:href="@{/admin}" sec:authorize="hasRole('ADMIN')"
+                       class="user-dropdown-item user-dropdown-item-admin"><i class="fas fa-shield-alt"></i> Admin</a>
+                    <div class="user-dropdown-divider"></div>
+                    <form th:action="@{/logout}" method="post" style="margin:0">
+                        <button type="submit" class="user-dropdown-item user-dropdown-item-logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Profile hero -->
+<div class="profile-hero">
+    <div class="profile-hero-inner">
+        <div class="profile-avatar-circle" th:text="${profile.displayName.substring(0,1).toUpperCase()}">U</div>
+        <div>
+            <h1 class="profile-name" th:text="${profile.displayName}">Nombre</h1>
+            <div class="profile-username" th:text="'@' + ${profile.username}">@usuario</div>
+            <div class="profile-stats">
+                <div class="profile-stat">
+                    <strong th:text="${profile.followersCount}">0</strong> seguidores
+                </div>
+                <div class="profile-stat">
+                    <strong th:text="${profile.followingCount}">0</strong> siguiendo
+                </div>
+                <div class="profile-stat">
+                    <strong th:text="${profile.reviewCount}">0</strong> reseñas
+                </div>
+            </div>
+            <!-- Action buttons (only if viewing someone else's profile) -->
+            <div th:if="${!isOwnProfile}" style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
+                <button th:if="${!profile.following}" sec:authorize="isAuthenticated()"
+                        id="followBtn" class="btn-accent btn-sm"
+                        th:data-username="${profile.username}">
+                    <i class="fas fa-user-plus"></i> Seguir
+                </button>
+                <button th:if="${profile.following}" sec:authorize="isAuthenticated()"
+                        id="followBtn" class="btn-ghost btn-sm"
+                        th:data-username="${profile.username}" data-following="true">
+                    <i class="fas fa-user-check"></i> Siguiendo
+                </button>
+                <a th:href="@{/chat/{un}(un=${profile.username})}" sec:authorize="isAuthenticated()"
+                   class="btn-ghost btn-sm">
+                    <i class="fas fa-comment"></i> Mensaje
+                </a>
+            </div>
+            <div th:if="${isOwnProfile}" style="margin-top:1rem;">
+                <a th:href="@{/perfil}" class="btn-ghost btn-sm"><i class="fas fa-cog"></i> Mi perfil completo</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Content -->
+<div class="profile-content">
+    <a href="javascript:history.back()" class="back-link"><i class="fas fa-arrow-left"></i> Volver</a>
+
+    <!-- Followers / Following tabs -->
+    <div style="display:flex;gap:2rem;margin-top:2rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:0.75rem;">
+        <button class="tab-btn active" id="tabReviews" onclick="showTab('reviews')">
+            Reseñas (<span th:text="${profile.reviewCount}">0</span>)
+        </button>
+        <button class="tab-btn" id="tabFollowers" onclick="showTab('followers')">
+            Seguidores (<span th:text="${profile.followersCount}">0</span>)
+        </button>
+        <button class="tab-btn" id="tabFollowing" onclick="showTab('following')">
+            Siguiendo (<span th:text="${profile.followingCount}">0</span>)
+        </button>
+    </div>
+
+    <!-- Reviews tab -->
+    <div id="tab-reviews">
+        <div th:if="${#lists.isEmpty(reviews)}" class="empty-state">
+            <i class="fas fa-film"></i>
+            <p th:text="'@' + ${profile.username} + ' aún no ha publicado reseñas.'"></p>
+        </div>
+        <div th:each="review : ${reviews}" class="profile-review-card">
+            <div class="profile-review-poster-placeholder">
+                <i th:class="${review.series != null ? 'fas fa-tv' : (review.book != null ? 'fas fa-book' : 'fas fa-film')}"></i>
+            </div>
+            <div class="profile-review-body">
+                <a th:if="${review.movie != null}" th:href="@{/pelicula/{id}(id=${review.movie.id})}"
+                   class="profile-review-title" th:text="${review.movie.title}">Título</a>
+                <a th:if="${review.series != null}" th:href="@{/serie/{id}(id=${review.series.id})}"
+                   class="profile-review-title" th:text="${review.series.title}">Título</a>
+                <a th:if="${review.book != null}" th:href="@{/libro/{id}(id=${review.book.id})}"
+                   class="profile-review-title" th:text="${review.book.title}">Título</a>
+                <div class="profile-review-stars">
+                    <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
+                    <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"
+                          style="color:var(--bg-elevated)"></span>
+                </div>
+                <div class="profile-review-text"
+                     th:if="${review.text != null and !review.text.trim().isEmpty()}"
+                     th:text="${review.text}"></div>
+                <div class="profile-review-date"
+                     th:text="${#temporals.format(review.createdAt, 'dd/MM/yyyy')}"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Followers tab -->
+    <div id="tab-followers" style="display:none">
+        <div th:if="${#lists.isEmpty(followers)}" class="empty-state">
+            <p>Aún no tiene seguidores.</p>
+        </div>
+        <div th:each="u : ${followers}" class="social-user-card" style="margin-bottom:0.75rem;">
+            <div class="social-user-avatar" th:text="${u.displayName.substring(0,1).toUpperCase()}">U</div>
+            <div class="social-user-info">
+                <a th:href="@{/usuario/{un}(un=${u.username})}" class="social-user-name" th:text="${u.displayName}">Nombre</a>
+                <div class="social-user-handle" th:text="'@' + ${u.username}">@usuario</div>
+            </div>
+            <a th:href="@{/usuario/{un}(un=${u.username})}" class="btn-ghost btn-sm">Ver</a>
+        </div>
+    </div>
+
+    <!-- Following tab -->
+    <div id="tab-following" style="display:none">
+        <div th:if="${#lists.isEmpty(following)}" class="empty-state">
+            <p>No sigue a nadie todavía.</p>
+        </div>
+        <div th:each="u : ${following}" class="social-user-card" style="margin-bottom:0.75rem;">
+            <div class="social-user-avatar" th:text="${u.displayName.substring(0,1).toUpperCase()}">U</div>
+            <div class="social-user-info">
+                <a th:href="@{/usuario/{un}(un=${u.username})}" class="social-user-name" th:text="${u.displayName}">Nombre</a>
+                <div class="social-user-handle" th:text="'@' + ${u.username}">@usuario</div>
+            </div>
+            <a th:href="@{/usuario/{un}(un=${u.username})}" class="btn-ghost btn-sm">Ver</a>
+        </div>
+    </div>
+</div>
+
+<footer class="site-footer">© 2026 PelisApp — <i class="fas fa-heart text-accent"></i> por el cine</footer>
+
+<script>
+(function() {
+    // Navbar dropdown
+    var btn = document.getElementById('userAvatarBtn');
+    var dd = document.getElementById('userDropdown');
+    if (btn && dd) {
+        btn.addEventListener('click', function(e) { e.stopPropagation(); dd.classList.toggle('open'); });
+        document.addEventListener('click', function() { dd.classList.remove('open'); });
+    }
+
+    // Tabs
+    window.showTab = function(name) {
+        ['reviews','followers','following'].forEach(function(t) {
+            document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
+            document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === name);
+        });
+    };
+
+    // Follow / unfollow
+    var followBtn = document.getElementById('followBtn');
+    if (followBtn) {
+        followBtn.addEventListener('click', function() {
+            var username = this.dataset.username;
+            var isFollowing = this.dataset.following === 'true';
+            var url = '/api/social/users/' + username + (isFollowing ? '/unfollow' : '/follow');
+            if (isFollowing && !confirm('¿Dejar de seguir a @' + username + '?')) return;
+            fetch(url, { method: 'POST' }).then(r => r.json()).then(function(data) {
+                if (data.following) {
+                    followBtn.innerHTML = '<i class="fas fa-user-check"></i> Siguiendo';
+                    followBtn.className = 'btn-ghost btn-sm';
+                    followBtn.dataset.following = 'true';
+                } else {
+                    followBtn.innerHTML = '<i class="fas fa-user-plus"></i> Seguir';
+                    followBtn.className = 'btn-accent btn-sm';
+                    followBtn.dataset.following = 'false';
+                }
+            });
+        });
+    }
+})();
+</script>
+</body>
+</html>

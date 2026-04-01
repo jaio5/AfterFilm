@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${series.title + ' — PelisApp'}">Serie — PelisApp</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="container">
+            <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> PelisApp</a>
+            <div class="navbar-nav-links">
+                <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
+                <a th:href="@{/series}" style="color:var(--accent)"><i class="fas fa-tv"></i> Series</a>
+                <a th:href="@{/libros}"><i class="fas fa-book"></i> Libros</a>
+                <a th:href="@{/usuarios}"><i class="fas fa-users"></i> Usuarios</a>
+                <a th:href="@{/login}" sec:authorize="!isAuthenticated()">Entrar</a>
+                <a th:href="@{/register}" sec:authorize="!isAuthenticated()" class="btn-accent btn-sm">Registrarse</a>
+                <div class="user-menu" sec:authorize="isAuthenticated()">
+                    <button class="user-avatar-btn" id="userAvatarBtn">
+                        <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <div class="user-dropdown-header">
+                            <span class="user-dropdown-name" th:text="${#authentication.name}">Usuario</span>
+                        </div>
+                        <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-user"></i> Mi perfil</a>
+                        <a th:href="@{/feed}" class="user-dropdown-item"><i class="fas fa-stream"></i> Mi feed</a>
+                        <a th:href="@{/chat}" class="user-dropdown-item"><i class="fas fa-comments"></i> Mensajes</a>
+                        <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-cog"></i> Ajustes</a>
+                        <a th:href="@{/admin}" sec:authorize="hasRole('ADMIN')"
+                           class="user-dropdown-item user-dropdown-item-admin"><i class="fas fa-shield-alt"></i> Panel de Admin</a>
+                        <div class="user-dropdown-divider"></div>
+                        <form th:action="@{/logout}" method="post" style="margin:0">
+                            <button type="submit" class="user-dropdown-item user-dropdown-item-logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero section -->
+    <div class="detail-hero">
+        <div class="detail-hero-backdrop"
+             th:with="backdropUrl=${series.posterLocalPath != null and !series.posterLocalPath.isEmpty() ? '/images/' + series.posterLocalPath : (series.posterPath != null and !series.posterPath.isEmpty() ? 'https://image.tmdb.org/t/p/w500' + series.posterPath : null)}"
+             th:style="${backdropUrl != null ? 'background-image: url(' + backdropUrl + ')' : 'background: var(--bg-elevated)'}">
+        </div>
+        <div class="detail-hero-content">
+            <div class="detail-poster">
+                <img th:if="${series.posterLocalPath != null and !series.posterLocalPath.isEmpty()}"
+                     th:src="${'/images/' + series.posterLocalPath}" th:alt="${series.title}">
+                <img th:if="${(series.posterLocalPath == null or series.posterLocalPath.isEmpty())
+                              and (series.posterPath != null and !series.posterPath.isEmpty())}"
+                     th:src="${series.posterPath.startsWith('http') ? series.posterPath : 'https://image.tmdb.org/t/p/w500' + series.posterPath}"
+                     th:alt="${series.title}">
+                <div th:if="${(series.posterLocalPath == null or series.posterLocalPath.isEmpty())
+                              and (series.posterPath == null or series.posterPath.isEmpty())}"
+                     class="detail-poster-placeholder">
+                    <i class="fas fa-tv"></i>
+                </div>
+            </div>
+            <div class="detail-movie-info">
+                <h1 class="detail-title" th:text="${series.title}">Título</h1>
+                <div class="detail-meta">
+                    <span th:if="${series.firstAirDate != null}" th:text="${#temporals.year(series.firstAirDate)}">2023</span>
+                    <span class="detail-meta-sep" th:if="${series.numberOfSeasons != null}">·</span>
+                    <span th:if="${series.numberOfSeasons != null}" th:text="${series.numberOfSeasons + ' temporada' + (series.numberOfSeasons == 1 ? '' : 's')}">3 temporadas</span>
+                    <span class="detail-meta-sep" th:if="${series.numberOfEpisodes != null}">·</span>
+                    <span th:if="${series.numberOfEpisodes != null}" th:text="${series.numberOfEpisodes + ' ep.'}">30 ep.</span>
+                    <span class="detail-meta-sep" th:if="${stats.totalReviews > 0}">·</span>
+                    <span th:if="${stats.totalReviews > 0}" style="color:var(--accent)"
+                          th:text="${stats.totalReviews + (stats.totalReviews == 1 ? ' reseña' : ' reseñas')}"></span>
+                </div>
+                <div class="detail-genres" th:if="${series.genres != null and !series.genres.isEmpty()}">
+                    <th:block th:each="g : ${#strings.arraySplit(series.genres, ',')}">
+                        <span class="genre-tag" th:text="${#strings.trim(g)}">Género</span>
+                    </th:block>
+                </div>
+                <div class="detail-rating" th:if="${stats.totalReviews > 0}">
+                    <span class="detail-rating-number" th:text="${stats.averageRatingFormatted}">4.5</span>
+                    <i class="fas fa-star" style="color:#f59e0b;font-size:0.85rem;"></i>
+                    <span th:text="'(' + ${stats.totalReviews} + ' valoraciones)'"></span>
+                </div>
+                <p class="detail-synopsis" th:text="${series.overview ?: 'Sin descripción disponible.'}">Sinopsis</p>
+                <div th:if="${series.status != null}" style="font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem;">
+                    Estado: <span th:text="${series.status}" style="color:var(--text-secondary)">En emisión</span>
+                </div>
+
+                <div class="detail-list-actions" sec:authorize="isAuthenticated()"
+                     th:attr="data-content-type='series',data-content-id=${series.id},data-content-title=${series.title},data-content-poster=${series.posterLocalPath ?: ''}">
+                    <button class="btn-list" id="btnFavorite" onclick="toggleList('FAVORITE')">
+                        <i class="far fa-heart"></i> <span>Favorito</span>
+                    </button>
+                    <button class="btn-list" id="btnWatchlist" onclick="toggleList('WATCHLIST')">
+                        <i class="far fa-bookmark"></i> <span>Quiero ver</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main layout -->
+    <div class="detail-main">
+        <div>
+            <a href="javascript:history.back()" class="back-link">
+                <i class="fas fa-arrow-left"></i> Volver a series
+            </a>
+
+            <div th:if="${success}" class="alert-msg alert-msg-success" style="margin:1rem 0;">
+                <i class="fas fa-check-circle"></i>
+                <span th:text="${success}"></span>
+            </div>
+            <div th:if="${error}" class="alert-msg alert-msg-danger" style="margin:1rem 0;">
+                <i class="fas fa-exclamation-circle"></i>
+                <span th:text="${error}"></span>
+            </div>
+
+            <!-- Review form -->
+            <div class="review-form-box" th:if="${canReview}">
+                <h4>¿Qué te pareció?</h4>
+                <form id="resenaForm">
+                    <div class="star-rating" id="starRating">
+                        <input type="radio" name="stars" value="5" id="star5" required>
+                        <label for="star5" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="4" id="star4">
+                        <label for="star4" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="3" id="star3">
+                        <label for="star3" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="2" id="star2">
+                        <label for="star2" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="1" id="star1">
+                        <label for="star1" class="fas fa-star"></label>
+                    </div>
+                    <div class="form-field">
+                        <label class="form-label" for="reviewText">
+                            Comentario
+                            <span style="color:var(--text-muted);font-size:0.75rem;text-transform:none;letter-spacing:0;font-weight:400;">(opcional)</span>
+                        </label>
+                        <textarea class="form-input" id="reviewText" name="text"
+                                  placeholder="Comparte tu opinión sobre esta serie..."
+                                  maxlength="1000"></textarea>
+                    </div>
+                    <input type="hidden" name="seriesId" th:value="${series.id}">
+                    <button type="submit" class="btn-accent btn-sm">
+                        <i class="fas fa-paper-plane"></i> Publicar
+                    </button>
+                    <div id="resenaMessage" class="form-hint" style="display:none;margin-top:0.5rem;"></div>
+                </form>
+            </div>
+
+            <!-- Already reviewed -->
+            <div class="review-form-box" th:if="${userReview != null}">
+                <div class="alert-msg alert-msg-info">
+                    <i class="fas fa-check-circle"></i>
+                    <div>
+                        <strong>Tu valoración:</strong>
+                        <span th:each="i : ${#numbers.sequence(1, userReview.stars)}" style="color:#f59e0b;">★</span>
+                        <br>
+                        <em th:if="${userReview.text != null and !userReview.text.trim().isEmpty()}"
+                            th:text="${userReview.text}"></em>
+                        <em th:unless="${userReview.text != null and !userReview.text.trim().isEmpty()}"
+                            style="color:var(--text-muted)">Sin comentario</em>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Login prompt -->
+            <div class="login-prompt-box" th:unless="${isAuthenticated}">
+                <span>Inicia sesión para valorar y opinar sobre esta serie</span>
+                <a th:href="@{/login}" class="btn-accent btn-sm">Entrar</a>
+            </div>
+
+            <!-- Reviews list -->
+            <p class="section-title">
+                Reseñas
+                <span th:if="${stats.totalReviews > 0}" th:text="'(' + ${stats.totalReviews} + ')'"></span>
+            </p>
+
+            <div th:if="${#lists.isEmpty(reviews)}" class="empty-state" style="padding:2rem 0;">
+                <i class="fas fa-comment-slash"></i>
+                <p>Sin reseñas todavía. ¡Sé el primero!</p>
+            </div>
+
+            <div th:each="review : ${reviews}" class="review-item">
+                <div class="review-item-header">
+                    <div class="review-item-user">
+                        <a th:href="@{/usuario/{u}(u=${review.user.username})}"
+                           class="review-avatar review-avatar-link"
+                           th:text="${#strings.substring(review.user.username, 0, 1).toUpperCase()}">U</a>
+                        <a th:href="@{/usuario/{u}(u=${review.user.username})}"
+                           class="review-username review-username-link"
+                           th:text="${review.user.username}">Usuario</a>
+                    </div>
+                    <div class="review-stars-display">
+                        <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
+                        <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
+                    </div>
+                </div>
+                <div class="review-body">
+                    <span th:if="${review.text != null and !review.text.trim().isEmpty()}" th:text="${review.text}"></span>
+                    <em th:unless="${review.text != null and !review.text.trim().isEmpty()}"
+                        style="color:var(--text-muted)">Sin comentario</em>
+                </div>
+                <div class="review-item-footer">
+                    <button class="btn-like"
+                            th:if="${isAuthenticated}"
+                            th:id="${'like-btn-' + review.id}"
+                            th:onclick="'likeReview(' + ${review.id} + ')'">
+                        <i class="fas fa-thumbs-up"></i>
+                        <span th:text="${review.likesCount ?: 0}">0</span>
+                    </button>
+                    <button class="btn-text" style="color:#fca5a5;font-size:0.78rem;"
+                            th:if="${isAdmin}"
+                            th:onclick="'deleteReview(' + ${review.id} + ', \'' + ${review.user.username} + '\')'">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                    <span class="review-date-text"
+                          th:text="${review.createdAt != null ? review.createdAt.toString().substring(0, 10) : ''}"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div>
+            <div class="rating-box" th:if="${stats.totalReviews > 0}">
+                <div class="rating-big" th:text="${stats.averageRatingFormatted}">4.5</div>
+                <div class="rating-stars-row">
+                    <span th:each="i : ${#numbers.sequence(1, 5)}"
+                          th:class="${i <= stats.averageRating
+                              ? 'fas fa-star'
+                              : (i - 0.5 <= stats.averageRating ? 'fas fa-star-half-alt' : 'far fa-star')}"></span>
+                </div>
+                <div class="rating-count" th:text="${stats.totalReviews + ' valoraciones'}">0</div>
+                <div style="margin-top:1rem;">
+                    <div th:each="star : ${#numbers.sequence(5, 1, -1)}" class="dist-bar-row">
+                        <span th:text="${star}">5</span>
+                        <div class="dist-bar-track">
+                            <div class="dist-bar-fill"
+                                 th:style="'width:' + ${stats.getStarPercentage(star)} + '%'"></div>
+                        </div>
+                        <span th:text="${stats.starDistribution[star - 1]}">0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="rating-box" th:unless="${stats.totalReviews > 0}">
+                <div class="rating-big">—</div>
+                <div class="rating-count">Sin valoraciones aún</div>
+            </div>
+
+            <!-- Series info -->
+            <div style="margin-top:1.5rem;">
+                <p class="section-title">Información</p>
+                <div style="font-size:0.85rem;color:var(--text-secondary)">
+                    <div th:if="${series.originalTitle != null and series.originalTitle != series.title}" style="margin-bottom:0.5rem;">
+                        <span style="color:var(--text-muted)">Título original:</span><br>
+                        <span th:text="${series.originalTitle}"></span>
+                    </div>
+                    <div th:if="${series.language != null}" style="margin-bottom:0.5rem;">
+                        <span style="color:var(--text-muted)">Idioma:</span>
+                        <span th:text="${series.language.toUpperCase()}"></span>
+                    </div>
+                    <div th:if="${series.numberOfEpisodes != null}" style="margin-bottom:0.5rem;">
+                        <span style="color:var(--text-muted)">Episodios:</span>
+                        <span th:text="${series.numberOfEpisodes}"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="site-footer">
+        © 2026 PelisApp — <i class="fas fa-heart text-accent"></i> por las series
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        window.likeReview = function(reviewId) {
+            fetch(`/api/reviews/${reviewId}/like`, { method: 'POST' })
+                .then(res => { if (res.ok) location.reload(); });
+        };
+
+        window.deleteReview = function(reviewId, username) {
+            if (!confirm(`¿Eliminar la reseña de ${username}?`)) return;
+            fetch(`/admin/review/${reviewId}/delete`, {
+                method: 'POST',
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/json' }
+            })
+            .then(r => r.text())
+            .then(data => {
+                if (data.includes('exitosamente')) location.reload();
+                else alert('Error: ' + data);
+            });
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('resenaForm');
+            if (!form) return;
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const data = new FormData(form);
+                const raw = Object.fromEntries(data.entries());
+                const payload = {
+                    text: raw.text && raw.text.trim() ? raw.text.trim() : null,
+                    stars: parseInt(raw.stars)
+                };
+                const seriesId = raw.seriesId;
+                const msg = document.getElementById('resenaMessage');
+                if (!payload.stars || payload.stars < 1 || payload.stars > 5) {
+                    msg.style.display = 'block';
+                    msg.textContent = 'Por favor selecciona una valoración de 1 a 5 estrellas.';
+                    return;
+                }
+                try {
+                    const res = await fetch(`/api/reviews/series/${seriesId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    msg.style.display = 'block';
+                    if (res.ok) {
+                        msg.textContent = 'Reseña publicada. Recargando...';
+                        setTimeout(() => location.reload(), 1200);
+                    } else if (res.status === 401) {
+                        msg.textContent = 'Debes iniciar sesión para escribir una reseña.';
+                    } else {
+                        msg.textContent = 'Error: ' + await res.text();
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            });
+        });
+    </script>
+<script>
+(function() {
+    var btn = document.getElementById('userAvatarBtn');
+    var dd = document.getElementById('userDropdown');
+    if (btn && dd) {
+        btn.addEventListener('click', function(e) { e.stopPropagation(); dd.classList.toggle('open'); });
+        document.addEventListener('click', function() { dd.classList.remove('open'); });
+    }
+
+    var actions = document.querySelector('.detail-list-actions');
+    if (!actions) return;
+    var contentType = actions.dataset.contentType, contentId = actions.dataset.contentId;
+    var contentTitle = actions.dataset.contentTitle, contentPoster = actions.dataset.contentPoster;
+
+    fetch('/api/lists/status?contentType=' + contentType + '&contentId=' + contentId)
+        .then(r => r.json()).then(function(s) {
+            setBtn('btnFavorite',  s.favorite,  'fa-heart',    'Favorito');
+            setBtn('btnWatchlist', s.watchlist, 'fa-bookmark', 'Quiero ver');
+        }).catch(function() {});
+
+    window.toggleList = function(listType) {
+        var params = new URLSearchParams({ listType, contentType, contentId, title: contentTitle, poster: contentPoster });
+        fetch('/api/lists/toggle?' + params, { method: 'POST' }).then(r => r.json()).then(function(res) {
+            if (listType === 'FAVORITE')  setBtn('btnFavorite',  res.active, 'fa-heart',    'Favorito');
+            if (listType === 'WATCHLIST') setBtn('btnWatchlist', res.active, 'fa-bookmark', 'Quiero ver');
+        }).catch(function() {});
+    };
+
+    function setBtn(id, active, icon, label) {
+        var b = document.getElementById(id); if (!b) return;
+        b.innerHTML = '<i class="' + (active ? 'fas' : 'far') + ' ' + icon + '"></i> <span>' + label + '</span>';
+        b.classList.toggle('btn-list-active', active);
+    }
+})();
+</script>
+</body>
+</html>
