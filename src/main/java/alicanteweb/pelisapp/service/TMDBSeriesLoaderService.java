@@ -128,7 +128,11 @@ public class TMDBSeriesLoaderService {
         if (show.getFirstAirDate() == null && details.hasNonNull("first_air_date")) {
             String fad = details.path("first_air_date").asText(null);
             if (fad != null && !fad.isBlank()) {
-                try { show.setFirstAirDate(LocalDate.parse(fad)); } catch (DateTimeParseException ignored) {}
+                try {
+                    show.setFirstAirDate(LocalDate.parse(fad));
+                } catch (DateTimeParseException e) {
+                    log.debug("Invalid first_air_date format '{}' for tmdbId {}", fad, show.getTmdbId());
+                }
             }
         }
         if (details.hasNonNull("number_of_seasons")) {

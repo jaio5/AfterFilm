@@ -32,6 +32,7 @@
                 <div class="user-menu" sec:authorize="isAuthenticated()">
                     <button class="user-avatar-btn" id="userAvatarBtn">
                         <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
+                        <span id="chatNavBadge" class="chat-nav-badge" style="display:none"></span>
                     </button>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="user-dropdown-header">
@@ -292,6 +293,29 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!btn || !dd) return;
     btn.addEventListener('click', function(e) { e.stopPropagation(); dd.classList.toggle('open'); });
     document.addEventListener('click', function() { dd.classList.remove('open'); });
+})();
+
+// Badge de mensajes no leídos
+(function() {
+    var badge = document.getElementById('chatNavBadge');
+    if (!badge) return;
+    function refreshBadge() {
+        fetch('/api/chat/unread')
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+                if (!data) return;
+                var count = data.count || 0;
+                if (count > 0) {
+                    badge.textContent = count > 99 ? '99+' : count;
+                    badge.style.display = '';
+                } else {
+                    badge.style.display = 'none';
+                }
+            })
+            .catch(function() {});
+    }
+    refreshBadge();
+    setInterval(refreshBadge, 30000);
 })();
 </script>
 </body>

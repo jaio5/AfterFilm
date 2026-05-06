@@ -61,7 +61,7 @@ public class ReviewApiController {
         User user = userRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         Review review = reviewService.createSeriesReview(user.getId(), seriesId, req.getText(), req.getStars());
-        return ResponseEntity.ok(toDtoFlex(review));
+        return ResponseEntity.ok(toDto(review));
     }
 
     @PostMapping("/books/{bookId}")
@@ -73,19 +73,19 @@ public class ReviewApiController {
         User user = userRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         Review review = reviewService.createBookReview(user.getId(), bookId, req.getText(), req.getStars());
-        return ResponseEntity.ok(toDtoFlex(review));
+        return ResponseEntity.ok(toDto(review));
     }
 
     @GetMapping("/series/{seriesId}")
     public ResponseEntity<List<ReviewDTO>> getReviewsBySeries(@PathVariable Long seriesId) {
         List<Review> reviews = reviewService.getReviewsBySeriesId(seriesId);
-        return ResponseEntity.ok(reviews.stream().map(ReviewApiController::toDtoFlex).toList());
+        return ResponseEntity.ok(reviews.stream().map(ReviewApiController::toDto).toList());
     }
 
     @GetMapping("/books/{bookId}")
     public ResponseEntity<List<ReviewDTO>> getReviewsByBook(@PathVariable Long bookId) {
         List<Review> reviews = reviewService.getReviewsByBookId(bookId);
-        return ResponseEntity.ok(reviews.stream().map(ReviewApiController::toDtoFlex).toList());
+        return ResponseEntity.ok(reviews.stream().map(ReviewApiController::toDto).toList());
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
@@ -101,24 +101,6 @@ public class ReviewApiController {
     }
 
     private static ReviewDTO toDto(Review review) {
-        ReviewDTO dto = new ReviewDTO();
-        dto.setId(review.getId());
-        ReviewDTO.SimpleUserDTO userDto = new ReviewDTO.SimpleUserDTO();
-        userDto.setId(review.getUser().getId());
-        userDto.setUsername(review.getUser().getUsername());
-        dto.setUser(userDto);
-        ReviewDTO.SimpleMovieDTO movieDto = new ReviewDTO.SimpleMovieDTO();
-        movieDto.setId(review.getMovie().getId());
-        movieDto.setTitle(review.getMovie().getTitle());
-        dto.setMovie(movieDto);
-        dto.setText(review.getText());
-        dto.setStars(review.getStars());
-        dto.setCreatedAt(review.getCreatedAt());
-        dto.setLikesCount(review.getLikesCount());
-        return dto;
-    }
-
-    private static ReviewDTO toDtoFlex(Review review) {
         ReviewDTO dto = new ReviewDTO();
         dto.setId(review.getId());
         ReviewDTO.SimpleUserDTO userDto = new ReviewDTO.SimpleUserDTO();

@@ -21,7 +21,7 @@ public final class RatingStatsHelper {
     public static Map<Long, double[]> buildRatingMap(List<Object[]> rows) {
         Map<Long, double[]> map = new HashMap<>();
         for (Object[] row : rows) {
-            if (row[0] == null) continue;
+            if (row == null || row.length < 3 || row[0] == null || row[2] == null) continue;
             Long id = ((Number) row[0]).longValue();
             Double avg = row[1] != null ? ((Number) row[1]).doubleValue() : null;
             long count = ((Number) row[2]).longValue();

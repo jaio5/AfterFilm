@@ -136,7 +136,9 @@ public class MovieImportService {
                 try {
                     movie.setReleaseDate(LocalDate.parse(rd));
                     changed = true;
-                } catch (DateTimeParseException ignored) {}
+                } catch (DateTimeParseException e) {
+                    log.debug("Invalid release_date format '{}' for tmdbId {}", rd, movie.getTmdbId());
+                }
             }
         }
 
