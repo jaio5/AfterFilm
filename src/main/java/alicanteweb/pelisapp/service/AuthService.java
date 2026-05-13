@@ -42,6 +42,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final AuthenticationManager authenticationManager;
+    private final EmailConfirmationService emailConfirmationService;
 
     /**
      * Registro API (mantener compatibilidad).
@@ -56,6 +57,8 @@ public class AuthService {
         assignDefaultRole(user);
 
         userRepository.save(user);
+        String confirmationToken = emailConfirmationService.generateConfirmationToken(user);
+        emailConfirmationService.sendConfirmationEmail(user, confirmationToken);
         log.info("Usuario registrado exitosamente: {}", req.getUsername());
         // Añadir roles al UserDTO
         java.util.List<String> rolesList = user.getRoles().stream().map(r -> r.getName()).collect(java.util.stream.Collectors.toList());
@@ -81,7 +84,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(req.getPassword()));
         user.setDisplayName(req.getDisplayName());
         user.setRegisteredAt(Instant.now());
-        user.setEmailConfirmed(true); // API registration auto-confirmed
+        user.setEmailConfirmed(false);
         return user;
     }
 

@@ -66,7 +66,7 @@ public class RealEmailService implements IEmailService {
             helper.setFrom(fromEmail);
             helper.setSubject("🎬 Confirma tu cuenta en " + appName);
 
-            String confirmationUrl = baseUrl + "/api/auth/confirm-email?token=" + confirmationToken;
+            String confirmationUrl = baseUrl + "/confirm-email?token=" + confirmationToken;
             String htmlContent = createConfirmationEmailHTML(username, confirmationUrl);
             helper.setText(htmlContent, true);
 

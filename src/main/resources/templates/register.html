@@ -26,9 +26,9 @@
             <form th:action="@{/register}" method="post" th:object="${user}">
 
                 <div class="form-field">
-                    <label class="form-label" for="username">Usuario</label>
+                    <label class="form-label" for="username">Nombre de usuario</label>
                     <input type="text" class="form-input" id="username" th:field="*{username}"
-                           placeholder="3-20 caracteres" required minlength="3" maxlength="20"
+                           placeholder="Obligatorio, 3-20 caracteres" required minlength="3" maxlength="20"
                            pattern="^[a-zA-Z0-9_]+$" autocomplete="username">
                     <span class="form-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></span>
                     <span class="form-error" th:if="${errorUsername}" th:text="${errorUsername}"></span>
@@ -45,11 +45,11 @@
 
                 <div class="form-field">
                     <label class="form-label" for="displayName">
-                        Nombre visible
+                        Nombre real
                         <span style="color:var(--text-muted);font-size:0.75rem;text-transform:none;letter-spacing:0;font-weight:400;">(opcional)</span>
                     </label>
                     <input type="text" class="form-input" id="displayName" th:field="*{displayName}"
-                           placeholder="Como quieres que te llamen" autocomplete="name">
+                           placeholder="Tu nombre, si quieres mostrarlo" autocomplete="name">
                     <span class="form-error" th:if="${#fields.hasErrors('displayName')}" th:errors="*{displayName}"></span>
                 </div>
 

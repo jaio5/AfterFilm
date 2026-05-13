@@ -1,5 +1,6 @@
 package alicanteweb.pelisapp.controller.web;
 
+import alicanteweb.pelisapp.dto.ChatConversationDTO;
 import alicanteweb.pelisapp.dto.UserPublicDTO;
 import alicanteweb.pelisapp.entity.Review;
 import alicanteweb.pelisapp.service.ChatService;
@@ -31,11 +32,15 @@ public class SocialViewController {
                            @RequestParam(required = false) String q) {
         String currentUsername = auth != null && auth.isAuthenticated() ? auth.getName() : null;
         List<UserPublicDTO> users = null;
-        if (q != null && !q.trim().isEmpty()) {
+        boolean hasSearch = q != null && !q.trim().isEmpty();
+        if (hasSearch) {
             users = socialService.searchUsers(q.trim(), currentUsername);
+        } else {
+            users = socialService.getSuggestedUsers(currentUsername);
         }
         model.addAttribute("q", q);
         model.addAttribute("users", users);
+        model.addAttribute("hasSearch", hasSearch);
         return "social/usuarios";
     }
 
@@ -80,7 +85,7 @@ public class SocialViewController {
     @GetMapping("/chat")
     public String chatInbox(Model model, Principal principal) {
         if (principal == null) return "redirect:/login";
-        List<UserPublicDTO> partners = chatService.getChatPartners(principal.getName());
+        List<ChatConversationDTO> partners = chatService.getChatPartners(principal.getName());
         long unreadCount = chatService.getUnreadCount(principal.getName());
         model.addAttribute("partners", partners);
         model.addAttribute("unreadCount", unreadCount);
@@ -93,12 +98,14 @@ public class SocialViewController {
         if (principal == null) return "redirect:/login";
         try {
             UserPublicDTO otherUser = socialService.getPublicProfile(username, principal.getName());
-            List<UserPublicDTO> partners = chatService.getChatPartners(principal.getName());
+            List<ChatConversationDTO> partners = chatService.getChatPartners(principal.getName());
             long unreadCount = chatService.getUnreadCount(principal.getName());
             model.addAttribute("otherUser", otherUser);
             model.addAttribute("partners", partners);
             model.addAttribute("unreadCount", unreadCount);
             model.addAttribute("activePartner", username);
+            model.addAttribute("activeStarred", partners.stream()
+                    .anyMatch(p -> p.username().equals(username) && p.starred()));
             model.addAttribute("currentUsername", principal.getName());
             return "social/chat";
         } catch (IllegalArgumentException e) {

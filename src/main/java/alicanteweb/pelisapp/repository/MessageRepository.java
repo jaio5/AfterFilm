@@ -22,6 +22,15 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     List<Message> findConversation(@Param("u1") Long u1, @Param("u2") Long u2);
 
     @Query("SELECT m FROM Message m WHERE " +
+           "((m.sender.id = :u1 AND m.receiver.id = :u2) OR " +
+           "(m.sender.id = :u2 AND m.receiver.id = :u1)) AND " +
+           "(:deletedAt IS NULL OR m.sentAt > :deletedAt) " +
+           "ORDER BY m.sentAt ASC")
+    List<Message> findVisibleConversation(@Param("u1") Long u1,
+                                          @Param("u2") Long u2,
+                                          @Param("deletedAt") Instant deletedAt);
+
+    @Query("SELECT m FROM Message m WHERE " +
            "(m.sender.id = :u1 AND m.receiver.id = :u2) OR " +
            "(m.sender.id = :u2 AND m.receiver.id = :u1) " +
            "ORDER BY m.sentAt DESC")
@@ -41,4 +50,21 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     @Query("SELECT DISTINCT m.sender FROM Message m WHERE m.receiver.id = :userId")
     List<User> findMessageSenders(@Param("userId") Long userId);
+
+    @Query("SELECT m FROM Message m WHERE " +
+           "((m.sender.id = :u1 AND m.receiver.id = :u2) OR " +
+           "(m.sender.id = :u2 AND m.receiver.id = :u1)) AND " +
+           "(:deletedAt IS NULL OR m.sentAt > :deletedAt) " +
+           "ORDER BY m.sentAt DESC")
+    List<Message> findLatestVisibleMessage(@Param("u1") Long u1,
+                                           @Param("u2") Long u2,
+                                           @Param("deletedAt") Instant deletedAt,
+                                           Pageable pageable);
+
+    @Query("SELECT COUNT(m) FROM Message m WHERE " +
+           "m.receiver.id = :receiverId AND m.sender.id = :senderId AND " +
+           "m.readAt IS NULL AND (:deletedAt IS NULL OR m.sentAt > :deletedAt)")
+    long countVisibleUnreadFromPartner(@Param("receiverId") Long receiverId,
+                                       @Param("senderId") Long senderId,
+                                       @Param("deletedAt") Instant deletedAt);
 }

@@ -1,8 +1,8 @@
 package alicanteweb.pelisapp.controller;
 
+import alicanteweb.pelisapp.dto.ChatConversationDTO;
 import alicanteweb.pelisapp.dto.MessageDTO;
 import alicanteweb.pelisapp.dto.SendMessageRequest;
-import alicanteweb.pelisapp.dto.UserPublicDTO;
 import alicanteweb.pelisapp.service.ChatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class ChatApiController {
 
     /** List of users the authenticated user has chatted with */
     @GetMapping("/conversations")
-    public ResponseEntity<List<UserPublicDTO>> getConversations(
+    public ResponseEntity<List<ChatConversationDTO>> getConversations(
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();
         return ResponseEntity.ok(chatService.getChatPartners(userDetails.getUsername()));
@@ -54,6 +54,24 @@ public class ChatApiController {
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.ok(Map.of("count", 0L));
         return ResponseEntity.ok(Map.of("count", chatService.getUnreadCount(userDetails.getUsername())));
+    }
+
+    @PostMapping("/conversations/{username}/star")
+    public ResponseEntity<ChatConversationDTO> starConversation(
+            @PathVariable String username,
+            @RequestParam(defaultValue = "true") boolean starred,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(chatService.setStarred(userDetails.getUsername(), username, starred));
+    }
+
+    @DeleteMapping("/conversations/{username}")
+    public ResponseEntity<Map<String, Boolean>> deleteConversation(
+            @PathVariable String username,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) return ResponseEntity.status(401).build();
+        chatService.deleteConversation(userDetails.getUsername(), username);
+        return ResponseEntity.ok(Map.of("success", true));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

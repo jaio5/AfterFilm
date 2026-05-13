@@ -3,25 +3,23 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${profile.displayName} + ' — PelisApp'">Perfil — PelisApp</title>
+    <title th:text="${profile.displayName} + ' - PelisApp'">Perfil - PelisApp</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>
 <body>
-
-<!-- Navbar -->
 <nav class="navbar">
     <div class="container">
         <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> PelisApp</a>
         <div class="navbar-nav-links">
-            <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
+            <a th:href="@{/}"><i class="fas fa-film"></i> Peliculas</a>
             <a th:href="@{/series}"><i class="fas fa-tv"></i> Series</a>
             <a th:href="@{/libros}"><i class="fas fa-book"></i> Libros</a>
             <a th:href="@{/usuarios}"><i class="fas fa-users"></i> Usuarios</a>
             <a th:href="@{/login}" sec:authorize="!isAuthenticated()">Entrar</a>
             <a th:href="@{/register}" sec:authorize="!isAuthenticated()" class="btn-accent btn-sm">Registrarse</a>
             <div class="user-menu" sec:authorize="isAuthenticated()">
-                <button class="user-avatar-btn" id="userAvatarBtn">
+                <button class="user-avatar-btn" id="userAvatarBtn" type="button">
                     <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
                 </button>
                 <div class="user-dropdown" id="userDropdown">
@@ -35,7 +33,7 @@
                        class="user-dropdown-item user-dropdown-item-admin"><i class="fas fa-shield-alt"></i> Admin</a>
                     <div class="user-dropdown-divider"></div>
                     <form th:action="@{/logout}" method="post" style="margin:0">
-                        <button type="submit" class="user-dropdown-item user-dropdown-item-logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesión</button>
+                        <button type="submit" class="user-dropdown-item user-dropdown-item-logout"><i class="fas fa-sign-out-alt"></i> Cerrar sesion</button>
                     </form>
                 </div>
             </div>
@@ -43,132 +41,119 @@
     </div>
 </nav>
 
-<!-- Profile hero -->
-<div class="profile-hero">
+<section class="profile-hero profile-hero-rich">
     <div class="profile-hero-inner">
-        <div class="profile-avatar-circle" th:text="${profile.displayName.substring(0,1).toUpperCase()}">U</div>
-        <div>
+        <div class="profile-avatar-circle profile-avatar-large" th:text="${profile.displayName.substring(0,1).toUpperCase()}">U</div>
+        <div class="profile-summary">
+            <p class="section-kicker">Perfil publico</p>
             <h1 class="profile-name" th:text="${profile.displayName}">Nombre</h1>
             <div class="profile-username" th:text="'@' + ${profile.username}">@usuario</div>
-            <div class="profile-stats">
-                <div class="profile-stat">
-                    <strong th:text="${profile.followersCount}">0</strong> seguidores
-                </div>
-                <div class="profile-stat">
-                    <strong th:text="${profile.followingCount}">0</strong> siguiendo
-                </div>
-                <div class="profile-stat">
-                    <strong th:text="${profile.reviewCount}">0</strong> reseñas
-                </div>
+            <div class="profile-stats profile-stats-grid">
+                <div class="profile-stat"><strong id="followersCount" th:text="${profile.followersCount}">0</strong><span>seguidores</span></div>
+                <div class="profile-stat"><strong th:text="${profile.followingCount}">0</strong><span>siguiendo</span></div>
+                <div class="profile-stat"><strong th:text="${profile.reviewCount}">0</strong><span>resenas</span></div>
             </div>
-            <!-- Action buttons (only if viewing someone else's profile) -->
-            <div th:if="${!isOwnProfile}" style="display:flex;gap:0.75rem;margin-top:1rem;flex-wrap:wrap;">
-                <button th:if="${!profile.following}" sec:authorize="isAuthenticated()"
-                        id="followBtn" class="btn-accent btn-sm"
-                        th:data-username="${profile.username}">
-                    <i class="fas fa-user-plus"></i> Seguir
+            <div class="profile-actions" th:if="${!isOwnProfile}">
+                <button sec:authorize="isAuthenticated()" type="button"
+                        id="followBtn"
+                        th:class="${profile.following ? 'btn-ghost btn-sm social-follow-toggle is-following' : 'btn-accent btn-sm social-follow-toggle'}"
+                        th:data-username="${profile.username}"
+                        th:data-following="${profile.following}">
+                    <i th:class="${profile.following ? 'fas fa-user-check' : 'fas fa-user-plus'}"></i>
+                    <span th:text="${profile.following ? 'Siguiendo' : 'Seguir'}">Seguir</span>
                 </button>
-                <button th:if="${profile.following}" sec:authorize="isAuthenticated()"
-                        id="followBtn" class="btn-ghost btn-sm"
-                        th:data-username="${profile.username}" data-following="true">
-                    <i class="fas fa-user-check"></i> Siguiendo
-                </button>
-                <a th:href="@{/chat/{un}(un=${profile.username})}" sec:authorize="isAuthenticated()"
-                   class="btn-ghost btn-sm">
-                    <i class="fas fa-comment"></i> Mensaje
+                <a th:href="@{/chat/{un}(un=${profile.username})}" sec:authorize="isAuthenticated()" class="btn-ghost btn-sm">
+                    <i class="fas fa-comments"></i> Chatear
                 </a>
+                <a th:href="@{/login}" sec:authorize="!isAuthenticated()" class="btn-accent btn-sm">Entrar para seguir</a>
             </div>
-            <div th:if="${isOwnProfile}" style="margin-top:1rem;">
+            <div class="profile-actions" th:if="${isOwnProfile}">
                 <a th:href="@{/perfil}" class="btn-ghost btn-sm"><i class="fas fa-cog"></i> Mi perfil completo</a>
+                <a th:href="@{/usuarios}" class="btn-ghost btn-sm"><i class="fas fa-users"></i> Buscar usuarios</a>
             </div>
         </div>
     </div>
-</div>
+</section>
 
-<!-- Content -->
-<div class="profile-content">
+<main class="profile-content">
     <a href="javascript:history.back()" class="back-link"><i class="fas fa-arrow-left"></i> Volver</a>
 
-    <!-- Followers / Following tabs -->
-    <div style="display:flex;gap:2rem;margin-top:2rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:0.75rem;">
-        <button class="tab-btn active" id="tabReviews" onclick="showTab('reviews')">
-            Reseñas (<span th:text="${profile.reviewCount}">0</span>)
+    <div class="profile-tabs">
+        <button class="tab-btn active" id="tabReviews" type="button" onclick="showTab('reviews')">
+            <i class="fas fa-star"></i> Resenas (<span th:text="${profile.reviewCount}">0</span>)
         </button>
-        <button class="tab-btn" id="tabFollowers" onclick="showTab('followers')">
-            Seguidores (<span th:text="${profile.followersCount}">0</span>)
+        <button class="tab-btn" id="tabFollowers" type="button" onclick="showTab('followers')">
+            <i class="fas fa-users"></i> Seguidores (<span id="followersTabCount" th:text="${profile.followersCount}">0</span>)
         </button>
-        <button class="tab-btn" id="tabFollowing" onclick="showTab('following')">
-            Siguiendo (<span th:text="${profile.followingCount}">0</span>)
+        <button class="tab-btn" id="tabFollowing" type="button" onclick="showTab('following')">
+            <i class="fas fa-user-check"></i> Siguiendo (<span th:text="${profile.followingCount}">0</span>)
         </button>
     </div>
 
-    <!-- Reviews tab -->
-    <div id="tab-reviews">
+    <section id="tab-reviews">
         <div th:if="${#lists.isEmpty(reviews)}" class="empty-state">
             <i class="fas fa-film"></i>
-            <p th:text="'@' + ${profile.username} + ' aún no ha publicado reseñas.'"></p>
+            <p th:text="'@' + ${profile.username} + ' aun no ha publicado resenas.'">Sin resenas.</p>
         </div>
-        <div th:each="review : ${reviews}" class="profile-review-card">
+        <article th:each="review : ${reviews}" class="profile-review-card">
             <div class="profile-review-poster-placeholder">
                 <i th:class="${review.series != null ? 'fas fa-tv' : (review.book != null ? 'fas fa-book' : 'fas fa-film')}"></i>
             </div>
             <div class="profile-review-body">
                 <a th:if="${review.movie != null}" th:href="@{/pelicula/{id}(id=${review.movie.id})}"
-                   class="profile-review-title" th:text="${review.movie.title}">Título</a>
+                   class="profile-review-title" th:text="${review.movie.title}">Titulo</a>
                 <a th:if="${review.series != null}" th:href="@{/serie/{id}(id=${review.series.id})}"
-                   class="profile-review-title" th:text="${review.series.title}">Título</a>
+                   class="profile-review-title" th:text="${review.series.title}">Titulo</a>
                 <a th:if="${review.book != null}" th:href="@{/libro/{id}(id=${review.book.id})}"
-                   class="profile-review-title" th:text="${review.book.title}">Título</a>
+                   class="profile-review-title" th:text="${review.book.title}">Titulo</a>
                 <div class="profile-review-stars">
-                    <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
-                    <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"
-                          style="color:var(--bg-elevated)"></span>
+                    <span th:if="${review.stars > 0}" th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
+                    <span th:if="${review.stars < 5}" th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
                 </div>
                 <div class="profile-review-text"
                      th:if="${review.text != null and !review.text.trim().isEmpty()}"
                      th:text="${review.text}"></div>
                 <div class="profile-review-date"
-                     th:text="${#temporals.format(review.createdAt, 'dd/MM/yyyy')}"></div>
+                     th:text="${review.createdAt != null ? #temporals.format(review.createdAt, 'dd/MM/yyyy') : ''}"></div>
             </div>
-        </div>
-    </div>
+        </article>
+    </section>
 
-    <!-- Followers tab -->
-    <div id="tab-followers" style="display:none">
+    <section id="tab-followers" style="display:none">
         <div th:if="${#lists.isEmpty(followers)}" class="empty-state">
-            <p>Aún no tiene seguidores.</p>
+            <i class="fas fa-user-friends"></i>
+            <p>Aun no tiene seguidores.</p>
         </div>
-        <div th:each="u : ${followers}" class="social-user-card" style="margin-bottom:0.75rem;">
-            <div class="social-user-avatar" th:text="${u.displayName.substring(0,1).toUpperCase()}">U</div>
+        <article th:each="u : ${followers}" class="social-user-card compact-user-card">
+            <a th:href="@{/usuario/{un}(un=${u.username})}" class="social-user-avatar" th:text="${u.displayName.substring(0,1).toUpperCase()}">U</a>
             <div class="social-user-info">
                 <a th:href="@{/usuario/{un}(un=${u.username})}" class="social-user-name" th:text="${u.displayName}">Nombre</a>
                 <div class="social-user-handle" th:text="'@' + ${u.username}">@usuario</div>
             </div>
             <a th:href="@{/usuario/{un}(un=${u.username})}" class="btn-ghost btn-sm">Ver</a>
-        </div>
-    </div>
+        </article>
+    </section>
 
-    <!-- Following tab -->
-    <div id="tab-following" style="display:none">
+    <section id="tab-following" style="display:none">
         <div th:if="${#lists.isEmpty(following)}" class="empty-state">
-            <p>No sigue a nadie todavía.</p>
+            <i class="fas fa-user-check"></i>
+            <p>No sigue a nadie todavia.</p>
         </div>
-        <div th:each="u : ${following}" class="social-user-card" style="margin-bottom:0.75rem;">
-            <div class="social-user-avatar" th:text="${u.displayName.substring(0,1).toUpperCase()}">U</div>
+        <article th:each="u : ${following}" class="social-user-card compact-user-card">
+            <a th:href="@{/usuario/{un}(un=${u.username})}" class="social-user-avatar" th:text="${u.displayName.substring(0,1).toUpperCase()}">U</a>
             <div class="social-user-info">
                 <a th:href="@{/usuario/{un}(un=${u.username})}" class="social-user-name" th:text="${u.displayName}">Nombre</a>
                 <div class="social-user-handle" th:text="'@' + ${u.username}">@usuario</div>
             </div>
             <a th:href="@{/usuario/{un}(un=${u.username})}" class="btn-ghost btn-sm">Ver</a>
-        </div>
-    </div>
-</div>
+        </article>
+    </section>
+</main>
 
-<footer class="site-footer">© 2026 PelisApp — <i class="fas fa-heart text-accent"></i> por el cine</footer>
+<footer class="site-footer">&copy; 2026 PelisApp - <i class="fas fa-heart text-accent"></i> por el cine</footer>
 
 <script>
 (function() {
-    // Navbar dropdown
     var btn = document.getElementById('userAvatarBtn');
     var dd = document.getElementById('userDropdown');
     if (btn && dd) {
@@ -176,7 +161,6 @@
         document.addEventListener('click', function() { dd.classList.remove('open'); });
     }
 
-    // Tabs
     window.showTab = function(name) {
         ['reviews','followers','following'].forEach(function(t) {
             document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
@@ -184,27 +168,46 @@
         });
     };
 
-    // Follow / unfollow
-    var followBtn = document.getElementById('followBtn');
-    if (followBtn) {
-        followBtn.addEventListener('click', function() {
-            var username = this.dataset.username;
-            var isFollowing = this.dataset.following === 'true';
-            var url = '/api/social/users/' + username + (isFollowing ? '/unfollow' : '/follow');
-            if (isFollowing && !confirm('¿Dejar de seguir a @' + username + '?')) return;
-            fetch(url, { method: 'POST' }).then(r => r.json()).then(function(data) {
-                if (data.following) {
-                    followBtn.innerHTML = '<i class="fas fa-user-check"></i> Siguiendo';
-                    followBtn.className = 'btn-ghost btn-sm';
-                    followBtn.dataset.following = 'true';
-                } else {
-                    followBtn.innerHTML = '<i class="fas fa-user-plus"></i> Seguir';
-                    followBtn.className = 'btn-accent btn-sm';
-                    followBtn.dataset.following = 'false';
-                }
-            });
-        });
+    function setCount(id, value) {
+        var node = document.getElementById(id);
+        if (node) node.textContent = String(Math.max(0, value));
     }
+
+    function setFollowState(button, following) {
+        var wasFollowing = button.dataset.following === 'true';
+        button.dataset.following = String(following);
+        button.className = following
+            ? 'btn-ghost btn-sm social-follow-toggle is-following'
+            : 'btn-accent btn-sm social-follow-toggle';
+        button.innerHTML = following
+            ? '<i class="fas fa-user-check"></i><span>Siguiendo</span>'
+            : '<i class="fas fa-user-plus"></i><span>Seguir</span>';
+
+        if (wasFollowing !== following) {
+            var current = parseInt((document.getElementById('followersCount') || {}).textContent || '0', 10);
+            var next = current + (following ? 1 : -1);
+            setCount('followersCount', next);
+            setCount('followersTabCount', next);
+        }
+    }
+
+    document.addEventListener('click', function(e) {
+        var button = e.target.closest('.social-follow-toggle');
+        if (!button) return;
+        var username = button.dataset.username;
+        var following = button.dataset.following === 'true';
+        var url = '/api/social/users/' + encodeURIComponent(username) + (following ? '/unfollow' : '/follow');
+
+        button.disabled = true;
+        fetch(url, { method: 'POST' })
+            .then(function(response) {
+                if (!response.ok) throw new Error('follow failed');
+                return response.json();
+            })
+            .then(function(data) { setFollowState(button, data.following); })
+            .catch(function() { alert('No se pudo actualizar el seguimiento.'); })
+            .finally(function() { button.disabled = false; });
+    });
 })();
 </script>
 </body>

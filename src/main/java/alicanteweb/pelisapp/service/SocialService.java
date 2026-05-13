@@ -82,6 +82,14 @@ public class SocialService {
                 .collect(Collectors.toList());
     }
 
+    public List<UserPublicDTO> getSuggestedUsers(String currentUsername) {
+        return userRepository.findAll(PageRequest.of(0, 20))
+                .getContent().stream()
+                .filter(u -> currentUsername == null || !u.getUsername().equals(currentUsername))
+                .map(u -> toPublicDTO(u, currentUsername))
+                .collect(Collectors.toList());
+    }
+
     public List<Review> getUserReviews(String username) {
         User user = userRepository.findByUsername(username).orElseThrow();
         return reviewRepository.findAllByUser_Id(user.getId());

@@ -46,15 +46,15 @@
     </nav>
 
     <!-- Profile hero -->
-    <div class="profile-hero">
+    <div class="profile-hero profile-hero-rich">
         <div class="profile-hero-inner">
-            <div class="profile-avatar-circle">
+            <div class="profile-avatar-circle profile-avatar-large">
                 <span th:text="${#strings.substring(user.displayName ?: user.username, 0, 1).toUpperCase()}">U</span>
             </div>
-            <div>
+            <div class="profile-summary">
                 <h1 class="profile-name" th:text="${user.displayName ?: user.username}">Nombre</h1>
                 <div class="profile-username" th:text="'@' + ${user.username}">@usuario</div>
-                <div class="profile-stats">
+                <div class="profile-stats profile-stats-grid">
                     <div class="profile-stat">
                         <strong th:text="${followersCount}">0</strong> seguidores
                     </div>
@@ -70,10 +70,11 @@
                         <i class="fas fa-star" style="color:#f59e0b;font-size:0.75rem;"></i>
                     </div>
                 </div>
-                <div style="display:flex;gap:0.75rem;margin-top:0.75rem;flex-wrap:wrap;">
+                <div class="profile-actions">
                     <a th:href="@{/feed}" class="btn-ghost btn-sm"><i class="fas fa-stream"></i> Mi feed</a>
                     <a th:href="@{/chat}" class="btn-ghost btn-sm"><i class="fas fa-comments"></i> Mensajes</a>
                     <a th:href="@{/usuarios}" class="btn-ghost btn-sm"><i class="fas fa-users"></i> Buscar usuarios</a>
+                    <a th:href="@{/usuario/{un}(un=${user.username})}" class="btn-ghost btn-sm"><i class="fas fa-id-card"></i> Ver perfil publico</a>
                 </div>
             </div>
         </div>
@@ -86,7 +87,7 @@
         </a>
 
         <!-- Tabs -->
-        <div style="display:flex;gap:2rem;margin-top:1.5rem;margin-bottom:1.25rem;border-bottom:1px solid var(--border);padding-bottom:0.75rem;">
+        <div class="profile-tabs">
             <button class="tab-btn active" id="tabReviews" onclick="showPerfilTab('reviews')">
                 <i class="fas fa-star"></i> Reseñas (<span th:text="${reviewCount}">0</span>)
             </button>

@@ -1,11 +1,10 @@
 package alicanteweb.pelisapp.controller.web;
 
 import alicanteweb.pelisapp.constants.AppConstants;
-import alicanteweb.pelisapp.entity.Movie;
 import alicanteweb.pelisapp.entity.CategoryEntity;
-import alicanteweb.pelisapp.repository.MovieRepository;
+import alicanteweb.pelisapp.entity.Movie;
 import alicanteweb.pelisapp.repository.CategoryRepository;
-import alicanteweb.pelisapp.service.TMDBMovieLoaderService;
+import alicanteweb.pelisapp.repository.MovieRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -24,7 +23,6 @@ import java.util.List;
 public class HomeController {
     private final MovieRepository movieRepository;
     private final CategoryRepository categoryRepository;
-    private final TMDBMovieLoaderService tmdbMovieLoaderService;
 
     @GetMapping("/")
     public String home(Model model,
@@ -33,21 +31,20 @@ public class HomeController {
                        @RequestParam(value = "genre", required = false) String genre,
                        @RequestParam(value = "search", required = false) String search) {
         try {
-            ensureMinimumMovies();
             int validPage = Math.max(0, page);
             int validSize = Math.min(Math.max(1, size), AppConstants.MAX_PAGE_SIZE);
             Pageable pageable = PageRequest.of(validPage, validSize);
             Page<Movie> moviesPage;
+
             if (search != null && !search.trim().isEmpty()) {
                 moviesPage = movieRepository.findByTitleContainingIgnoreCase(search.trim(), pageable);
                 model.addAttribute("searchQuery", search);
+            } else if (genre != null && !genre.trim().isEmpty()) {
+                moviesPage = movieRepository.findByCategories_Name(genre.trim(), pageable);
             } else {
-                if (genre != null && !genre.trim().isEmpty()) {
-                    moviesPage = movieRepository.findByCategories_Name(genre.trim(), pageable);
-                } else {
-                    moviesPage = movieRepository.findAll(pageable);
-                }
+                moviesPage = movieRepository.findAll(pageable);
             }
+
             model.addAttribute("movies", moviesPage.getContent());
             model.addAttribute("selectedGenre", genre);
             List<CategoryEntity> categories = categoryRepository.findAll();
@@ -59,21 +56,9 @@ public class HomeController {
             model.addAttribute("hasPrevious", moviesPage.hasPrevious());
             return "index";
         } catch (Exception e) {
-            log.error("Error cargando página principal: {}", e.getMessage());
-            model.addAttribute("error", "Error cargando películas");
+            log.error("Error cargando pagina principal: {}", e.getMessage());
+            model.addAttribute("error", "Error cargando peliculas");
             return "error";
-        }
-    }
-
-    private void ensureMinimumMovies() {
-        try {
-            long movieCount = movieRepository.count();
-            if (movieCount < 10) {
-                log.info("Pocas películas en BD ({}), cargando más automáticamente...", movieCount);
-                tmdbMovieLoaderService.loadPopularMovies(2);
-            }
-        } catch (Exception e) {
-            log.warn("Error verificando/cargando películas mínimas: {}", e.getMessage());
         }
     }
 }

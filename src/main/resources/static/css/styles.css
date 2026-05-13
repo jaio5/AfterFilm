@@ -176,6 +176,12 @@ img { display: block; max-width: 100%; }
     color: #fff;
 }
 
+.btn-accent:disabled,
+.btn-ghost:disabled {
+    opacity: 0.55;
+    cursor: wait;
+}
+
 .btn-ghost {
     display: inline-flex;
     align-items: center;
@@ -1112,6 +1118,12 @@ textarea.form-input {
     padding: 3rem 2rem;
 }
 
+.profile-hero-rich {
+    background:
+        linear-gradient(135deg, rgba(255,107,53,0.13), transparent 36%),
+        linear-gradient(180deg, #151515 0%, var(--bg-surface) 100%);
+}
+
 .profile-hero-inner {
     max-width: 1000px;
     margin: 0 auto;
@@ -1136,6 +1148,19 @@ textarea.form-input {
     flex-shrink: 0;
 }
 
+.profile-avatar-large {
+    width: 96px;
+    height: 96px;
+    background: linear-gradient(135deg, rgba(255,107,53,0.24), var(--bg-elevated));
+    color: var(--text-primary);
+    box-shadow: 0 20px 45px rgba(0,0,0,0.25);
+}
+
+.profile-summary {
+    min-width: 0;
+    flex: 1;
+}
+
 .profile-name {
     font-size: 1.5rem;
     font-weight: 500;
@@ -1158,11 +1183,54 @@ textarea.form-input {
 .profile-stat { color: var(--text-muted); }
 .profile-stat strong { color: var(--text-primary); }
 
+.profile-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(96px, 1fr));
+    gap: 0.75rem;
+    max-width: 460px;
+}
+
+.profile-stats-grid .profile-stat {
+    border: 1px solid var(--border);
+    background: rgba(255,255,255,0.03);
+    border-radius: var(--radius);
+    padding: 0.75rem;
+}
+
+.profile-stats-grid .profile-stat strong {
+    display: block;
+    font-size: 1.2rem;
+    line-height: 1.1;
+}
+
+.profile-stats-grid .profile-stat span {
+    display: block;
+    margin-top: 0.2rem;
+    font-size: 0.78rem;
+}
+
+.profile-actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    flex-wrap: wrap;
+}
+
 /* Profile reviews */
 .profile-content {
     max-width: 1000px;
     margin: 2.5rem auto;
     padding: 0 2rem;
+}
+
+.profile-tabs {
+    display: flex;
+    gap: 1.25rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.75rem;
+    overflow-x: auto;
 }
 
 .profile-review-card {
@@ -1678,6 +1746,27 @@ textarea.form-input {
 .social-hero-title { font-size: 1.75rem; font-weight: 600; letter-spacing: -0.03em; margin-bottom: 0.4rem; }
 .social-hero-sub   { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; }
 
+.social-hero-rich {
+    background:
+        linear-gradient(135deg, rgba(255,107,53,0.12), transparent 42%),
+        linear-gradient(180deg, #151515 0%, var(--bg-surface) 100%);
+}
+
+.social-hero-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.25rem;
+}
+
+.section-kicker {
+    color: var(--accent);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+}
+
 .social-search-form { width: 100%; }
 .social-search-wrap {
     display: flex;
@@ -1688,6 +1777,10 @@ textarea.form-input {
     border-radius: var(--radius);
     padding: 0.5rem 0.75rem;
     max-width: 520px;
+}
+.social-search-wrap:focus-within {
+    border-color: rgba(255,107,53,0.55);
+    box-shadow: 0 0 0 3px rgba(255,107,53,0.08);
 }
 .social-search-icon { color: var(--text-muted); flex-shrink: 0; }
 .social-search-input {
@@ -1702,6 +1795,23 @@ textarea.form-input {
 
 .social-users-grid { display: flex; flex-direction: column; gap: 0.75rem; }
 
+.social-page-shell {
+    margin-top: 2rem;
+}
+
+.social-panel-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.social-panel-header h2 {
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
 .social-user-card {
     display: flex;
     align-items: center;
@@ -1714,6 +1824,14 @@ textarea.form-input {
 }
 .social-user-card:hover { border-color: rgba(255,255,255,0.15); }
 
+.enhanced-user-card {
+    background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(255,255,255,0.015));
+}
+
+.compact-user-card {
+    margin-bottom: 0.75rem;
+}
+
 .social-user-avatar {
     width: 44px; height: 44px;
     border-radius: 50%;
@@ -1722,7 +1840,9 @@ textarea.form-input {
     font-size: 1.1rem; font-weight: 600;
     color: var(--text-secondary);
     flex-shrink: 0;
+    text-decoration: none;
 }
+.social-user-avatar:hover { color: var(--text-primary); }
 .social-user-info { flex: 1; min-width: 0; }
 .social-user-name { font-weight: 500; font-size: 0.95rem; color: var(--text-primary); }
 .social-user-name:hover { color: var(--accent); }
@@ -1730,6 +1850,23 @@ textarea.form-input {
 .social-user-stats { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.2rem; display: flex; gap: 1rem; }
 .social-user-stats strong { color: var(--text-secondary); }
 .social-user-actions { display: flex; gap: 0.5rem; align-items: center; flex-shrink: 0; }
+
+.social-follow-toggle {
+    min-width: 100px;
+    justify-content: center;
+}
+
+.social-follow-toggle.is-following {
+    border-color: rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.025);
+}
+
+.icon-only {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+}
 
 /* Tab buttons */
 .tab-btn {
@@ -1808,6 +1945,39 @@ textarea.form-input {
 .chat-contact-info { flex: 1; min-width: 0; }
 .chat-contact-name { font-size: 0.875rem; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chat-contact-handle { font-size: 0.75rem; color: var(--text-muted); }
+.chat-contact-name-row {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+}
+.chat-contact-star {
+    color: #fbbf24;
+    font-size: 0.72rem;
+    flex-shrink: 0;
+}
+.chat-contact-unread {
+    margin-left: auto;
+    background: var(--accent);
+    color: #fff;
+    min-width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0 0.3rem;
+}
+.chat-contact-preview {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    margin-top: 0.16rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
 
 .chat-main {
     flex: 1;
@@ -1832,6 +2002,30 @@ textarea.form-input {
 }
 .chat-header-name { font-weight: 500; font-size: 0.95rem; }
 .chat-header-handle { font-size: 0.78rem; color: var(--text-muted); }
+.chat-icon-action {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: var(--bg-elevated);
+    color: var(--text-muted);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+.chat-icon-action:hover,
+.chat-icon-action.active {
+    color: #fbbf24;
+    border-color: rgba(251,191,36,0.35);
+    background: rgba(251,191,36,0.08);
+}
+.chat-icon-action.danger:hover {
+    color: #f87171;
+    border-color: rgba(248,113,113,0.35);
+    background: rgba(248,113,113,0.08);
+}
 
 .chat-messages {
     flex: 1;
@@ -2081,4 +2275,11 @@ textarea.form-input {
     .chat-sidebar-header span, .chat-contact-info { display: none; }
     .chat-contact { justify-content: center; padding: 0.85rem 0.5rem; }
     .social-user-stats { display: none; }
+    .profile-hero-inner { align-items: flex-start; gap: 1rem; }
+    .profile-avatar-large { width: 72px; height: 72px; font-size: 1.4rem; }
+    .profile-stats-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .profile-stats-grid .profile-stat { padding: 0.55rem; }
+    .social-user-card { align-items: flex-start; }
+    .social-user-actions { flex-direction: column; align-items: stretch; }
+    .social-follow-toggle { min-width: 92px; }
 }

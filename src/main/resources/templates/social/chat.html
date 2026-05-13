@@ -66,8 +66,13 @@
            class="chat-contact">
             <div class="chat-contact-avatar" th:text="${p.displayName.substring(0,1).toUpperCase()}">U</div>
             <div class="chat-contact-info">
-                <div class="chat-contact-name" th:text="${p.displayName}">Nombre</div>
+                <div class="chat-contact-name-row">
+                    <span class="chat-contact-name" th:text="${p.displayName}">Nombre</span>
+                    <i th:if="${p.starred}" class="fas fa-star chat-contact-star"></i>
+                    <span th:if="${p.unreadCount > 0}" class="chat-contact-unread" th:text="${p.unreadCount}">1</span>
+                </div>
                 <div class="chat-contact-handle" th:text="'@' + ${p.username}">@usuario</div>
+                <div class="chat-contact-preview" th:if="${p.lastMessage != null}" th:text="${p.lastMessage}">Ultimo mensaje</div>
             </div>
         </a>
     </div>
@@ -97,6 +102,12 @@
                 <a th:href="@{/usuario/{un}(un=${otherUser.username})}" class="btn-ghost btn-sm" style="margin-left:auto;">
                     <i class="fas fa-user"></i> Perfil
                 </a>
+                <button type="button" id="starConversationBtn" class="chat-icon-action" title="Destacar chat">
+                    <i class="far fa-star"></i>
+                </button>
+                <button type="button" id="deleteConversationBtn" class="chat-icon-action danger" title="Eliminar chat">
+                    <i class="fas fa-trash"></i>
+                </button>
             </div>
 
             <!-- Messages -->
@@ -144,6 +155,7 @@
 <div th:if="${otherUser != null}">
     <span id="otherUsername" th:text="${otherUser.username}" style="display:none"></span>
     <span id="currentUsername" th:text="${currentUsername}" style="display:none"></span>
+    <span id="activeStarred" th:text="${activeStarred}" style="display:none"></span>
 </div>
 
 <script>
@@ -163,6 +175,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var otherUsername  = otherUsernameEl.textContent.trim();
     var currentUsername = document.getElementById('currentUsername').textContent.trim();
+    var activeStarredEl = document.getElementById('activeStarred');
+    var activeStarred = activeStarredEl && activeStarredEl.textContent.trim() === 'true';
     var sharedContent  = null;
     var shareType      = 'movie';
     var searchTimeout  = null;
@@ -180,6 +194,16 @@ document.addEventListener('DOMContentLoaded', function() {
     window.searchContent    = searchContent;
     window.selectContent    = selectContent;
     window.clearShared      = clearShared;
+
+    var starBtn = document.getElementById('starConversationBtn');
+    var deleteBtn = document.getElementById('deleteConversationBtn');
+    if (starBtn) {
+        updateStarButton();
+        starBtn.addEventListener('click', toggleConversationStar);
+    }
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', deleteConversation);
+    }
 
     // ── Mensajes ──────────────────────────────────────────────────────────────
     function loadMessages(scrollBottom) {
@@ -254,6 +278,38 @@ document.addEventListener('DOMContentLoaded', function() {
             clearShared();
             loadMessages(true);
         });
+    }
+
+    function toggleConversationStar() {
+        fetch('/api/chat/conversations/' + encodeURIComponent(otherUsername) + '/star?starred=' + (!activeStarred), {
+            method: 'POST'
+        })
+        .then(function(r) {
+            if (!r.ok) throw new Error('star failed');
+            return r.json();
+        })
+        .then(function(data) {
+            activeStarred = !!data.starred;
+            updateStarButton();
+        })
+        .catch(function() { alert('No se pudo actualizar el destacado.'); });
+    }
+
+    function updateStarButton() {
+        if (!starBtn) return;
+        starBtn.classList.toggle('active', activeStarred);
+        starBtn.innerHTML = activeStarred ? '<i class="fas fa-star"></i>' : '<i class="far fa-star"></i>';
+        starBtn.title = activeStarred ? 'Quitar destacado' : 'Destacar chat';
+    }
+
+    function deleteConversation() {
+        if (!confirm('Eliminar este chat de tu lista? Los mensajes se ocultaran solo para ti.')) return;
+        fetch('/api/chat/conversations/' + encodeURIComponent(otherUsername), { method: 'DELETE' })
+            .then(function(r) {
+                if (!r.ok) throw new Error('delete failed');
+                window.location.href = '/chat';
+            })
+            .catch(function() { alert('No se pudo eliminar el chat.'); });
     }
 
     function autoResize(el) {

@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -240,18 +241,21 @@ public class MovieService {
     }
 
 
+    @Transactional(readOnly = true)
     public Page<MovieListDTO> getAllMovies(Pageable pageable) {
         Page<Movie> moviePage = movieRepository.findAll(pageable);
         List<MovieListDTO> movieDTOs = mapWithRatingStats(moviePage.getContent());
         return new PageImpl<>(movieDTOs, pageable, moviePage.getTotalElements());
     }
 
+    @Transactional(readOnly = true)
     public Page<MovieListDTO> getMoviesByCategory(String category, Pageable pageable) {
         Page<Movie> moviePage = movieRepository.findByCategories_Name(category, pageable);
         List<MovieListDTO> movieDTOs = mapWithRatingStats(moviePage.getContent());
         return new PageImpl<>(movieDTOs, pageable, moviePage.getTotalElements());
     }
 
+    @Transactional(readOnly = true)
     public List<MovieListDTO> searchMovies(String query) {
         return mapWithRatingStats(
             movieRepository.findByTitleContainingIgnoreCase(query, PageRequest.of(0, 50)).getContent()
@@ -289,6 +293,7 @@ public class MovieService {
         return toMovieListDTO(movie, null);
     }
 
+    @Transactional(readOnly = true)
     public Optional<MovieListDTO> getTopRatedThisMonth() {
         Instant startOfMonth = LocalDate.now().withDayOfMonth(1)
             .atStartOfDay(ZoneOffset.UTC).toInstant();
