@@ -25,6 +25,9 @@ import alicanteweb.pelisapp.service.SystemHealthService;
 import alicanteweb.pelisapp.service.TMDBMovieLoaderService;
 import alicanteweb.pelisapp.service.TMDBSeriesLoaderService;
 import alicanteweb.pelisapp.service.TvShowService;
+import alicanteweb.pelisapp.service.GoogleBooksClient;
+import alicanteweb.pelisapp.tmdb.TMDBClient;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -62,6 +65,8 @@ public class AdminApiController {
     private final MoviePosterRedownloadService moviePosterRedownloadService;
     private final MovieImportService movieImportService;
     private final GoogleBooksLoaderService googleBooksLoaderService;
+    private final GoogleBooksClient googleBooksClient;
+    private final TMDBClient tmdbClient;
     private final TvShowService tvShowService;
     private final BookService bookService;
 
@@ -625,9 +630,12 @@ public class AdminApiController {
     @GetMapping("/series")
     public ResponseEntity<Map<String, Object>> listSeries(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q) {
         var pageable = PageRequest.of(page, size);
-        var showPage = tvShowRepository.findAll(pageable);
+        var showPage = (q != null && !q.isBlank())
+                ? tvShowRepository.findByTitleContainingIgnoreCase(q.trim(), pageable)
+                : tvShowRepository.findAll(pageable);
         var content = showPage.getContent().stream().map(s -> {
             Map<String, Object> dto = new HashMap<>();
             dto.put("id", s.getId());
@@ -643,7 +651,40 @@ public class AdminApiController {
         result.put("totalElements", showPage.getTotalElements());
         result.put("totalPages", showPage.getTotalPages());
         result.put("page", page);
+        result.put("query", q);
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/series/search-tmdb")
+    public ResponseEntity<Map<String, Object>> searchSeriesOnTmdb(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "1") int page) {
+        try {
+            JsonNode response = tmdbClient.searchTv(q, Math.max(1, page));
+            List<Map<String, Object>> results = response == null || !response.has("results")
+                    ? List.of()
+                    : iterableToList(response.path("results")).stream()
+                    .map(item -> {
+                        Map<String, Object> dto = new HashMap<>();
+                        dto.put("tmdbId", item.path("id").asLong());
+                        dto.put("title", item.path("name").asText(""));
+                        dto.put("originalTitle", item.path("original_name").asText(""));
+                        dto.put("firstAirDate", item.path("first_air_date").asText(""));
+                        dto.put("overview", item.path("overview").asText(""));
+                        dto.put("posterPath", item.path("poster_path").asText(null));
+                        dto.put("alreadyImported", tvShowRepository.findByTmdbId(item.path("id").asLong()).isPresent());
+                        return dto;
+                    }).toList();
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "results", results,
+                    "totalResults", response != null ? response.path("total_results").asInt(0) : 0,
+                    "page", response != null ? response.path("page").asInt(page) : page
+            ));
+        } catch (Exception e) {
+            log.error("Error buscando series en TMDB por '{}': {}", q, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
     }
 
     // ============= BOOKS MANAGEMENT =============
@@ -678,9 +719,12 @@ public class AdminApiController {
     @GetMapping("/books")
     public ResponseEntity<Map<String, Object>> listBooks(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String q) {
         var pageable = PageRequest.of(page, size);
-        var bookPage = bookRepository.findAll(pageable);
+        var bookPage = (q != null && !q.isBlank())
+                ? bookRepository.findByTitleContainingIgnoreCase(q.trim(), pageable)
+                : bookRepository.findAll(pageable);
         var content = bookPage.getContent().stream().map(b -> {
             Map<String, Object> dto = new HashMap<>();
             dto.put("id", b.getId());
@@ -696,7 +740,43 @@ public class AdminApiController {
         result.put("totalElements", bookPage.getTotalElements());
         result.put("totalPages", bookPage.getTotalPages());
         result.put("page", page);
+        result.put("query", q);
         return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/books/search-google")
+    public ResponseEntity<Map<String, Object>> searchBooksOnGoogle(
+            @RequestParam String q,
+            @RequestParam(defaultValue = "0") int startIndex) {
+        try {
+            JsonNode response = googleBooksClient.searchBooks(q, Math.max(0, startIndex));
+            List<Map<String, Object>> results = response == null || !response.has("items")
+                    ? List.of()
+                    : iterableToList(response.path("items")).stream()
+                    .map(item -> {
+                        JsonNode info = item.path("volumeInfo");
+                        String googleId = item.path("id").asText("");
+                        Map<String, Object> dto = new HashMap<>();
+                        dto.put("googleBooksId", googleId);
+                        dto.put("title", info.path("title").asText(""));
+                        dto.put("authors", joinTextArray(info.path("authors")));
+                        dto.put("publisher", info.path("publisher").asText(""));
+                        dto.put("publishedDate", info.path("publishedDate").asText(""));
+                        dto.put("categories", joinTextArray(info.path("categories")));
+                        dto.put("coverUrl", firstImageUrl(info.path("imageLinks")));
+                        dto.put("alreadyImported", bookRepository.findByGoogleBooksId(googleId).isPresent());
+                        return dto;
+                    }).toList();
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "results", results,
+                    "totalResults", response != null ? response.path("totalItems").asInt(0) : 0,
+                    "startIndex", Math.max(0, startIndex)
+            ));
+        } catch (Exception e) {
+            log.error("Error buscando libros en Google Books por '{}': {}", q, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
     }
 
     @PostMapping("/series/repair-posters")
@@ -784,5 +864,31 @@ public class AdminApiController {
                 .build();
             return ResponseEntity.status(500).body(errorStatus);
         }
+    }
+
+    private List<JsonNode> iterableToList(JsonNode arrayNode) {
+        List<JsonNode> items = new java.util.ArrayList<>();
+        if (arrayNode != null && arrayNode.isArray()) {
+            arrayNode.forEach(items::add);
+        }
+        return items;
+    }
+
+    private String joinTextArray(JsonNode arrayNode) {
+        if (arrayNode == null || !arrayNode.isArray()) return "";
+        List<String> values = new java.util.ArrayList<>();
+        arrayNode.forEach(node -> values.add(node.asText()));
+        return String.join(", ", values);
+    }
+
+    private String firstImageUrl(JsonNode imageLinks) {
+        if (imageLinks == null || imageLinks.isMissingNode()) return "";
+        for (String key : List.of("extraLarge", "large", "medium", "thumbnail", "smallThumbnail")) {
+            String url = imageLinks.path(key).asText(null);
+            if (url != null && !url.isBlank()) {
+                return url.replace("http://", "https://");
+            }
+        }
+        return "";
     }
 }

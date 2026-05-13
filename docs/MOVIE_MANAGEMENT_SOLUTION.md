@@ -13,7 +13,7 @@ He solucionado completamente el problema donde las acciones de gestión de pelí
 - Error 404 en `/admin/bulk-loader/status`
 
 **CAUSA RAÍZ:**
-Los endpoints de carga masiva estaban en `backup_old_controllers/TMDBBulkLoaderController.java` pero no estaban disponibles en el controlador activo.
+Los endpoints de carga masiva no estaban disponibles en el controlador activo del panel de administracion.
 
 ## 🛠️ **Solución Implementada**
 

@@ -52,6 +52,16 @@
                     </div>
                 </div>
             </div>
+            <div class="admin-module-card" style="margin-top:1rem">
+                <div class="admin-icon"><i class="fas fa-magnifying-glass"></i></div>
+                <h4>Buscar por nombre en TMDB</h4>
+                <p>Busca una serie por titulo y elige cual importar al catalogo.</p>
+                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
+                    <input type="text" id="tmdbSearchInput" placeholder="Ej: Breaking Bad..." class="form-input" style="flex:1;min-width:220px;padding:0.4rem 0.6rem;font-size:0.85rem">
+                    <button onclick="searchTmdbSeries()" class="btn-accent" style="white-space:nowrap"><i class="fas fa-search"></i> Buscar</button>
+                </div>
+                <div id="tmdbSearchResults" style="margin-top:0.75rem;display:grid;gap:0.5rem"></div>
+            </div>
             <div id="importLog" style="margin-top:1rem;font-size:0.8rem;color:var(--text-secondary);background:var(--bg-elevated);border-radius:6px;padding:0.75rem;min-height:2.5rem;display:none;"></div>
         </div>
 
@@ -81,7 +91,12 @@
         <!-- Series list -->
         <div class="admin-section">
             <div class="admin-section-title"><i class="fas fa-list"></i>Series en Catálogo</div>
-            <div id="seriesStats" style="margin-bottom:1rem;font-size:0.85rem;color:var(--text-muted)">Cargando...</div>
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap">
+                <span id="seriesStats" style="font-size:0.85rem;color:var(--text-muted)">Cargando...</span>
+                <input type="search" id="seriesLocalSearch" placeholder="Buscar por nombre..." class="form-input" style="min-width:220px;padding:0.35rem 0.6rem;font-size:0.85rem">
+                <button onclick="loadSeries(0)" class="btn-ghost" style="font-size:0.78rem;padding:0.2rem 0.6rem"><i class="fas fa-search"></i> Buscar</button>
+                <button onclick="clearSeriesSearch()" class="btn-ghost" style="font-size:0.78rem;padding:0.2rem 0.6rem"><i class="fas fa-times"></i> Limpiar</button>
+            </div>
             <table class="admin-table">
                 <thead><tr><th>ID</th><th>Título</th><th>Temporadas</th><th>Géneros</th><th>Estado</th><th>Acciones</th></tr></thead>
                 <tbody id="seriesTableBody">
@@ -94,11 +109,16 @@
 
     <script>
         let currentPage = 0;
+        let currentQuery = '';
 
         async function loadSeries(page = 0) {
-            const res = await fetch(`/api/admin/series?page=${page}&size=20`);
+            currentQuery = document.getElementById('seriesLocalSearch').value.trim();
+            const queryParam = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
+            const res = await fetch(`/api/admin/series?page=${page}&size=20${queryParam}`);
             const data = await res.json();
-            document.getElementById('seriesStats').textContent = `Total: ${data.totalElements} series`;
+            document.getElementById('seriesStats').textContent = currentQuery
+                ? `Encontradas: ${data.totalElements} series`
+                : `Total: ${data.totalElements} series`;
             const tbody = document.getElementById('seriesTableBody');
             if (!data.content || data.content.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Sin series. Importa algunas primero.</td></tr>';
@@ -130,6 +150,51 @@
                 pag.appendChild(btn);
             }
             currentPage = page;
+        }
+
+        function clearSeriesSearch() {
+            document.getElementById('seriesLocalSearch').value = '';
+            loadSeries(0);
+        }
+
+        async function searchTmdbSeries() {
+            const q = document.getElementById('tmdbSearchInput').value.trim();
+            if (!q) { alert('Introduce un nombre de serie'); return; }
+            const resultsBox = document.getElementById('tmdbSearchResults');
+            resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Buscando en TMDB...</div>';
+            const res = await fetch(`/api/admin/series/search-tmdb?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            if (!data.success) {
+                resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${data.error || 'No se pudo buscar'}</div>`;
+                return;
+            }
+            if (!data.results || data.results.length === 0) {
+                resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Sin resultados.</div>';
+                return;
+            }
+            resultsBox.innerHTML = data.results.slice(0, 8).map(s => `
+                <div style="display:flex;gap:0.75rem;align-items:center;background:var(--bg-elevated);border-radius:6px;padding:0.6rem">
+                    ${s.posterPath ? `<img src="https://image.tmdb.org/t/p/w92${s.posterPath}" alt="" style="width:42px;border-radius:4px">` : '<div style="width:42px;height:62px;background:var(--border);border-radius:4px"></div>'}
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:700">${s.title || s.originalTitle}</div>
+                        <div style="font-size:0.78rem;color:var(--text-muted)">TMDB ${s.tmdbId} - ${s.firstAirDate || 'sin fecha'}</div>
+                    </div>
+                    <button onclick="importSearchedSeries(${s.tmdbId})" class="${s.alreadyImported ? 'btn-ghost' : 'btn-accent'}" style="white-space:nowrap" ${s.alreadyImported ? 'disabled' : ''}>
+                        ${s.alreadyImported ? 'Ya importada' : 'Importar'}
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function importSearchedSeries(tmdbId) {
+            showLog(`Importando serie TMDB ID ${tmdbId}...`);
+            const res = await fetch(`/api/admin/series/import/${tmdbId}`, { method: 'POST' });
+            const data = await res.json();
+            showLog(data.success ? `Serie "${data.title}" importada (ID: ${data.id})` : `Error: ${data.error || data.message}`, !data.success);
+            if (data.success) {
+                loadSeries(0);
+                searchTmdbSeries();
+            }
         }
 
         async function importPopularSeries() {
@@ -200,7 +265,15 @@
             log.textContent = msg;
         }
 
-        document.addEventListener('DOMContentLoaded', () => loadSeries(0));
+        document.addEventListener('DOMContentLoaded', () => {
+            loadSeries(0);
+            document.getElementById('seriesLocalSearch').addEventListener('keydown', e => {
+                if (e.key === 'Enter') loadSeries(0);
+            });
+            document.getElementById('tmdbSearchInput').addEventListener('keydown', e => {
+                if (e.key === 'Enter') searchTmdbSeries();
+            });
+        });
     </script>
 </body>
 </html>

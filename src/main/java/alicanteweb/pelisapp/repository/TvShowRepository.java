@@ -16,6 +16,7 @@ import java.util.Optional;
 public interface TvShowRepository extends JpaRepository<TvShow, Long> {
     Optional<TvShow> findByTmdbId(Long tmdbId);
     List<TvShow> findByTitleContainingIgnoreCase(String title);
+    Page<TvShow> findByTitleContainingIgnoreCase(String title, Pageable pageable);
     Page<TvShow> findAll(Pageable pageable);
 
     @Query("SELECT ts FROM TvShow ts JOIN ts.reviews r " +

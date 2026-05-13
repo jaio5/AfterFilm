@@ -57,17 +57,27 @@
                     </div>
                 </div>
             </div>
+            <div class="admin-module-card" style="margin-top:1rem">
+                <div class="admin-icon"><i class="fas fa-magnifying-glass"></i></div>
+                <h4>Buscar por nombre en Google Books</h4>
+                <p>Busca libros por titulo o autor y elige cuales importar al catalogo.</p>
+                <div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
+                    <input type="text" id="googleSearchInput" placeholder="Ej: El nombre del viento..." class="form-input" style="flex:1;min-width:220px;padding:0.4rem 0.6rem;font-size:0.85rem">
+                    <button onclick="searchGoogleBooks()" class="btn-accent" style="white-space:nowrap"><i class="fas fa-search"></i> Buscar</button>
+                </div>
+                <div id="googleSearchResults" style="margin-top:0.75rem;display:grid;gap:0.5rem"></div>
+            </div>
             <div id="importLog" style="margin-top:1rem;font-size:0.8rem;color:var(--text-secondary);background:var(--bg-elevated);border-radius:6px;padding:0.75rem;min-height:2.5rem;display:none;"></div>
         </div>
 
         <!-- Books list -->
         <div class="admin-section">
             <div class="admin-section-title"><i class="fas fa-list"></i>Libros en Catálogo</div>
-            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+            <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:1rem;flex-wrap:wrap">
                 <span id="booksStats" style="font-size:0.85rem;color:var(--text-muted)">Cargando...</span>
-                <button onclick="loadBooks(0)" class="btn-ghost" style="font-size:0.78rem;padding:0.2rem 0.6rem">
-                    <i class="fas fa-sync-alt"></i> Actualizar
-                </button>
+                <input type="search" id="booksLocalSearch" placeholder="Buscar por nombre..." class="form-input" style="min-width:220px;padding:0.35rem 0.6rem;font-size:0.85rem">
+                <button onclick="loadBooks(0)" class="btn-ghost" style="font-size:0.78rem;padding:0.2rem 0.6rem"><i class="fas fa-search"></i> Buscar</button>
+                <button onclick="clearBooksSearch()" class="btn-ghost" style="font-size:0.78rem;padding:0.2rem 0.6rem"><i class="fas fa-times"></i> Limpiar</button>
             </div>
             <table class="admin-table">
                 <thead><tr><th>ID</th><th>Título</th><th>Autores</th><th>Editorial</th><th>Año</th><th>Acciones</th></tr></thead>
@@ -81,11 +91,16 @@
 
     <script>
         let currentPage = 0;
+        let currentQuery = '';
 
         async function loadBooks(page = 0) {
-            const res = await fetch(`/api/admin/books?page=${page}&size=20`);
+            currentQuery = document.getElementById('booksLocalSearch').value.trim();
+            const queryParam = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
+            const res = await fetch(`/api/admin/books?page=${page}&size=20${queryParam}`);
             const data = await res.json();
-            document.getElementById('booksStats').textContent = `Total: ${data.totalElements} libros`;
+            document.getElementById('booksStats').textContent = currentQuery
+                ? `Encontrados: ${data.totalElements} libros`
+                : `Total: ${data.totalElements} libros`;
             const tbody = document.getElementById('booksTableBody');
             if (!data.content || data.content.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Sin libros. Importa algunos primero.</td></tr>';
@@ -119,6 +134,11 @@
             currentPage = page;
         }
 
+        function clearBooksSearch() {
+            document.getElementById('booksLocalSearch').value = '';
+            loadBooks(0);
+        }
+
         async function searchAndImport() {
             const q = document.getElementById('bookSearchInput').value.trim();
             const maxResults = parseInt(document.getElementById('maxResultsInput').value) || 20;
@@ -149,6 +169,46 @@
             if (data.success) loadBooks(0);
         }
 
+        async function searchGoogleBooks() {
+            const q = document.getElementById('googleSearchInput').value.trim();
+            if (!q) { alert('Introduce un nombre de libro o autor'); return; }
+            const resultsBox = document.getElementById('googleSearchResults');
+            resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Buscando en Google Books...</div>';
+            const res = await fetch(`/api/admin/books/search-google?q=${encodeURIComponent(q)}`);
+            const data = await res.json();
+            if (!data.success) {
+                resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${data.error || 'No se pudo buscar'}</div>`;
+                return;
+            }
+            if (!data.results || data.results.length === 0) {
+                resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Sin resultados.</div>';
+                return;
+            }
+            resultsBox.innerHTML = data.results.slice(0, 8).map(b => `
+                <div style="display:flex;gap:0.75rem;align-items:center;background:var(--bg-elevated);border-radius:6px;padding:0.6rem">
+                    ${b.coverUrl ? `<img src="${b.coverUrl}" alt="" style="width:42px;max-height:64px;border-radius:4px;object-fit:cover">` : '<div style="width:42px;height:62px;background:var(--border);border-radius:4px"></div>'}
+                    <div style="flex:1;min-width:0">
+                        <div style="font-weight:700">${b.title || 'Sin titulo'}</div>
+                        <div style="font-size:0.78rem;color:var(--text-muted)">${b.authors || 'Autor desconocido'} - ${b.publishedDate || 'sin fecha'}</div>
+                    </div>
+                    <button onclick="importSearchedBook('${String(b.googleBooksId).replace(/'/g, "\\'")}')" class="${b.alreadyImported ? 'btn-ghost' : 'btn-accent'}" style="white-space:nowrap" ${b.alreadyImported ? 'disabled' : ''}>
+                        ${b.alreadyImported ? 'Ya importado' : 'Importar'}
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function importSearchedBook(googleId) {
+            showLog(`Importando libro con ID "${googleId}"...`);
+            const res = await fetch(`/api/admin/books/import/${encodeURIComponent(googleId)}`, { method: 'POST' });
+            const data = await res.json();
+            showLog(data.success ? `Libro "${data.title}" importado (ID: ${data.id})` : `Error: ${data.error || data.message}`, !data.success);
+            if (data.success) {
+                loadBooks(0);
+                searchGoogleBooks();
+            }
+        }
+
         async function deleteBook(id, title) {
             if (!confirm(`¿Eliminar el libro "${title}"? Esta acción no se puede deshacer.`)) return;
             const res = await fetch(`/api/admin/books/${id}/delete`, { method: 'POST' });
@@ -166,7 +226,15 @@
             log.textContent = msg;
         }
 
-        document.addEventListener('DOMContentLoaded', () => loadBooks(0));
+        document.addEventListener('DOMContentLoaded', () => {
+            loadBooks(0);
+            document.getElementById('booksLocalSearch').addEventListener('keydown', e => {
+                if (e.key === 'Enter') loadBooks(0);
+            });
+            document.getElementById('googleSearchInput').addEventListener('keydown', e => {
+                if (e.key === 'Enter') searchGoogleBooks();
+            });
+        });
     </script>
 </body>
 </html>

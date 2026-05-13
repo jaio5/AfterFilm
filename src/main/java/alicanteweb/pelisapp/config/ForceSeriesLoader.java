@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 
 /**
@@ -23,12 +24,21 @@ public class ForceSeriesLoader implements CommandLineRunner {
     private final TMDBSeriesLoaderService tmdbSeriesLoaderService;
     private final TvShowRepository tvShowRepository;
 
+    @Value("${app.tmdb.series.load-on-startup:true}")
+    private boolean loadOnStartup;
+
     @Override
     @Async
     public void run(String... args) {
         log.info(AppConstants.LOG_SEPARATOR);
         log.info("{} FORCE SERIES LOADER - Carga inicial de series TMDB", AppConstants.LOG_FIRE_EMOJI);
         log.info(AppConstants.LOG_SEPARATOR);
+
+        if (!loadOnStartup) {
+            log.info("{} Carga automática de series desactivada (app.tmdb.series.load-on-startup=false)",
+                    AppConstants.LOG_INFO_EMOJI);
+            return;
+        }
 
         try {
             long currentCount = tvShowRepository.count();

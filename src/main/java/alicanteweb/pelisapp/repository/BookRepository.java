@@ -15,6 +15,7 @@ import java.util.Optional;
 public interface BookRepository extends JpaRepository<Book, Long> {
     Optional<Book> findByGoogleBooksId(String googleBooksId);
     List<Book> findByTitleContainingIgnoreCase(String title);
+    Page<Book> findByTitleContainingIgnoreCase(String title, Pageable pageable);
     Page<Book> findAll(Pageable pageable);
 
     Page<Book> findByCategoriesContainingIgnoreCase(String category, Pageable pageable);

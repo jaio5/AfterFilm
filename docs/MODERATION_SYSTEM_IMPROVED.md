@@ -100,8 +100,8 @@ public static class ContentModerationException extends RuntimeException
 2. **Fallback**: Reglas rígidas con lista amplia de palabras prohibidas
 3. **Si ambos fallan**: Error controlado, no se permite contenido por defecto
 
-### ✅ **Página de Pruebas**
-- **URL:** `http://localhost:8080/test-moderation.html`
+### ✅ **Endpoint de Pruebas**
+- **Endpoint de prueba:** `POST /api/moderation/test`
 - **Casos automáticos:** Contenido limpio vs. contenido tóxico
 - **Test manual:** Prueba tu propio texto
 - **Estadísticas en tiempo real:** Aprobados vs. rechazados
@@ -167,17 +167,17 @@ GET /api/system-health
 - ✅ Base de datos: Conectada para guardar moderaciones
 - ✅ Sistema de respaldo: Disponible si falla Ollama
 
-### **2. Página de Pruebas:**
+### **2. Endpoint de Pruebas:**
 ```bash
-GET /test-moderation.html
+POST /api/moderation/test
 ```
-- Tests automáticos para verificar funcionamiento
-- Interfaz visual con resultados en tiempo real
+- Permite verificar el funcionamiento desde cliente REST o scripts
+- Devuelve el resultado del analisis de moderacion en JSON
 - Estadísticas de aprobación/rechazo
 
 ### **3. API de Testing:**
 ```bash
-POST /api/test-moderation
+POST /api/moderation/test
 Content-Type: application/json
 {
   "text": "texto a probar"
