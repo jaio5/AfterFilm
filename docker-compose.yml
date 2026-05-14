@@ -1,0 +1,60 @@
+services:
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: pelisapp
+      MYSQL_USER: pelisapp
+      MYSQL_PASSWORD: pelisapp123
+      MYSQL_ROOT_PASSWORD: root123
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    ports:
+      - "0.0.0.0:3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ppelisapp123"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - pelisapp-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      SPRING_DATASOURCE_HOST: db
+      SPRING_DATASOURCE_PORT: 3306
+      SPRING_DATASOURCE_DB: pelisapp
+      SPRING_DATASOURCE_USERNAME: pelisapp
+      SPRING_DATASOURCE_PASSWORD: pelisapp123
+      APP_JWT_SECRET: development-secret-key-change-in-production-32-chars
+      MAIL_PASSWORD: wvyj mheo fxmf hvip
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      TMDB_BEARER_TOKEN: eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJiNjE5M2U4NTJmYTUwYTRhZGQyZWIwMWRkZmJhODA0MyIsIm5iZiI6MTc0MTk4ODM3OC40MjEsInN1YiI6IjY3ZDRhMjFhOTE2NWYzNzExODAxMDU0MSIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.ilHPYl4g_8fRgOQhy1Q2GyulkxtxebcqjgUE4VshqTM
+      SERVER_ADDRESS: 0.0.0.0
+      SERVER_PORT: 8080
+    ports:
+      - "0.0.0.0:8080:8080"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - pelisapp-network
+
+volumes:
+  db_data:
+
+networks:
+  pelisapp-network:
+    driver: bridge

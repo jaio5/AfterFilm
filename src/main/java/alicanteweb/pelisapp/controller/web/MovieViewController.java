@@ -30,7 +30,7 @@ public class MovieViewController {
     @GetMapping("/pelicula/{id}")
     public String movieDetail(@PathVariable Long id, Model model, Authentication auth) {
         try {
-            Movie movie = movieRepository.findById(id)
+            Movie movie = movieRepository.findByIdWithCastAndDirectors(id)
                     .orElseThrow(() -> new IllegalArgumentException("Película no encontrada"));
             MovieDetailsDTO movieDetails = null;
             try {

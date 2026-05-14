@@ -26,7 +26,7 @@ public class Book {
 
     private String isbn;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 500)
     private String title;
 
     private String authors;
