@@ -151,12 +151,24 @@
                 (isLoading ? '⏳ ' : '') + message;
         }
 
+        async function readResponse(response) {
+            const contentType = response.headers.get('content-type') || '';
+            const body = contentType.includes('application/json')
+                ? await response.json()
+                : await response.text();
+            if (!response.ok) {
+                const message = typeof body === 'string' ? body : (body.message || body.error || JSON.stringify(body));
+                throw new Error(message || `HTTP ${response.status}`);
+            }
+            return body;
+        }
+
         function loadMovies(type, pages) {
             updateStatus('Cargando películas ' + type + '…', true);
             const data = new FormData();
             data.append('pages', pages);
             fetch('/admin/load-' + type, { method: 'POST', body: data })
-                .then(r => r.json())
+                .then(readResponse)
                 .then(result => {
                     updateStatus(result.message || JSON.stringify(result), false);
                     setTimeout(() => window.location.reload(), 2000);
@@ -167,7 +179,7 @@
         function loadMoreAuto() {
             updateStatus('Iniciando carga automática de múltiples categorías…', true);
             fetch('/admin/load-more')
-                .then(r => r.text())
+                .then(readResponse)
                 .then(result => {
                     updateStatus(result, false);
                     setTimeout(() => window.location.reload(), 3000);
@@ -178,49 +190,49 @@
         function downloadMissingPosters() {
             updateStatus('Iniciando descarga de carátulas faltantes…', true);
             fetch('/admin/download-missing-posters', { method: 'POST' })
-                .then(r => r.text()).then(r => updateStatus(r, false))
+                .then(readResponse).then(r => updateStatus(r, false))
                 .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
         function redownloadPosters() {
             updateStatus('Redescargando todas las carátulas…', true);
             fetch('/admin/redownload-posters', { method: 'POST' })
-                .then(r => r.text()).then(r => updateStatus(r, false))
+                .then(readResponse).then(r => updateStatus(r, false))
                 .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
         function redownloadPostersAsync() {
             updateStatus('Iniciando redescarga asincrónica…', true);
             fetch('/admin/redownload-posters-async', { method: 'POST' })
-                .then(r => r.text()).then(r => updateStatus(r, false))
+                .then(readResponse).then(r => updateStatus(r, false))
                 .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
         function getPosterStats() {
             updateStatus('Obteniendo estadísticas…', true);
             fetch('/admin/poster-stats')
-                .then(r => r.text()).then(r => updateStatus(r, false))
+                .then(readResponse).then(r => updateStatus(r, false))
                 .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
         function redownloadCastDirectorImages() {
             updateStatus('Redescargando imágenes de reparto y director…', true);
             fetch('/admin/redownload-cast-director-images', { method: 'POST' })
-                .then(r => r.text()).then(r => updateStatus(r, false))
+                .then(readResponse).then(r => updateStatus(r, false))
                 .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
         function deleteDuplicateImages() {
             updateStatus('Eliminando fotos duplicadas…', true);
             fetch('/admin/delete-duplicate-images', { method: 'POST' })
-                .then(r => r.text()).then(r => updateStatus(r, false))
+                .then(readResponse).then(r => updateStatus(r, false))
                 .catch(e => updateStatus('Error: ' + e.message, false));
         }
 
         function reloadCast(movieId) {
             updateStatus('Recargando reparto de película ' + movieId + '…', true);
             fetch('/api/admin/cast/movie/' + movieId + '/reload', { method: 'POST' })
-                .then(r => r.json())
+                .then(readResponse)
                 .then(r => updateStatus(r.message || 'Reparto actualizado', false))
                 .catch(e => updateStatus('Error: ' + e.message, false));
         }

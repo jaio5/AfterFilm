@@ -33,8 +33,10 @@ public class MoviePosterRedownloadService {
         }
 
         try {
-            // Construir URL completa de TMDB
-            String fullUrl = tmdbClient.buildImageUrl(movie.getPosterPath());
+            // Construir URL completa de TMDB. Algunos registros antiguos guardan la URL completa.
+            String fullUrl = movie.getPosterPath().startsWith("http")
+                    ? movie.getPosterPath()
+                    : tmdbClient.buildImageUrl(movie.getPosterPath());
             if (fullUrl == null) {
                 return false;
             }

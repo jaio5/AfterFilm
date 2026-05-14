@@ -11,7 +11,10 @@ import alicanteweb.pelisapp.repository.TvShowRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
 import alicanteweb.pelisapp.service.EmailConfirmationService;
 import alicanteweb.pelisapp.service.IEmailService;
+import alicanteweb.pelisapp.service.MoviePosterRedownloadService;
 import alicanteweb.pelisapp.service.TMDBMovieLoaderService;
+import alicanteweb.pelisapp.tmdb.TMDBClient;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -52,8 +55,10 @@ public class WebController {
 
     // Services
     private final TMDBMovieLoaderService tmdbMovieLoaderService;
+    private final MoviePosterRedownloadService moviePosterRedownloadService;
     private final EmailConfirmationService emailConfirmationService;
     private final IEmailService emailService;
+    private final TMDBClient tmdbClient;
 
     @Value("${app.email.enabled:false}")
     private boolean emailEnabled;
@@ -201,7 +206,7 @@ public class WebController {
     public ResponseEntity<?> loadTrendingMovies(@RequestParam(defaultValue = "1") int pages, Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "❌ Sin permisos de administrador"));
-        return ResponseEntity.ok(bulkLoadMoviesJson(pages, "popular"));
+        return ResponseEntity.ok(loadTrendingMoviesJson());
     }
 
     @GetMapping("/admin/load-more")
@@ -226,10 +231,9 @@ public class WebController {
         if (redirect != null) return "❌ Sin permisos de administrador";
         try {
             log.info("🖼️ Iniciando descarga inteligente de carátulas faltantes");
-            long moviesWithoutPosters = movieRepository.findAll().stream()
-                .mapToLong(movie -> (movie.getPosterLocalPath() == null || movie.getPosterLocalPath().isBlank()) ? 1 : 0)
-                .sum();
-            String result = String.format("✅ Iniciando descarga de %d carátulas faltantes", moviesWithoutPosters);
+            PosterReloadResult reload = redownloadPosters(false);
+            String result = String.format("Caratulas faltantes reparadas: %d. Omitidas: %d. Errores: %d.",
+                    reload.reloaded(), reload.skipped(), reload.errors());
             log.info(result);
             return result;
         } catch (Exception e) {
@@ -251,8 +255,9 @@ public class WebController {
         if (redirect != null) return "❌ Sin permisos de administrador";
         try {
             log.info("🔄 Iniciando redescarga asincrónica de carátulas");
-            long totalMovies = movieRepository.count();
-            String result = String.format("✅ Proceso asincrónico iniciado para %d películas", totalMovies);
+            PosterReloadResult reload = redownloadPosters(true);
+            String result = String.format("Caratulas redescargadas: %d. Omitidas: %d. Errores: %d.",
+                    reload.reloaded(), reload.skipped(), reload.errors());
             log.info(result);
             return result;
         } catch (Exception e) {
@@ -457,6 +462,85 @@ Sin carátula: %d (%.1f%%)
         model.addAttribute("error", userMsg);
         return "error";
     }
+
+    private Map<String, Object> loadTrendingMoviesJson() {
+        Map<String, Object> result = new HashMap<>();
+        try {
+            long countBefore = movieRepository.count();
+            JsonNode response = tmdbClient.getTrending("movie", "week");
+            int processed = 0;
+            int omitted = 0;
+            int errors = 0;
+
+            if (response != null && response.has("results")) {
+                for (JsonNode movieNode : response.path("results")) {
+                    long tmdbId = movieNode.path("id").asLong(0);
+                    if (tmdbId == 0) {
+                        errors++;
+                        continue;
+                    }
+                    try {
+                        if (movieRepository.findByTmdbId(tmdbId).isPresent()) {
+                            omitted++;
+                            continue;
+                        }
+                        Movie movie = tmdbMovieLoaderService.loadMovieByTmdbId(tmdbId);
+                        if (movie != null) processed++;
+                        else errors++;
+                    } catch (Exception e) {
+                        errors++;
+                        log.warn("Error importando pelicula en tendencia tmdbId={}: {}", tmdbId, e.getMessage());
+                    }
+                }
+            }
+
+            long countAfter = movieRepository.count();
+            long newMovies = countAfter - countBefore;
+            result.put("success", true);
+            result.put("newMovies", newMovies);
+            result.put("processed", processed);
+            result.put("omitted", omitted);
+            result.put("errors", errors);
+            result.put("totalBefore", countBefore);
+            result.put("totalAfter", countAfter);
+            result.put("message", String.format("Se han cargado %d nuevas peliculas en tendencia. Omitidas: %d. Errores: %d.",
+                    newMovies, omitted, errors));
+        } catch (Exception e) {
+            log.error("Error cargando peliculas en tendencia: {}", e.getMessage(), e);
+            result.put("success", false);
+            result.put("message", "Error cargando peliculas en tendencia: " + e.getMessage());
+        }
+        return result;
+    }
+
+    private PosterReloadResult redownloadPosters(boolean includeExisting) {
+        int reloaded = 0;
+        int skipped = 0;
+        int errors = 0;
+
+        for (Movie movie : movieRepository.findAll()) {
+            boolean hasLocalPoster = movie.getPosterLocalPath() != null && !movie.getPosterLocalPath().isBlank();
+            if (!includeExisting && hasLocalPoster) {
+                skipped++;
+                continue;
+            }
+            try {
+                if (moviePosterRedownloadService.redownloadMoviePoster(movie)) {
+                    reloaded++;
+                } else {
+                    skipped++;
+                }
+            } catch (Exception e) {
+                errors++;
+                log.warn("Error redescargando caratula de pelicula id={}: {}", movie.getId(), e.getMessage());
+            }
+        }
+
+        return new PosterReloadResult(reloaded, skipped, errors);
+    }
+
+    private record PosterReloadResult(int reloaded, int skipped, int errors) {}
+
     // Método utilitario para presets de carga masiva (switch mejorado)
     private String handlePreset(String presetName) {
         return switch (presetName.toLowerCase()) {
@@ -491,8 +575,9 @@ Sin carátula: %d (%.1f%%)
         if (redirect != null) return "❌ Sin permisos de administrador";
         try {
             log.info("🖼️ Iniciando recarga de posters de películas");
-            long totalMovies = movieRepository.count();
-            String result = String.format("✅ Proceso de recarga de posters iniciado para %d películas", totalMovies);
+            PosterReloadResult reload = redownloadPosters(true);
+            String result = String.format("Caratulas redescargadas: %d. Omitidas: %d. Errores: %d.",
+                    reload.reloaded(), reload.skipped(), reload.errors());
             log.info(result);
             return result;
         } catch (Exception e) {
