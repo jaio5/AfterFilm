@@ -36,15 +36,15 @@ public class CustomAuthenticationFailureHandler extends SimpleUrlAuthenticationF
         String userAgent = request.getHeader("User-Agent");
 
         // Log de seguridad
-        log.warn("[DEBUG] Login fallido - Usuario: {}, IP: {}, UserAgent: {}, Razón: {}",
+        log.warn("Login fallido: usuario={}, ip={}, userAgent={}, razon={}",
                 username, remoteAddr, userAgent, exception.getClass().getSimpleName());
-        log.warn("[DEBUG] Mensaje de excepción: {}", exception.getMessage());
+        log.debug("Detalle del fallo de autenticacion: {}", exception.getMessage());
 
         HttpSession session = request.getSession();
 
         // Manejar diferentes tipos de errores de autenticación
         String errorMessage = determineErrorMessage(exception);
-        log.warn("[DEBUG] Mensaje mostrado al usuario: {}", errorMessage);
+        log.debug("Mensaje mostrado al usuario: {}", errorMessage);
 
         // Implementar protección contra ataques de fuerza bruta
         if (!(exception instanceof DisabledException || exception instanceof LockedException)) {
@@ -55,7 +55,7 @@ public class CustomAuthenticationFailureHandler extends SimpleUrlAuthenticationF
         if (isIpBlocked(session)) {
             errorMessage = "Demasiados intentos fallidos. Cuenta temporalmente bloqueada por " +
                           LOCKOUT_DURATION_MINUTES + " minutos.";
-            log.warn("[DEBUG] IP {} bloqueada por demasiados intentos", remoteAddr);
+            log.warn("IP bloqueada por demasiados intentos: {}", remoteAddr);
         }
 
         // Añadir el mensaje de error a la sesión

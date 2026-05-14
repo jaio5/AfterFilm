@@ -89,6 +89,7 @@ const catalogInfo = document.getElementById('catalog-info');
 
 let currentPage = 0;
 let currentCategory = null;
+let searchTimeout = null;
 
 function loadBooks(page = 0, category = currentCategory) {
     currentCategory = category;
@@ -198,6 +199,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     catalogInfo.textContent = `${data.length} resultado${data.length !== 1 ? 's' : ''}`;
                 });
         });
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function() {
+                searchForm.requestSubmit();
+            }, 250);
+        });
+
         searchInput.addEventListener('search', function() {
             if (!this.value) loadBooks(0, null);
         });

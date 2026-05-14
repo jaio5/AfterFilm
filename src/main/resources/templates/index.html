@@ -116,6 +116,7 @@ const catalogInfo = document.getElementById('catalog-info');
 
 let currentPage = 0;
 let currentGenre = null;
+let searchTimeout = null;
 
 function loadMovies(page = 0, genre = null) {
     const url = genre
@@ -278,6 +279,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         // También limpiar resultados cuando se borra la búsqueda con la X del input
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function() {
+                searchForm.requestSubmit();
+            }, 250);
+        });
+
         searchInput.addEventListener('search', function() {
             if (!this.value) loadMovies(0, currentGenre);
         });

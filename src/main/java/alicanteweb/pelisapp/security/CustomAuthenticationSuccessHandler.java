@@ -33,7 +33,7 @@ public class CustomAuthenticationSuccessHandler extends SavedRequestAwareAuthent
         String userAgent = request.getHeader("User-Agent");
 
         // Log de seguridad
-        log.info("[DEBUG] Login exitoso - Usuario: {}, IP: {}, UserAgent: {}",
+        log.info("Login correcto: usuario={}, ip={}, userAgent={}",
                 username, remoteAddr, userAgent);
 
         // Limpiar intentos de login fallidos (si los hay)
@@ -43,7 +43,7 @@ public class CustomAuthenticationSuccessHandler extends SavedRequestAwareAuthent
         SavedRequest savedRequest = requestCache.getRequest(request, response);
         if (savedRequest != null) {
             String targetUrl = savedRequest.getRedirectUrl();
-            log.debug("[DEBUG] Redirigiendo a URL guardada: {}", targetUrl);
+            log.debug("Redirigiendo a URL guardada: {}", targetUrl);
 
             // Validar que la URL de redirección es segura
             if (isValidRedirectUrl(targetUrl)) {
@@ -54,7 +54,7 @@ public class CustomAuthenticationSuccessHandler extends SavedRequestAwareAuthent
 
         // Redirección por defecto basada en roles
         String redirectUrl = determineTargetUrl(authentication);
-        log.debug("[DEBUG] Redirigiendo a URL por defecto: {}", redirectUrl);
+        log.debug("Redirigiendo a URL por defecto: {}", redirectUrl);
 
         getRedirectStrategy().sendRedirect(request, response, redirectUrl);
     }

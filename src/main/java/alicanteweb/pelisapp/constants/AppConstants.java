@@ -127,11 +127,11 @@ public final class AppConstants {
     public static final String DIRECTOR_FILE_PREFIX = "director_";
 
 
-    // Mensajes de logging mejorados
-    public static final String LOG_SEPARATOR = "═══════════════════════════════════════════════════";
-    public static final String LOG_SUCCESS_EMOJI = "✅";
-    public static final String LOG_ERROR_EMOJI = "❌";
-    public static final String LOG_WARNING_EMOJI = "⚠️";
-    public static final String LOG_INFO_EMOJI = "📊";
-    public static final String LOG_FIRE_EMOJI = "🔥";
+    // Marcadores de logging compatibles con cualquier consola.
+    public static final String LOG_SEPARATOR = "------------------------------------------------------------";
+    public static final String LOG_SUCCESS_EMOJI = "[OK]";
+    public static final String LOG_ERROR_EMOJI = "[ERROR]";
+    public static final String LOG_WARNING_EMOJI = "[WARN]";
+    public static final String LOG_INFO_EMOJI = "[INFO]";
+    public static final String LOG_FIRE_EMOJI = "[START]";
 }

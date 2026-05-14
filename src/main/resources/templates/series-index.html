@@ -104,6 +104,7 @@ const catalogInfo = document.getElementById('catalog-info');
 
 let currentPage = 0;
 let currentGenre = null;
+let searchTimeout = null;
 
 function loadSeries(page = 0, genre = currentGenre) {
     currentGenre = genre;
@@ -241,6 +242,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     catalogInfo.textContent = `${data.length} resultado${data.length !== 1 ? 's' : ''}`;
                 });
         });
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function() {
+                searchForm.requestSubmit();
+            }, 250);
+        });
+
         searchInput.addEventListener('search', function() {
             if (!this.value) loadSeries(0, null);
         });
