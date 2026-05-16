@@ -1,0 +1,16 @@
+name: Load Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  k6-load:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run k6 load test
+        uses: grafana/k6-action@v0.3.0
+        with:
+          script: load/k6-script.js
+        env:
+          TARGET_URL: ${{ inputs.target_url || env.TARGET_URL }}

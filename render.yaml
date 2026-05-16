@@ -12,5 +12,15 @@ services:
     envVars:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
-      - key: APP_IMAGES_STORAGE_PROVIDER
-        value: ${APP_IMAGES_STORAGE_PROVIDER:-local}
+      - key: SPRING_DATASOURCE_URL
+        value: jdbc:postgresql://aws-1-eu-central-2.pooler.supabase.com:6543/postgres?sslmode=require
+      - key: SPRING_DATASOURCE_USERNAME
+        value: postgres.nuewaowsrclicowxxpre
+      - key: SPRING_DATASOURCE_PASSWORD
+        sync: false
+      - key: APP_JWT_SECRET
+        generateValue: true
+      - key: APP_ADMIN_PASSWORD
+        sync: false
+      - key: IMAGES_STORAGE_PROVIDER
+        value: local

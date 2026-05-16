@@ -30,6 +30,15 @@ public class ImageStorage {
         if ("s3".equalsIgnoreCase(storageProvider)) {
             this.backend = new S3ImageStorageBackend(s3Bucket, s3Region, s3Prefix, s3PublicBaseUrl);
             log.info("🌐 ImageStorage usando backend S3");
+        } else if ("supabase".equalsIgnoreCase(storageProvider)) {
+            // Supabase storage configuration is read from env: app.images.supabase.*
+            String supabaseUrl = System.getProperty("app.images.supabase.url", System.getenv("SUPABASE_URL"));
+            String supabaseServiceRole = System.getProperty("app.images.supabase.service-role", System.getenv("SUPABASE_SERVICE_ROLE"));
+            String supabaseBucket = System.getProperty("app.images.supabase.bucket", System.getenv("SUPABASE_BUCKET"));
+            String supabasePrefix = System.getProperty("app.images.supabase.prefix", System.getenv("SUPABASE_PREFIX"));
+            String supabasePublicBase = System.getProperty("app.images.supabase.public-base-url", System.getenv("SUPABASE_PUBLIC_BASE_URL"));
+            this.backend = new SupabaseImageStorageBackend(supabaseUrl, supabaseServiceRole, supabaseBucket, supabasePrefix, supabasePublicBase);
+            log.info("☁️ ImageStorage usando backend Supabase Storage");
         } else {
             this.backend = new LocalImageStorageBackend(storagePath, serveBase);
             log.info("📁 ImageStorage usando backend local");

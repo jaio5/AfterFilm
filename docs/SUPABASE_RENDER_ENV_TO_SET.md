@@ -3,8 +3,8 @@ Checklist de variables de entorno para Render (cópialas en el dashboard del ser
 Variables obligatorias (reemplaza los valores):
 
 - Opción recomendada (una sola URL):
-	- `SPRING_DATASOURCE_URL` = `jdbc:postgresql://db.nuewaowsrclicowxxpre.supabase.co:5432/postgres?sslmode=require`
-	- `SPRING_DATASOURCE_USERNAME` = `postgres`
+	- `SPRING_DATASOURCE_URL` = `jdbc:postgresql://aws-1-eu-central-2.pooler.supabase.com:6543/postgres?sslmode=require`
+	- `SPRING_DATASOURCE_USERNAME` = `postgres.nuewaowsrclicowxxpre`
 	- `SPRING_DATASOURCE_PASSWORD` = `<TU_PASSWORD_SUPABASE>`
 
 - Opción por campos (equivalente):
@@ -18,6 +18,13 @@ Variables obligatorias (reemplaza los valores):
 - `APP_JWT_SECRET` = <generar-secreto-largo-32+>
 - `APP_ADMIN_PASSWORD` = <contrasena-admin-inicial>
 - `APP_IMAGES_STORAGE_PROVIDER` = local
+ - `APP_IMAGES_STORAGE_PROVIDER` = supabase
+
+Supabase Storage (si vas a usar el bucket que creaste):
+
+- `SUPABASE_URL` = `https://nuewaowsrclicowxxpre.supabase.co`
+- `SUPABASE_BUCKET` = `<TU_BUCKET>`
+- `SUPABASE_SERVICE_ROLE` = `<TU_SERVICE_ROLE_KEY>` (marca como secreto)
 
 Recomendadas / opcionales:
 

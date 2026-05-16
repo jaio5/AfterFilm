@@ -1,0 +1,10 @@
+target/
+.git
+.gitignore
+Dockerfile
+README.md
+docs/
+*.log
+**/*.tmp
+**/*.swp
+node_modules/
