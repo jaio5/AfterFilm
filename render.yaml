@@ -13,7 +13,7 @@ services:
       - key: SPRING_PROFILES_ACTIVE
         value: prod
       - key: SPRING_DATASOURCE_URL
-        value: jdbc:postgresql://aws-1-eu-central-2.pooler.supabase.com:6543/postgres?sslmode=require
+        value: jdbc:postgresql://aws-1-eu-central-2.pooler.supabase.com:6543/postgres?sslmode=require&prepareThreshold=0
       - key: SPRING_DATASOURCE_USERNAME
         value: postgres.nuewaowsrclicowxxpre
       - key: SPRING_DATASOURCE_PASSWORD
@@ -22,5 +22,7 @@ services:
         generateValue: true
       - key: APP_ADMIN_PASSWORD
         sync: false
-      - key: IMAGES_STORAGE_PROVIDER
+      - key: APP_IMAGES_STORAGE_PROVIDER
         value: local
+      - key: APP_TMDB_SERIES_LOAD_ON_STARTUP
+        value: "false"
