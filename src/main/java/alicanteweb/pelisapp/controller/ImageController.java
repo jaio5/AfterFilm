@@ -16,6 +16,9 @@ import java.nio.file.Path;
 @Controller
 public class ImageController {
 
+    @Value("${app.images.storage.provider:local}")
+    private String imageStorageProvider;
+
     private final Path storagePath;
 
     public ImageController(@Value("${app.images.storage-path:./data/images}") String storagePath) {
@@ -24,6 +27,10 @@ public class ImageController {
 
     @GetMapping("/images/{fileName:.+}")
     public ResponseEntity<Resource> serveImage(@PathVariable String fileName) throws MalformedURLException {
+        if ("s3".equalsIgnoreCase(imageStorageProvider)) {
+            return ResponseEntity.notFound().build();
+        }
+
         Path file = storagePath.resolve(fileName).normalize();
         if (!file.startsWith(storagePath) || !file.toFile().exists()) {
             return ResponseEntity.notFound().build();

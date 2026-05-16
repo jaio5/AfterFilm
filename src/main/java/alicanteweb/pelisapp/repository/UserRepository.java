@@ -20,6 +20,20 @@ public interface UserRepository extends JpaRepository<User,Long> {
     Page<User> findByUsernameContainingIgnoreCase(String username, Pageable pageable);
     Page<User> findByEmailContainingIgnoreCase(String email, Pageable pageable);
 
+    @Query("""
+            SELECT u
+            FROM User u
+            WHERE LOWER(u.username) LIKE LOWER(CONCAT('%', :query, '%'))
+               OR LOWER(COALESCE(u.displayName, '')) LIKE LOWER(CONCAT('%', :query, '%'))
+            ORDER BY
+                CASE
+                    WHEN LOWER(u.username) LIKE LOWER(CONCAT('%', :query, '%')) THEN 0
+                    ELSE 1
+                END,
+                u.username
+            """)
+    Page<User> searchByUsernameOrDisplayName(@Param("query") String query, Pageable pageable);
+
     @Query("SELECT u FROM User u LEFT JOIN FETCH u.roles WHERE u.username = :username")
     Optional<User> findByUsernameWithRoles(@Param("username") String username);
 }

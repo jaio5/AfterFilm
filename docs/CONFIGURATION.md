@@ -233,10 +233,17 @@ app.moderation.models.spam=${SPAM_MODEL:spam-detector}
 #### Storage Configuration
 ```properties
 # Configuración básica de almacenamiento
+app.images.storage.provider=${IMAGES_STORAGE_PROVIDER:local}
 app.images.storage-path=${IMAGES_STORAGE_PATH:./data/images}
 app.images.serve-base=${IMAGES_SERVE_BASE:/images}
 app.images.max-size=${IMAGE_MAX_SIZE:5242880}
 app.images.allowed-types=${ALLOWED_IMAGE_TYPES:image/jpeg,image/png,image/webp}
+
+# Almacenamiento externo (S3 compatible)
+app.images.s3.bucket=${IMAGES_S3_BUCKET:}
+app.images.s3.region=${IMAGES_S3_REGION:us-east-1}
+app.images.s3.prefix=${IMAGES_S3_PREFIX:pelisapp/images}
+app.images.s3.public-base-url=${IMAGES_S3_PUBLIC_BASE_URL:}
 
 # Directorios específicos
 app.images.posters.path=${app.images.storage-path}/posters

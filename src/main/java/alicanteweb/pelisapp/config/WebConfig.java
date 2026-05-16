@@ -13,6 +13,9 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Slf4j
 public class WebConfig implements WebMvcConfigurer {
 
+    @Value("${app.images.storage.provider:local}")
+    private String imageStorageProvider;
+
     @Value("${app.images.storage-path:./data/images}")
     private String imagesStoragePath;
 
@@ -24,6 +27,9 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        if ("s3".equalsIgnoreCase(imageStorageProvider)) {
+            log.info("Configurado almacenamiento de imágenes externo; se omite el servido local de /images/**");
+        } else {
         // Configurar para servir imágenes desde el directorio local
         String imageResourceLocation = "file:" + imagesStoragePath + "/";
         String imagePathPattern = imagesServeBase + "/**";
@@ -31,6 +37,8 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addResourceHandler(imagePathPattern)
                 .addResourceLocations(imageResourceLocation)
                 .setCachePeriod(3600); // Cache por 1 hora
+            log.info("Configurado servido de imágenes: {} -> {}", imagePathPattern, imageResourceLocation);
+        }
 
         // Configurar para servir archivos de video (pero solo para acceso directo simple)
         // Los endpoints de descarga/streaming con range están en MovieFileController
@@ -41,7 +49,6 @@ public class WebConfig implements WebMvcConfigurer {
                 .addResourceLocations(movieResourceLocation)
                 .setCachePeriod(0); // Sin cache para videos
 
-        log.info("Configurado servido de imágenes: {} -> {}", imagePathPattern, imageResourceLocation);
         log.info("Configurado servido de videos: {} -> {}", moviePathPattern, movieResourceLocation);
     }
 }

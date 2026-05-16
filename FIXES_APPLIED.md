@@ -131,3 +131,12 @@ APP_ADMIN_PASSWORD=secure_password
 # Google Books API (optional)
 GOOGLE_BOOKS_API_KEY=your_google_books_api_key
 ```
+
+## ✅ Limpieza realizada (16-05-2026)
+
+- Eliminados los scripts PowerShell para Windows en `scripts/` que no se usan en el entorno Linux: `setup-ollama.ps1`, `delete-users.ps1`, `diagnostico.ps1`, `diagnostico-email.ps1`.
+- Eliminado el directorio `target/` (artefactos de build) para limpiar el workspace.
+- Verificación: Ejecutados los tests con `mvn test` tras las limpiezas — build success (1 test, 0 fallos).
+
+Nota: Estos cambios son reversibles desde el control de versiones si se requieren los scripts para entornos Windows.
+

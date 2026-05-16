@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: PelisApp-web
+    env: docker
+    plan: free
+    branch: main
+    dockerfilePath: Dockerfile
+    # Render will build the Docker image using the repository Dockerfile
+    startCommand: java $JAVA_OPTS -jar /app/pelisapp.jar
+    healthCheckPath: /actuator/health
+    instances: 1
+    envVars:
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+      - key: APP_IMAGES_STORAGE_PROVIDER
+        value: ${APP_IMAGES_STORAGE_PROVIDER:-local}

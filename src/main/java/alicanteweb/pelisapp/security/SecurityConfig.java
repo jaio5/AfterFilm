@@ -32,6 +32,8 @@ public class SecurityConfig {
 
     @Value("${app.dev-mode:false}")
     private boolean devMode;
+    @Value("${app.allow-healthcheck:true}")
+    private boolean allowHealthcheck;
 
     public SecurityConfig(JwtTokenProvider tokenProvider, CustomUserDetailsService userDetailsService) {
         this.tokenProvider = tokenProvider;
@@ -57,6 +59,10 @@ public class SecurityConfig {
             )
 
             .authorizeHttpRequests(auth -> {
+                // Permitir healthchecks no autenticados en entornos donde se necesite (CI / hosts gratuitos)
+                if (allowHealthcheck) {
+                    auth.requestMatchers("/actuator/health", "/actuator/health/**").permitAll();
+                }
                 // Rutas públicas
                 auth.requestMatchers("/", "/login", "/register").permitAll();
                 auth.requestMatchers("/confirm-account/**", "/resend-confirmation", "/request-confirmation").permitAll();

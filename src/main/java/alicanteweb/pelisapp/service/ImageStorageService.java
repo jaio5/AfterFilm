@@ -1,36 +1,24 @@
 package alicanteweb.pelisapp.service;
 
+import alicanteweb.pelisapp.service.image.ImageDownloader;
+import alicanteweb.pelisapp.service.image.ImageStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.net.URI;
 
 /**
- * Servicio para almacenar imágenes localmente desde TMDB.
+ * Servicio para descargar imágenes desde TMDB y delegar su almacenamiento.
  */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class ImageStorageService {
 
-    @Value("${app.images.storage-path:./data/images}")
-    private String storageBasePath;
-
-    @Value("${app.images.serve-base:/images}")
-    private String serveBasePath;
-
-    private final HttpClient httpClient = HttpClient.newHttpClient();
+    private final ImageStorage imageStorage;
+    private final ImageDownloader imageDownloader;
 
     /**
      * Descarga una imagen desde una URL y la guarda localmente.
@@ -45,53 +33,24 @@ public class ImageStorageService {
         }
 
         try {
-            // Crear directorios si no existen
-            Path storageDir = Paths.get(storageBasePath, subfolder);
-            Files.createDirectories(storageDir);
+            String fullFilename = filename + "." + imageDownloader.extractExtension(imageUrl);
 
-            // Determinar extensión de la imagen
-            String extension = getImageExtension(imageUrl);
-            String fullFilename = filename + extension;
-
-            Path targetPath = storageDir.resolve(fullFilename);
-
-            // Si ya existe, no descargar de nuevo
-            if (Files.exists(targetPath)) {
-                String relativePath = serveBasePath + "/" + subfolder + "/" + fullFilename;
-                log.debug("Image already exists: {}", relativePath);
-                return relativePath;
+            if (imageStorage.exists(fullFilename, subfolder)) {
+                String storedPath = imageStorage.resolveStoredPath(fullFilename, subfolder);
+                log.debug("Image already exists: {}", storedPath);
+                return storedPath;
             }
 
-            // Descargar imagen
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(imageUrl))
-                .header("User-Agent", "PelisApp/1.0")
-                .build();
-
-            HttpResponse<InputStream> response = httpClient.send(request,
-                HttpResponse.BodyHandlers.ofInputStream());
-
-            if (response.statusCode() == 200) {
-                Files.copy(response.body(), targetPath, StandardCopyOption.REPLACE_EXISTING);
-                String relativePath = serveBasePath + "/" + subfolder + "/" + fullFilename;
-                log.info("Downloaded image: {} -> {}", imageUrl, relativePath);
-                return relativePath;
-            } else {
-                log.warn("Failed to download image {}: HTTP {}", imageUrl, response.statusCode());
-                return null;
+            try (InputStream imageStream = imageDownloader.downloadImage(imageUrl)) {
+                String storedPath = imageStorage.saveImage(imageStream, fullFilename, subfolder);
+                log.info("Downloaded image: {} -> {}", imageUrl, storedPath);
+                return storedPath;
             }
 
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             log.error("Error downloading image {}: {}", imageUrl, e.getMessage());
             return null;
         }
-    }
-
-    private String getImageExtension(String url) {
-        if (url.contains(".jpg") || url.contains(".jpeg")) return ".jpg";
-        if (url.contains(".png")) return ".png";
-        if (url.contains(".webp")) return ".webp";
-        return ".jpg"; // default
     }
 
     /**
@@ -107,36 +66,15 @@ public class ImageStorageService {
         }
 
         try {
-            // Crear directorios si no existen
-            Path storageDir = Paths.get(storageBasePath, subfolder);
-            Files.createDirectories(storageDir);
+            String fullFilename = filename + "." + imageDownloader.extractExtension(imageUrl);
 
-            // Determinar extensión de la imagen
-            String extension = getImageExtension(imageUrl);
-            String fullFilename = filename + extension;
-
-            Path targetPath = storageDir.resolve(fullFilename);
-
-            // Descargar imagen (forzando sobreescritura)
-            HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(imageUrl))
-                .header("User-Agent", "PelisApp/1.0")
-                .build();
-
-            HttpResponse<InputStream> response = httpClient.send(request,
-                HttpResponse.BodyHandlers.ofInputStream());
-
-            if (response.statusCode() == 200) {
-                Files.copy(response.body(), targetPath, StandardCopyOption.REPLACE_EXISTING);
-                String relativePath = serveBasePath + "/" + subfolder + "/" + fullFilename;
-                log.info("Force downloaded image: {} -> {}", imageUrl, relativePath);
-                return relativePath;
-            } else {
-                log.warn("Failed to force download image {}: HTTP {}", imageUrl, response.statusCode());
-                return null;
+            try (InputStream imageStream = imageDownloader.downloadImage(imageUrl)) {
+                String storedPath = imageStorage.saveImage(imageStream, fullFilename, subfolder);
+                log.info("Force downloaded image: {} -> {}", imageUrl, storedPath);
+                return storedPath;
             }
 
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
             log.error("Error force downloading image {}: {}", imageUrl, e.getMessage());
             return null;
         }
@@ -147,43 +85,6 @@ public class ImageStorageService {
      * Devuelve el número de archivos eliminados.
      */
     public int deleteDuplicates(String subfolder) {
-        int deleted = 0;
-        try {
-            Path storageDir = Paths.get(storageBasePath, subfolder);
-            if (!Files.exists(storageDir) || !Files.isDirectory(storageDir)) {
-                log.warn("No existe la carpeta de imágenes: {}", storageDir);
-                return 0;
-            }
-            java.util.Map<String, Path> hashToFile = new java.util.HashMap<>();
-            java.util.Set<Path> duplicates = new java.util.HashSet<>();
-            try (java.util.stream.Stream<Path> stream = Files.list(storageDir)) {
-                for (Path file : stream.filter(Files::isRegularFile).toList()) {
-                    try (InputStream in = Files.newInputStream(file)) {
-                        byte[] content = in.readAllBytes();
-                        String hash = java.util.Base64.getEncoder().encodeToString(java.security.MessageDigest.getInstance("SHA-256").digest(content));
-                        if (hashToFile.containsKey(hash)) {
-                            duplicates.add(file);
-                        } else {
-                            hashToFile.put(hash, file);
-                        }
-                    } catch (Exception e) {
-                        log.warn("Error leyendo archivo {}: {}", file, e.getMessage());
-                    }
-                }
-            }
-            for (Path dup : duplicates) {
-                try {
-                    Files.delete(dup);
-                    deleted++;
-                    log.info("Archivo duplicado eliminado: {}", dup);
-                } catch (Exception e) {
-                    log.warn("No se pudo eliminar {}: {}", dup, e.getMessage());
-                }
-            }
-            log.info("Eliminados {} archivos duplicados en {}", deleted, storageDir);
-        } catch (Exception e) {
-            log.error("Error eliminando duplicados en {}: {}", subfolder, e.getMessage());
-        }
-        return deleted;
+        return imageStorage.deleteDuplicates(subfolder);
     }
 }

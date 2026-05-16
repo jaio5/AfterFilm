@@ -1,93 +1,59 @@
 package alicanteweb.pelisapp.service.image;
 
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
+import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 
 /**
- * Componente especializado para almacenamiento local de imágenes.
- * Aplica principio de responsabilidad única (SRP).
+ * Facade para el almacenamiento de imágenes.
+ * Permite usar almacenamiento local o S3 con la misma API.
  */
 @Component
 @Slf4j
-@Getter
 public class ImageStorage {
 
-    private final Path storagePath;
-    private final String serveBase;
+    private final ImageStorageBackend backend;
 
-    public ImageStorage(@Value("${app.images.storage-path:./data/images}") String storagePath,
-                        @Value("${app.images.serve-base:/images}") String serveBase) throws IOException {
-        this.storagePath = Path.of(storagePath).toAbsolutePath().normalize();
-        this.serveBase = serveBase.endsWith("/") ? serveBase.substring(0, serveBase.length()-1) : serveBase;
-
-        // Crear directorios si no existen
-        Files.createDirectories(this.storagePath);
-
-        log.info("📂 ImageStorage configurado:");
-        log.info("  📍 Ruta de almacenamiento: {}", this.storagePath);
-        log.info("  🌐 Base URL para servir: {}", this.serveBase);
+    public ImageStorage(
+            @Value("${app.images.storage.provider:local}") String storageProvider,
+            @Value("${app.images.storage-path:./data/images}") String storagePath,
+            @Value("${app.images.serve-base:/images}") String serveBase,
+            @Value("${app.images.s3.bucket:}") String s3Bucket,
+            @Value("${app.images.s3.region:us-east-1}") String s3Region,
+            @Value("${app.images.s3.prefix:pelisapp/images}") String s3Prefix,
+            @Value("${app.images.s3.public-base-url:}") String s3PublicBaseUrl
+    ) throws IOException {
+        if ("s3".equalsIgnoreCase(storageProvider)) {
+            this.backend = new S3ImageStorageBackend(s3Bucket, s3Region, s3Prefix, s3PublicBaseUrl);
+            log.info("🌐 ImageStorage usando backend S3");
+        } else {
+            this.backend = new LocalImageStorageBackend(storagePath, serveBase);
+            log.info("📁 ImageStorage usando backend local");
+        }
     }
 
-    /**
-     * Guarda un InputStream como archivo en el almacenamiento local.
-     *
-     * @param inputStream stream de datos de la imagen
-     * @param filename nombre del archivo a guardar
-     * @param subfolder subcarpeta donde guardar (ej: "posters", "profiles")
-     * @return ruta relativa del archivo guardado
-     * @throws IOException si hay error guardando el archivo
-     */
     public String saveImage(InputStream inputStream, String filename, String subfolder) throws IOException {
-        if (filename == null || filename.isBlank()) {
-            throw new IllegalArgumentException("Nombre de archivo no puede estar vacío");
-        }
-
-        // Crear subcarpeta si no existe
-        Path subfolderPath = storagePath.resolve(subfolder);
-        Files.createDirectories(subfolderPath);
-
-        // Ruta completa del archivo
-
-        // Sanitizar nombre de archivo
-        String sanitizedFilename = sanitizeFilename(filename);
-        Path sanitizedPath = subfolderPath.resolve(sanitizedFilename);
-
-        log.debug("💾 Guardando imagen: {}/{}", subfolder, sanitizedFilename);
-
-        try {
-            Files.copy(inputStream, sanitizedPath, StandardCopyOption.REPLACE_EXISTING);
-
-            String relativePath = subfolder + "/" + sanitizedFilename;
-            log.debug("✅ Imagen guardada: {}", relativePath);
-
-            return relativePath;
-
-        } catch (IOException e) {
-            log.error("❌ Error guardando imagen {}/{}: {}", subfolder, sanitizedFilename, e.getMessage());
-            throw new IOException("Error guardando imagen: " + e.getMessage(), e);
-        }
+        return backend.saveImage(inputStream, filename, subfolder);
     }
 
-    // Métodos públicos no utilizados eliminados para evitar warnings: buildPublicUrl, fileExists, deleteImage
+    public boolean exists(String filename, String subfolder) {
+        return backend.exists(filename, subfolder);
+    }
 
-    /**
-     * Sanitiza el nombre de archivo eliminando caracteres peligrosos.
-     */
-    private String sanitizeFilename(String filename) {
-        if (filename == null) {
-            return "unnamed";
-        }
+    public String resolveStoredPath(String filename, String subfolder) {
+        return backend.resolveStoredPath(filename, subfolder);
+    }
 
-        // Reemplazar caracteres peligrosos
-        return filename.replaceAll("[^a-zA-Z0-9._-]", "_")
-                      .replaceAll("_{2,}", "_"); // Evitar múltiples guiones bajos consecutivos
+    public int deleteDuplicates(String subfolder) {
+        return backend.deleteDuplicates(subfolder);
+    }
+
+    @PreDestroy
+    public void shutdown() throws Exception {
+        backend.close();
     }
 }

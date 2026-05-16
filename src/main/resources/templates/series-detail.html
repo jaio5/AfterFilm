@@ -93,7 +93,8 @@
                 </div>
 
                 <div class="detail-list-actions" sec:authorize="isAuthenticated()"
-                     th:attr="data-content-type='series',data-content-id=${series.id},data-content-title=${series.title},data-content-poster=${series.posterLocalPath ?: ''}">
+                     th:with="sharePosterUrl=${series.posterLocalPath != null and !series.posterLocalPath.isEmpty() ? '/images/' + series.posterLocalPath : (series.posterPath != null and !series.posterPath.isEmpty() ? (series.posterPath.startsWith('http') ? series.posterPath : 'https://image.tmdb.org/t/p/w500' + series.posterPath) : '')}"
+                     th:attr="data-content-type='series',data-content-id=${series.id},data-content-title=${series.title},data-content-poster=${sharePosterUrl}">
                     <button class="btn-list" id="btnFavorite" onclick="toggleList('FAVORITE')">
                         <i class="far fa-heart"></i> <span>Favorito</span>
                     </button>
@@ -283,25 +284,30 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
         <!-- Share to chat modal -->
-        <div class="modal" tabindex="-1" id="shareModal">
+        <div class="modal share-modal-dark" tabindex="-1" id="shareModal" style="background:rgba(0,0,0,0.78);">
             <div class="modal-dialog modal-sm">
-                <div class="modal-content">
-                    <div class="modal-header">
+                <div class="modal-content share-modal-content">
+                    <div class="modal-header share-modal-header">
                         <h5 class="modal-title">Compartir</h5>
                         <button type="button" class="btn-close" aria-label="Close" onclick="closeShareModal()"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body share-modal-body">
+                        <div id="sharePosterWrap" class="share-poster-preview" style="display:none;width:96px;margin:0 auto 1rem;">
+                            <img id="sharePosterPreview" src="" alt="Poster" style="width:96px;height:144px;object-fit:cover;border-radius:6px;border:1px solid rgba(255,255,255,0.08);background:#1c1c1c;">
+                        </div>
                         <div class="form-field">
                             <label class="form-label">Destinatario (usuario)</label>
-                            <select id="shareRecipient" class="form-input" style="width:100%;padding:0.5rem;"></select>
+                            <input id="shareRecipientInput" class="form-input" placeholder="Escribe un nombre de usuario...">
+                            <div id="shareSuggestions" class="share-suggestions" style="display:none"></div>
+                            <div id="shareRecipientFeedback" class="share-feedback" style="display:none"></div>
                         </div>
-                        <div class="form-field" style="margin-top:0.5rem;">
+                        <div class="form-field">
                             <label class="form-label">Mensaje (opcional)</label>
                             <textarea id="shareMessage" class="form-input" rows="3" maxlength="500" placeholder="Escribe un mensaje..."></textarea>
                         </div>
-                        <div id="shareStatus" style="margin-top:0.5rem;display:none;color:var(--text-muted)"></div>
+                        <div id="shareStatus" class="share-status" style="display:none"></div>
                     </div>
-                    <div class="modal-footer">
+                    <div class="modal-footer share-modal-footer">
                         <button type="button" class="btn-ghost btn-sm" onclick="closeShareModal()">Cancelar</button>
                         <button type="button" class="btn-accent btn-sm" onclick="sendShare()">Enviar</button>
                     </div>
@@ -402,10 +408,182 @@
 })();
 </script>
 <script>
-function openShareModal() { var modal = document.getElementById('shareModal'); if (!modal) return; populateShareRecipients(); modal.style.display = 'block'; }
-function closeShareModal() { var modal = document.getElementById('shareModal'); if (!modal) return; modal.style.display = 'none'; document.getElementById('shareStatus').style.display = 'none'; }
-function populateShareRecipients() { var sel = document.getElementById('shareRecipient'); if (!sel) return; sel.innerHTML = '<option value="">Cargando...</option>'; fetch('/api/chat/conversations').then(r => r.json()).then(function(list) { if (!Array.isArray(list) || list.length === 0) { sel.innerHTML = '<option value="">No tienes conversaciones</option>'; return; } sel.innerHTML = '<option value="">Elige un contacto o escribe uno</option>' + list.map(function(p) { return '<option value="' + p.username + '">' + p.displayName + ' (@' + p.username + ')</option>'; }).join(''); }).catch(function() { sel.innerHTML = '<option value="">Error cargando contactos</option>'; }); }
-function sendShare() { var sel = document.getElementById('shareRecipient'); var recipient = sel && sel.value ? sel.value.trim() : ''; if (!recipient) { alert('Introduce el nombre de usuario del destinatario.'); return; } var msg = document.getElementById('shareMessage').value.trim(); var actions = document.querySelector('.detail-list-actions'); if (!actions) { alert('No se pudo detectar el contenido a compartir.'); return; } var payload = { content: msg || ('Te comparto: ' + actions.dataset.contentTitle), sharedContentType: actions.dataset.contentType, sharedContentId: parseInt(actions.dataset.contentId), sharedContentTitle: actions.dataset.contentTitle, sharedContentPoster: actions.dataset.contentPoster || null }; var status = document.getElementById('shareStatus'); status.style.display = 'block'; status.textContent = 'Enviando...'; fetch('/api/chat/messages/' + encodeURIComponent(recipient), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }).then(function(r) { if (r.ok) { status.textContent = 'Enviado correctamente.'; setTimeout(closeShareModal, 900); } else { r.text().then(t => status.textContent = 'Error: ' + t); } }).catch(function(e) { status.textContent = 'Error: ' + e.message; }); }
+function openShareModal() {
+    var modal = document.getElementById('shareModal');
+    if (!modal) return;
+    forceShareModalSkin();
+    document.getElementById('shareRecipientInput').value = '';
+    document.getElementById('shareSuggestions').style.display = 'none';
+    setRecipientFeedback('');
+    setShareStatus('');
+    updatePosterPreview();
+    modal.style.display = 'block';
+}
+function closeShareModal() {
+    var modal = document.getElementById('shareModal');
+    if (!modal) return;
+    modal.style.display = 'none';
+    setRecipientFeedback('');
+    setShareStatus('');
+}
+function setRecipientFeedback(msg, type) {
+    var feedback = document.getElementById('shareRecipientFeedback');
+    if (!feedback) return;
+    if (!msg) { feedback.style.display = 'none'; feedback.textContent = ''; return; }
+    feedback.style.display = 'block';
+    feedback.style.color = type === 'error' ? '#ef4444' : '#f59e0b';
+    feedback.textContent = msg;
+}
+function setShareStatus(msg, type) {
+    var status = document.getElementById('shareStatus');
+    if (!status) return;
+    if (!msg) { status.style.display = 'none'; status.textContent = ''; return; }
+    status.style.display = 'block';
+    status.style.color = type === 'error' ? '#ef4444' : (type === 'success' ? '#10b981' : 'var(--text-muted)');
+    status.textContent = msg;
+}
+function getAvatarInitial(displayName, username) {
+    var source = (displayName && displayName.trim()) ? displayName : username;
+    return source ? source.trim().charAt(0).toUpperCase() : '?';
+}
+function forceShareModalSkin() {
+    var modal = document.getElementById('shareModal');
+    var content = modal ? modal.querySelector('.modal-content') : null;
+    var header = modal ? modal.querySelector('.modal-header') : null;
+    var body = modal ? modal.querySelector('.modal-body') : null;
+    var footer = modal ? modal.querySelector('.modal-footer') : null;
+    var poster = document.getElementById('sharePosterWrap');
+    if (modal) modal.style.background = 'rgba(0,0,0,0.78)';
+    if (content) {
+        content.style.background = '#111111';
+        content.style.color = '#ffffff';
+        content.style.border = '1px solid rgba(255,255,255,0.08)';
+        content.style.borderRadius = '8px';
+        content.style.boxShadow = '0 24px 80px rgba(0,0,0,0.55)';
+    }
+    if (header) {
+        header.style.background = '#0a0a0a';
+        header.style.borderBottom = '1px solid rgba(255,255,255,0.08)';
+    }
+    if (body) {
+        body.style.background = '#111111';
+        if (poster) body.insertBefore(poster, body.firstElementChild);
+    }
+    if (footer) {
+        footer.style.background = '#0a0a0a';
+        footer.style.borderTop = '1px solid rgba(255,255,255,0.08)';
+    }
+}
+var shareSearchTimeout = null;
+document.addEventListener('click', function(e) {
+    var s = document.getElementById('shareSuggestions');
+    if (s && !s.contains(e.target) && e.target.id !== 'shareRecipientInput') s.style.display = 'none';
+});
+var recipientInput = document.getElementById('shareRecipientInput');
+if (recipientInput) {
+    recipientInput.addEventListener('input', function() {
+        clearTimeout(shareSearchTimeout);
+        var q = this.value.trim();
+        if (q.length < 2) {
+            document.getElementById('shareSuggestions').style.display = 'none';
+            setRecipientFeedback('Escribe al menos 2 caracteres para buscar.', 'info');
+            return;
+        }
+        setRecipientFeedback('', 'info');
+        shareSearchTimeout = setTimeout(function() {
+            fetch('/api/users/search?query=' + encodeURIComponent(q) + '&size=8')
+                .then(r => r.json())
+                .then(function(list) {
+                    var box = document.getElementById('shareSuggestions');
+                    if (!Array.isArray(list) || list.length === 0) {
+                        box.style.display = 'none';
+                        box.innerHTML = '';
+                        setRecipientFeedback('No hay usuarios que coincidan con esa búsqueda.', 'error');
+                        return;
+                    }
+                    box.innerHTML = list.map(function(u) {
+                        var display = u.displayName && u.displayName.trim() ? u.displayName : u.username;
+                        var initial = getAvatarInitial(u.displayName, u.username);
+                        return '<div class="share-suggestion" data-username="' + u.username + '" style="display:flex;align-items:center;gap:0.5rem;padding:0.45rem;cursor:pointer;border-bottom:1px solid var(--border)">'
+                            + '<span style="width:26px;height:26px;border-radius:999px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:0.78rem;font-weight:700">' + initial + '</span>'
+                            + '<span style="display:flex;flex-direction:column;line-height:1.2">'
+                            + '<strong style="font-size:0.86rem;color:var(--text-primary)">' + display + '</strong>'
+                            + '<small style="font-size:0.75rem;color:var(--text-secondary)">@' + u.username + '</small>'
+                            + '</span></div>';
+                    }).join('');
+                    box.style.display = '';
+                    box.querySelectorAll('.share-suggestion').forEach(function(el) {
+                        el.addEventListener('click', function() {
+                            recipientInput.value = this.dataset.username;
+                            document.getElementById('shareSuggestions').style.display = 'none';
+                            setRecipientFeedback('Destinatario seleccionado.', 'info');
+                        });
+                    });
+                })
+                .catch(function() {
+                    document.getElementById('shareSuggestions').style.display = 'none';
+                    setRecipientFeedback('No se pudo cargar sugerencias.', 'error');
+                });
+        }, 250);
+    });
+}
+function updatePosterPreview() {
+    var actions = document.querySelector('.detail-list-actions');
+    if (!actions) return;
+    var poster = actions.dataset.contentPoster;
+    var wrap = document.getElementById('sharePosterWrap');
+    var img = document.getElementById('sharePosterPreview');
+    if (poster && poster.trim() !== '') {
+        img.src = poster.startsWith('/') || poster.startsWith('http') ? poster : '/images/' + poster;
+        wrap.style.display = 'block';
+    } else {
+        wrap.style.display = 'none';
+        img.src = '';
+    }
+}
+function sendShare() {
+    var recipient = document.getElementById('shareRecipientInput').value.trim();
+    if (!recipient) {
+        setRecipientFeedback('Introduce el nombre de usuario del destinatario.', 'error');
+        return;
+    }
+    if (recipient.length < 3) {
+        setRecipientFeedback('El usuario parece demasiado corto. Revisa el nombre.', 'error');
+        return;
+    }
+    var msg = document.getElementById('shareMessage').value.trim();
+    var actions = document.querySelector('.detail-list-actions');
+    if (!actions) {
+        setShareStatus('No se pudo detectar el contenido a compartir.', 'error');
+        return;
+    }
+    var payload = {
+        content: msg || ('Te comparto: ' + actions.dataset.contentTitle),
+        sharedContentType: actions.dataset.contentType,
+        sharedContentId: parseInt(actions.dataset.contentId),
+        sharedContentTitle: actions.dataset.contentTitle,
+        sharedContentPoster: actions.dataset.contentPoster || null
+    };
+    setRecipientFeedback('', 'info');
+    setShareStatus('Enviando...', 'info');
+    fetch('/api/chat/messages/' + encodeURIComponent(recipient), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+        .then(function(r) {
+            if (r.ok) {
+                setShareStatus('Enviado correctamente.', 'success');
+                setTimeout(closeShareModal, 900);
+            } else if (r.status === 400 || r.status === 404) {
+                setRecipientFeedback('Usuario no encontrado o inválido.', 'error');
+                setShareStatus('No se pudo enviar el mensaje.', 'error');
+            } else {
+                r.text().then(function(t) { setShareStatus('Error: ' + t, 'error'); });
+            }
+        })
+        .catch(function(e) { setShareStatus('Error: ' + e.message, 'error'); });
+}
 </script>
 </body>
 </html>

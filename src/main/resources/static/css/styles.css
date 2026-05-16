@@ -274,6 +274,92 @@ textarea.form-input {
     margin-top: 0.2rem;
 }
 
+/* ── Share Modal ───────────────────────────────────────────── */
+#shareModal {
+    background: rgba(0, 0, 0, 0.74);
+}
+
+#shareModal .modal-dialog {
+    margin-top: 2.5rem;
+}
+
+#shareModal .modal-content {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+#shareModal .modal-header,
+#shareModal .modal-footer {
+    border-color: var(--border);
+    background: var(--bg-base);
+}
+
+#shareModal .modal-title {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+#shareModal .btn-close {
+    filter: invert(1) grayscale(1);
+    opacity: 0.65;
+}
+
+#shareModal .btn-close:hover {
+    opacity: 1;
+}
+
+#shareModal .modal-body {
+    padding: 1rem;
+}
+
+#shareModal .form-field {
+    margin-bottom: 1rem;
+}
+
+#shareModal .share-poster-preview {
+    width: 96px;
+    margin: 0 auto 1rem;
+}
+
+#shareModal .share-poster-preview img {
+    width: 96px;
+    height: 144px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+}
+
+#shareModal .share-suggestions {
+    max-height: 170px;
+    overflow: auto;
+    margin-top: 0.35rem;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    position: relative;
+    z-index: 20;
+}
+
+#shareModal .share-suggestion {
+    border-bottom-color: var(--border) !important;
+}
+
+#shareModal .share-suggestion:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+#shareModal .share-feedback,
+#shareModal .share-status {
+    margin-top: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
 .form-hint {
     font-size: 0.78rem;
     color: var(--text-muted);
@@ -713,6 +799,54 @@ textarea.form-input {
     border: 1px solid rgba(99, 179, 237, 0.25);
     color: #93c5fd;
 }
+
+/* ── Modal: forzar fondo uniforme con la página ───────────────── */
+.modal-content,
+.modal-header,
+.modal-body,
+.modal-footer {
+    background: var(--bg-base) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: none !important;
+}
+
+/* Mantener overlay oscuro pero translúcido */
+.modal-backdrop {
+    background: rgba(0,0,0,0.6) !important;
+}
+
+/* Botón de cierre visible sobre fondo oscuro */
+.modal .btn-close {
+    filter: invert(1) grayscale(1) brightness(1.2);
+    opacity: 0.85;
+}
+
+.modal .btn-close:hover { opacity: 1; }
+
+
+/* Specific share modal: ensure it matches page background */
+.share-modal-content {
+    background: var(--bg-base) !important;
+    color: var(--text-primary) !important;
+    border: none !important;
+    border-radius: 8px !important;
+    box-shadow: none !important;
+    overflow: hidden;
+}
+
+.share-modal-header,
+.share-modal-footer {
+    background: var(--bg-base) !important;
+    border-color: transparent !important;
+}
+
+.share-modal-body {
+    background: var(--bg-base) !important;
+}
+
+.share-poster-preview img { background: var(--bg-elevated) !important; }
+
 
 /* ── Movie Detail ───────────────────────────────────────────── */
 .detail-hero {
