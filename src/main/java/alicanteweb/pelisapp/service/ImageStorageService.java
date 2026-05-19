@@ -89,7 +89,7 @@ public class ImageStorageService {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
             }
-            log.error("Error downloading image {}: {}", imageUrl, e.getMessage());
+            log.error("Error downloading image {}", imageUrl, e);
             return null;
         }
     }
