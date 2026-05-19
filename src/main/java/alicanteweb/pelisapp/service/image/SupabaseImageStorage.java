@@ -25,6 +25,7 @@ public class SupabaseImageStorage {
     private final String bucket;
     private final String prefix;
     private final String publicBaseUrl;
+    private final boolean proxyEnabled;
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
     public SupabaseImageStorage(@Value("${app.images.storage.provider:local}") String provider,
@@ -32,13 +33,15 @@ public class SupabaseImageStorage {
                                 @Value("${app.images.supabase.service-role:}") String serviceRole,
                                 @Value("${app.images.supabase.bucket:}") String bucket,
                                 @Value("${app.images.supabase.prefix:afterfilm/images}") String prefix,
-                                @Value("${app.images.supabase.public-base-url:}") String publicBaseUrl) {
+                                @Value("${app.images.supabase.public-base-url:}") String publicBaseUrl,
+                                @Value("${app.images.supabase.proxy-enabled:false}") boolean proxyEnabled) {
         this.provider = clean(provider);
         this.supabaseUrl = trimTrailingSlash(clean(supabaseUrl));
         this.serviceRole = clean(serviceRole);
         this.bucket = clean(bucket);
         this.prefix = trimSlashes(clean(prefix));
         this.publicBaseUrl = trimTrailingSlash(clean(publicBaseUrl));
+        this.proxyEnabled = proxyEnabled;
     }
 
     public boolean isEnabled() {
@@ -119,7 +122,10 @@ public class SupabaseImageStorage {
             return null;
         }
         if (isProxyUrl(path)) {
-            return path;
+            String proxyPath = path.startsWith("/supabase-images/")
+                    ? path.substring("/supabase-images/".length())
+                    : path.substring("supabase-images/".length());
+            return displayUrl(objectKeyFromRelativePath(stripKnownRoot(proxyPath)));
         }
         String objectKey = objectKeyFromPublicUrl(path);
         if (objectKey != null) {
@@ -151,7 +157,8 @@ public class SupabaseImageStorage {
         if (objectKey == null || objectKey.isBlank()) {
             return null;
         }
-        return "/supabase-images/" + encodePath(trimSlashes(objectKey));
+        String cleanObjectKey = trimSlashes(objectKey);
+        return proxyEnabled ? "/supabase-images/" + encodePath(cleanObjectKey) : publicUrl(cleanObjectKey);
     }
 
     public String objectKeyFromRequestPath(String path) {
