@@ -18,8 +18,8 @@ WORKDIR /app
 
 COPY --from=builder /build/target/PelisApp-0.0.1-SNAPSHOT.jar /app/pelisapp.jar
 
-EXPOSE 8080
+EXPOSE 10000
 
 ENV SERVER_ADDRESS=0.0.0.0
 
-ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT:-8080} -jar /app/pelisapp.jar"]
+ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT:-10000} -jar /app/pelisapp.jar"]
