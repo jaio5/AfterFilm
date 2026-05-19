@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PelisApp — Catálogo</title>
+    <title>AfterFilm — Catálogo</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
@@ -14,7 +14,7 @@
     <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-film"></i> PelisApp
+                <i class="fas fa-film"></i> AfterFilm
             </a>
             <div class="navbar-search">
                 <form id="searchForm">
@@ -22,6 +22,8 @@
                     <button type="submit"><i class="fas fa-search"></i></button>
                 </form>
             </div>
+            <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
+
             <div class="navbar-nav-links">
                 <a th:href="@{/}" style="color:var(--accent)"><i class="fas fa-film"></i> Películas</a>
                 <a th:href="@{/series}"><i class="fas fa-tv"></i> Series</a>
@@ -104,7 +106,7 @@
     </div>
 
     <footer class="site-footer">
-        © 2026 PelisApp — Hecho con <i class="fas fa-heart text-accent"></i> por el cine
+        © 2026 AfterFilm — Hecho con <i class="fas fa-heart text-accent"></i> por el cine
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -135,11 +137,7 @@ function loadMovies(page = 0, genre = null) {
 }
 
 function populateHero(movie) {
-    const poster = movie.posterLocalPath
-        ? movie.posterLocalPath
-        : (movie.posterPath
-            ? (movie.posterPath.startsWith('http') ? movie.posterPath : 'https://image.tmdb.org/t/p/original' + movie.posterPath)
-            : null);
+    const poster = movie.posterLocalPath || null;
     if (!poster) return;
     document.getElementById('heroBackdrop').style.backgroundImage = `url('${poster}')`;
     document.getElementById('heroEyebrow').textContent = '★ Mejor valorada del mes';
@@ -162,11 +160,7 @@ function renderMovies(movies) {
         return;
     }
     movies.forEach(movie => {
-        const poster = movie.posterLocalPath
-            ? movie.posterLocalPath
-            : (movie.posterPath
-                ? (movie.posterPath.startsWith('http') ? movie.posterPath : 'https://image.tmdb.org/t/p/w500' + movie.posterPath)
-                : null);
+        const poster = movie.posterLocalPath || null;
         moviesContainer.innerHTML += `
         <div class="movie-card">
             <a href="/pelicula/${movie.id}" class="movie-card-link">

@@ -2,6 +2,7 @@ package alicanteweb.pelisapp.service;
 
 import alicanteweb.pelisapp.entity.Movie;
 import alicanteweb.pelisapp.entity.TvShow;
+import alicanteweb.pelisapp.service.image.SupabaseImageStorage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -13,11 +14,14 @@ public class ImageUrlService {
 
     private final Path storagePath;
     private final String serveBase;
+    private final SupabaseImageStorage supabaseImageStorage;
 
     public ImageUrlService(@Value("${app.images.storage-path:./data/images}") String storagePath,
-                           @Value("${app.images.serve-base:/images}") String serveBase) {
+                           @Value("${app.images.serve-base:/images}") String serveBase,
+                           SupabaseImageStorage supabaseImageStorage) {
         this.storagePath = Path.of(storagePath).toAbsolutePath().normalize();
         this.serveBase = normalizeServeBase(serveBase);
+        this.supabaseImageStorage = supabaseImageStorage;
     }
 
     public String moviePosterUrl(Movie movie, String tmdbSize) {
@@ -39,12 +43,18 @@ public class ImageUrlService {
         if (localUrl != null) {
             return localUrl;
         }
+        if (supabaseImageStorage.wantsSupabase()) {
+            return null;
+        }
         return tmdbImageUrl(remotePath, tmdbSize);
     }
 
     public String tmdbImageUrl(String path, String tmdbSize) {
         if (path == null || path.isBlank()) {
             return null;
+        }
+        if (supabaseImageStorage.wantsSupabase()) {
+            return supabaseImageStorage.isSupabasePublicUrl(path) ? path : null;
         }
         if (path.startsWith("http://") || path.startsWith("https://")) {
             return path;
@@ -60,6 +70,11 @@ public class ImageUrlService {
         }
         if (localPath.startsWith("http://") || localPath.startsWith("https://")) {
             return localPath;
+        }
+
+        String supabaseUrl = supabaseImageStorage.publicUrlForLegacyPath(localPath);
+        if (supabaseUrl != null) {
+            return supabaseUrl;
         }
 
         String relativePath = stripServeBase(localPath);

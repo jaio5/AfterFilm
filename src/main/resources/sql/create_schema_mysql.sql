@@ -1,7 +1,7 @@
--- Script MySQL revisado (no destructivo) para PelisApp
+-- Script MySQL revisado (no destructivo) para AfterFilm
 -- Asegura compatibilidad con versiones que no soportan CREATE INDEX IF NOT EXISTS
-CREATE DATABASE IF NOT EXISTS `PelisApp` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-USE `PelisApp`;
+CREATE DATABASE IF NOT EXISTS `AfterFilm` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+USE `AfterFilm`;
 
 -- Tabla de usuarios
 CREATE TABLE IF NOT EXISTS `usuario` (

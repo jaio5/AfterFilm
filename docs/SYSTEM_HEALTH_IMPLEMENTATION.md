@@ -2,7 +2,7 @@
 
 ## ✅ **ESTADO: COMPLETAMENTE FUNCIONAL Y VERIFICADO**
 
-He implementado y verificado exitosamente un sistema completo de verificación del estado de las conexiones en el panel de administración de PelisApp.
+He implementado y verificado exitosamente un sistema completo de verificación del estado de las conexiones en el panel de administración de AfterFilm.
 
 **ÚLTIMA VERIFICACIÓN:** 2026-02-10 11:52 - ✅ TODOS LOS SERVICIOS ACTIVOS
 
@@ -299,7 +299,7 @@ netstat -ano | findstr :11434
 
 | Servicio | Puerto/URL | Estado Esperado |
 |----------|------------|----------------|
-| PelisApp | :8080 | ✅ LISTENING |
+| AfterFilm | :8080 | ✅ LISTENING |
 | TMDB API | https://api.themoviedb.org/3 | ✅ Bearer Token |
 | Ollama AI | :11434 | ✅ ESTABLECIDO (si está instalado) |
 | MySQL | :3306 | ✅ Configurado |
@@ -346,4 +346,4 @@ mvn spring-boot:run
 - ✅ Sistema Email configurado correctamente
 - ✅ Servidor con recursos óptimos (1.4% memoria, 16 CPUs)
 
-**El sistema proporciona visibilidad completa y en tiempo real del estado de todas las conexiones externas de PelisApp.**
+**El sistema proporciona visibilidad completa y en tiempo real del estado de todas las conexiones externas de AfterFilm.**

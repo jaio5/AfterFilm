@@ -82,7 +82,7 @@ public class TvShowService {
         dto.setTmdbId(show.getTmdbId());
         dto.setTitle(show.getTitle());
         dto.setOverview(show.getOverview());
-        dto.setPosterPath(imageUrlService.tmdbImageUrl(show.getPosterPath(), "w500"));
+        dto.setPosterPath(null);
         dto.setPosterLocalPath(imageUrlService.seriesPosterUrl(show, "w500"));
         dto.setFirstAirDate(show.getFirstAirDate());
         dto.setNumberOfSeasons(show.getNumberOfSeasons());
@@ -104,7 +104,7 @@ public class TvShowService {
         dto.setTitle(show.getTitle());
         dto.setOriginalTitle(show.getOriginalTitle());
         dto.setOverview(show.getOverview());
-        dto.setPosterPath(imageUrlService.tmdbImageUrl(show.getPosterPath(), "w500"));
+        dto.setPosterPath(null);
         dto.setPosterLocalPath(imageUrlService.seriesPosterUrl(show, "w500"));
         dto.setBackdropPath(show.getBackdropPath());
         dto.setFirstAirDate(show.getFirstAirDate());

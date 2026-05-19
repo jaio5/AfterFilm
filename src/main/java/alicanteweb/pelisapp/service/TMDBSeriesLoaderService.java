@@ -148,7 +148,7 @@ public class TMDBSeriesLoaderService {
             show.setLanguage(details.path("original_language").asText(null));
         }
         // Poster — only attempt download if not already stored locally
-        if (show.getPosterLocalPath() == null && details.hasNonNull("poster_path")) {
+        if (shouldReloadPoster(show.getPosterLocalPath()) && details.hasNonNull("poster_path")) {
             String poster = details.path("poster_path").asText(null);
             if (poster != null && !poster.isBlank()) {
                 String imageUrl = poster.startsWith("http") ? poster : tmdbImageBaseUrl + "/w500" + poster;
@@ -202,6 +202,13 @@ public class TMDBSeriesLoaderService {
                 if (!directors.isEmpty()) show.setDirectors(directors);
             }
         }
+    }
+
+    private boolean shouldReloadPoster(String posterLocalPath) {
+        return posterLocalPath == null
+                || posterLocalPath.isBlank()
+                || posterLocalPath.startsWith("/images/")
+                || posterLocalPath.startsWith("images/");
     }
 
     private Actor findOrCreateActor(long tmdbId, String name) {

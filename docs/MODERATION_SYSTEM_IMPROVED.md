@@ -1,4 +1,4 @@
-# 🛡️ Sistema de Moderación Mejorado - PelisApp
+# 🛡️ Sistema de Moderación Mejorado - AfterFilm
 
 ## ✅ **PROBLEMA COMPLETAMENTE SOLUCIONADO**
 

@@ -419,7 +419,7 @@ public class AdminApiController {
 
             for (Movie movie : movies) {
                 try {
-                    if (movie.getTmdbId() != null && (movie.getPosterLocalPath() == null || movie.getPosterLocalPath().isBlank())) {
+                    if (movie.getTmdbId() != null && shouldReloadPoster(movie.getPosterLocalPath())) {
                         boolean ok = moviePosterRedownloadService.redownloadMoviePoster(movie);
                         if (ok) {
                             reloaded++;
@@ -940,7 +940,7 @@ public class AdminApiController {
     @PostMapping("/series/repair-posters")
     public ResponseEntity<Map<String, Object>> repairSeriesPosters() {
         List<TvShow> withoutPosters = tvShowRepository.findAll().stream()
-                .filter(s -> s.getPosterLocalPath() == null || s.getPosterLocalPath().isBlank())
+                .filter(s -> shouldReloadPoster(s.getPosterLocalPath()))
                 .toList();
         int repaired = 0;
         int errors = 0;
@@ -974,6 +974,35 @@ public class AdminApiController {
             log.error("Error deleting series {}: {}", seriesId, e.getMessage());
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
+    }
+
+    @PostMapping("/books/repair-covers")
+    public ResponseEntity<Map<String, Object>> repairBookCovers() {
+        List<Book> books = bookRepository.findAll();
+        int repaired = 0;
+        int errors = 0;
+        for (Book book : books) {
+            if (book.getGoogleBooksId() == null || book.getGoogleBooksId().isBlank()) {
+                continue;
+            }
+            try {
+                Book updated = googleBooksLoaderService.importOrUpdateByGoogleId(book.getGoogleBooksId());
+                if (updated != null && updated.getCoverUrl() != null && !updated.getCoverUrl().isBlank()) {
+                    repaired++;
+                } else {
+                    errors++;
+                }
+            } catch (Exception e) {
+                log.warn("Error repairing cover for book id={}: {}", book.getId(), e.getMessage());
+                errors++;
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "total_books", books.size(),
+                "repaired", repaired,
+                "errors", errors
+        ));
     }
 
     @PostMapping("/books/{bookId}/delete")
@@ -1022,6 +1051,13 @@ public class AdminApiController {
                 .build();
             return ResponseEntity.status(500).body(errorStatus);
         }
+    }
+
+    private boolean shouldReloadPoster(String posterLocalPath) {
+        return posterLocalPath == null
+                || posterLocalPath.isBlank()
+                || posterLocalPath.startsWith("/images/")
+                || posterLocalPath.startsWith("images/");
     }
 
     private List<JsonNode> iterableToList(JsonNode arrayNode) {

@@ -32,7 +32,7 @@ public class RealEmailService implements IEmailService {
     @Value("${spring.mail.username:#{null}}")
     private String fromEmail;
 
-    @Value("${app.name:PelisApp}")
+    @Value("${app.name:AfterFilm}")
     private String appName;
 
     @PostConstruct

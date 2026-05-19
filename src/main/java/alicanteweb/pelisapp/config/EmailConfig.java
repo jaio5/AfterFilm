@@ -57,7 +57,7 @@ public class EmailConfig {
             log.error("   💡 Para Gmail, debes usar una 'Contraseña de aplicación', NO tu contraseña normal:");
             log.error("   📋 1. Ve a https://myaccount.google.com/security");
             log.error("   📋 2. Activa verificación en 2 pasos");
-            log.error("   📋 3. En 'Contraseñas de aplicaciones', crea una nueva para 'PelisApp'");
+            log.error("   📋 3. En 'Contraseñas de aplicaciones', crea una nueva para 'AfterFilm'");
             log.error("   📋 4. Usa esa contraseña de 16 caracteres en spring.mail.password");
         }
     }

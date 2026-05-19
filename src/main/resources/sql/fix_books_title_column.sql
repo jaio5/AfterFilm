@@ -2,7 +2,7 @@
 -- This script increases the title column from VARCHAR(255) to VARCHAR(500)
 -- to support longer book titles from Google Books API
 
-USE `PelisApp`;
+USE `AfterFilm`;
 
 -- Create the books table if it doesn't exist with proper column size
 CREATE TABLE IF NOT EXISTS `books` (

@@ -467,6 +467,13 @@ public class TMDBMovieLoaderService {
                 });
     }
 
+    private boolean shouldReloadImage(String localPath) {
+        return localPath == null
+                || localPath.isBlank()
+                || localPath.startsWith("/images/")
+                || localPath.startsWith("images/");
+    }
+
     /**
      * Busca o crea un director con información detallada
      */
@@ -519,7 +526,7 @@ public class TMDBMovieLoaderService {
             if (movie.getActors() != null) {
                 for (Actor actor : movie.getActors()) {
                     if (actor.getProfilePath() != null && !actor.getProfilePath().isBlank()
-                        && (actor.getProfileLocalPath() == null || actor.getProfileLocalPath().isBlank())) {
+                        && shouldReloadImage(actor.getProfileLocalPath())) {
                         try {
                             String fullUrl = tmdbClient.buildImageUrl(actor.getProfilePath());
                             String filename = AppConstants.ACTOR_FILE_PREFIX + actor.getTmdbId();
@@ -540,7 +547,7 @@ public class TMDBMovieLoaderService {
             if (movie.getDirectors() != null) {
                 for (Director director : movie.getDirectors()) {
                     if (director.getProfilePath() != null && !director.getProfilePath().isBlank()
-                        && (director.getProfileLocalPath() == null || director.getProfileLocalPath().isBlank())) {
+                        && shouldReloadImage(director.getProfileLocalPath())) {
                         try {
                             String fullUrl = tmdbClient.buildImageUrl(director.getProfilePath());
                             String filename = AppConstants.DIRECTOR_FILE_PREFIX + director.getTmdbId();

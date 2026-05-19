@@ -1,6 +1,6 @@
-# PelisApp
+# AfterFilm
 
-PelisApp es una aplicacion web para gestionar y descubrir peliculas, series y libros. Incluye catalogo, resenas, puntuaciones, perfiles sociales, chat, panel de administracion e integraciones con APIs externas.
+AfterFilm es una aplicacion web para gestionar y descubrir peliculas, series y libros. Incluye catalogo, resenas, puntuaciones, perfiles sociales, chat, panel de administracion e integraciones con APIs externas.
 
 ## Funcionalidades
 
@@ -92,5 +92,5 @@ La documentacion tecnica esta en `docs/`.
 
 La memoria del TFG generada esta en:
 
-- `docs/MEMORIA_TFG_PelisApp.md`
-- `docs/MEMORIA_TFG_PelisApp.docx`
+- `docs/MEMORIA_TFG_AfterFilm.md`
+- `docs/MEMORIA_TFG_AfterFilm.docx`

@@ -2,6 +2,7 @@ package alicanteweb.pelisapp.service;
 
 import alicanteweb.pelisapp.entity.Book;
 import alicanteweb.pelisapp.repository.BookRepository;
+import alicanteweb.pelisapp.service.image.SupabaseImageStorage;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,6 +21,8 @@ public class GoogleBooksLoaderService {
 
     private final GoogleBooksClient googleBooksClient;
     private final BookRepository bookRepository;
+    private final ImageService imageService;
+    private final SupabaseImageStorage supabaseImageStorage;
 
     @Transactional
     public Book importOrUpdateByGoogleId(String googleId) {
@@ -61,7 +64,7 @@ public class GoogleBooksLoaderService {
                     if (book != null) {
                         imported++;
                         if (imported % 10 == 0) {
-                            log.info("  → '{}': {} libros importados hasta ahora...", query, imported);
+                            log.info("  -> '{}': {} libros importados hasta ahora...", query, imported);
                         }
                     }
                 } catch (Exception e) {
@@ -117,7 +120,6 @@ public class GoogleBooksLoaderService {
             }
             if (sb.length() > 0) book.setCategories(sb.toString());
         }
-        // ISBN
         if (book.getIsbn() == null && info.has("industryIdentifiers")) {
             for (JsonNode ident : info.path("industryIdentifiers")) {
                 String type = ident.path("type").asText("");
@@ -127,19 +129,41 @@ public class GoogleBooksLoaderService {
                 }
             }
         }
-        // Cover URL from Google Books CDN — prefer highest resolution available
-        if (book.getCoverUrl() == null) {
-            JsonNode imgs = info.path("imageLinks");
-            if (!imgs.isMissingNode()) {
-                Stream.of("extraLarge", "large", "medium", "thumbnail", "smallThumbnail")
-                    .map(size -> imgs.path(size).asText(null))
-                    .filter(Objects::nonNull)
-                    .findFirst()
-                    .map(url -> url.replace("http://", "https://")
-                                   .replace("zoom=1", "zoom=0")
-                                   .replace("&edge=curl", ""))
-                    .ifPresent(book::setCoverUrl);
+
+        if (shouldLoadCover(book.getCoverUrl())) {
+            String coverUrl = bestCoverUrl(info.path("imageLinks"));
+            if (coverUrl != null) {
+                String prefix = book.getGoogleBooksId() == null || book.getGoogleBooksId().isBlank()
+                        ? "book"
+                        : "book_" + book.getGoogleBooksId();
+                String stored = imageService.downloadAndSave(coverUrl, prefix, "books");
+                if (stored != null) {
+                    book.setCoverUrl(stored);
+                } else if (!supabaseImageStorage.wantsSupabase() && (book.getCoverUrl() == null || book.getCoverUrl().isBlank())) {
+                    book.setCoverUrl(coverUrl);
+                }
             }
         }
+    }
+
+    private boolean shouldLoadCover(String currentCoverUrl) {
+        if (currentCoverUrl == null || currentCoverUrl.isBlank()) {
+            return true;
+        }
+        return supabaseImageStorage.wantsSupabase() && !supabaseImageStorage.isSupabasePublicUrl(currentCoverUrl);
+    }
+
+    private String bestCoverUrl(JsonNode imageLinks) {
+        if (imageLinks == null || imageLinks.isMissingNode()) {
+            return null;
+        }
+        return Stream.of("extraLarge", "large", "medium", "thumbnail", "smallThumbnail")
+                .map(size -> imageLinks.path(size).asText(null))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .map(url -> url.replace("http://", "https://")
+                        .replace("zoom=1", "zoom=0")
+                        .replace("&edge=curl", ""))
+                .orElse(null);
     }
 }

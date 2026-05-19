@@ -1,6 +1,6 @@
-# 🚀 Guía de Deployment - PelisApp
+# 🚀 Guía de Deployment - AfterFilm
 
-Esta guía cubre el despliegue de PelisApp en diferentes entornos, desde desarrollo local hasta producción en la nube.
+Esta guía cubre el despliegue de AfterFilm en diferentes entornos, desde desarrollo local hasta producción en la nube.
 
 ## 🎯 Estrategias de Deployment
 
@@ -49,7 +49,7 @@ RUN mkdir -p data/images && \
     chown -R appuser:appgroup /app
 
 # Copiar JAR desde build stage
-COPY --from=builder /app/target/PelisApp-*.jar app.jar
+COPY --from=builder /app/target/AfterFilm-*.jar app.jar
 
 # Cambiar a usuario no-root
 USER appuser
@@ -300,7 +300,7 @@ networks:
 #### CloudFormation Template (Excerpt)
 ```yaml
 AWSTemplateFormatVersion: '2010-09-09'
-Description: 'PelisApp Infrastructure'
+Description: 'AfterFilm Infrastructure'
 
 Parameters:
   Environment:
@@ -324,7 +324,7 @@ Resources:
   DatabaseSubnetGroup:
     Type: AWS::RDS::DBSubnetGroup
     Properties:
-      DBSubnetGroupDescription: Subnet group for PelisApp database
+      DBSubnetGroupDescription: Subnet group for AfterFilm database
       SubnetIds:
         - !Ref PrivateSubnet1
         - !Ref PrivateSubnet2
@@ -440,7 +440,7 @@ spec:
 
 #### Procfile
 ```
-web: java -Dserver.port=$PORT $JAVA_OPTS -jar target/PelisApp-*.jar
+web: java -Dserver.port=$PORT $JAVA_OPTS -jar target/AfterFilm-*.jar
 ```
 
 #### heroku.yml
@@ -838,7 +838,7 @@ management.health.diskspace.enabled=true
 management.health.mail.enabled=true
 
 # Application info
-info.app.name=PelisApp
+info.app.name=AfterFilm
 info.app.description=Movie Review Platform
 info.app.version=@project.version@
 info.app.encoding=@project.build.sourceEncoding@
@@ -1076,4 +1076,4 @@ fi
 
 ---
 
-Esta guía de deployment está diseñada para garantizar despliegues **seguros**, **confiables** y **escalables** de PelisApp en cualquier entorno de producción. 🚀
+Esta guía de deployment está diseñada para garantizar despliegues **seguros**, **confiables** y **escalables** de AfterFilm en cualquier entorno de producción. 🚀

@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>AlicanteWeb</groupId>
-	<artifactId>PelisApp</artifactId>
+	<artifactId>AfterFilm</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>PelisApp</name>
-	<description>PelisApp</description>
+	<name>AfterFilm</name>
+	<description>AfterFilm</description>
 	<url/>
 	<licenses>
 		<license/>

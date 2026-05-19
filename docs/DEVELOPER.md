@@ -1,6 +1,6 @@
-# 👨‍💻 Guía para Desarrolladores - PelisApp
+# 👨‍💻 Guía para Desarrolladores - AfterFilm
 
-Esta guía proporciona toda la información necesaria para desarrollar, contribuir y extender PelisApp de manera efectiva.
+Esta guía proporciona toda la información necesaria para desarrollar, contribuir y extender AfterFilm de manera efectiva.
 
 ## 🎯 Preparación del Entorno
 
@@ -24,7 +24,7 @@ Esta guía proporciona toda la información necesaria para desarrollar, contribu
 ```bash
 # Clonar y configurar
 git clone [url-del-repositorio]
-cd PelisApp
+cd AfterFilm
 
 # Configurar IDE (IntelliJ IDEA)
 # 1. Abrir proyecto
@@ -642,7 +642,7 @@ RUN ./mvnw clean package -DskipTests
 EXPOSE 8080
 
 # Comando de inicio
-CMD ["java", "-jar", "target/PelisApp-0.0.1-SNAPSHOT.jar"]
+CMD ["java", "-jar", "target/AfterFilm-0.0.1-SNAPSHOT.jar"]
 ```
 
 ```yaml
