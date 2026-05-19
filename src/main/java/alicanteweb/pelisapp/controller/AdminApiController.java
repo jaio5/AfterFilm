@@ -18,6 +18,7 @@ import alicanteweb.pelisapp.repository.UserRepository;
 import alicanteweb.pelisapp.service.AuthService;
 import alicanteweb.pelisapp.service.BookService;
 import alicanteweb.pelisapp.service.GoogleBooksLoaderService;
+import alicanteweb.pelisapp.service.ImageUrlService;
 import alicanteweb.pelisapp.service.ModerationService;
 import alicanteweb.pelisapp.service.MovieImportService;
 import alicanteweb.pelisapp.service.MoviePosterRedownloadService;
@@ -69,6 +70,7 @@ public class AdminApiController {
     private final TMDBClient tmdbClient;
     private final TvShowService tvShowService;
     private final BookService bookService;
+    private final ImageUrlService imageUrlService;
 
     // Repositories
     private final MovieRepository movieRepository;
@@ -762,6 +764,7 @@ public class AdminApiController {
             dto.put("numberOfSeasons", s.getNumberOfSeasons());
             dto.put("genres", s.getGenres());
             dto.put("status", s.getStatus());
+            dto.put("posterUrl", imageUrlService.seriesPosterUrl(s, "w92"));
             return dto;
         }).toList();
         Map<String, Object> result = new HashMap<>();

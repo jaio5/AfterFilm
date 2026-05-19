@@ -123,7 +123,7 @@ function loadSeries(page = 0, genre = currentGenre) {
 
 function populateHero(series) {
     const poster = series.posterLocalPath
-        ? '/images/' + series.posterLocalPath
+        ? series.posterLocalPath
         : (series.posterPath
             ? (series.posterPath.startsWith('http') ? series.posterPath : 'https://image.tmdb.org/t/p/original' + series.posterPath)
             : null);
@@ -150,7 +150,7 @@ function renderSeries(items) {
     }
     items.forEach(s => {
         const poster = s.posterLocalPath
-            ? '/images/' + s.posterLocalPath
+            ? s.posterLocalPath
             : (s.posterPath
                 ? (s.posterPath.startsWith('http') ? s.posterPath : 'https://image.tmdb.org/t/p/w500' + s.posterPath)
                 : null);

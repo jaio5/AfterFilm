@@ -48,19 +48,17 @@
     <!-- Hero section -->
     <div class="detail-hero">
         <div class="detail-hero-backdrop"
-             th:with="backdropUrl=${series.posterLocalPath != null and !series.posterLocalPath.isEmpty() ? '/images/' + series.posterLocalPath : (series.posterPath != null and !series.posterPath.isEmpty() ? 'https://image.tmdb.org/t/p/w500' + series.posterPath : null)}"
+             th:with="backdropUrl=${@imageUrlService.seriesPosterUrl(series, 'w500')}"
              th:style="${backdropUrl != null ? 'background-image: url(' + backdropUrl + ')' : 'background: var(--bg-elevated)'}">
         </div>
         <div class="detail-hero-content">
             <div class="detail-poster">
-                <img th:if="${series.posterLocalPath != null and !series.posterLocalPath.isEmpty()}"
-                     th:src="${'/images/' + series.posterLocalPath}" th:alt="${series.title}">
-                <img th:if="${(series.posterLocalPath == null or series.posterLocalPath.isEmpty())
-                              and (series.posterPath != null and !series.posterPath.isEmpty())}"
-                     th:src="${series.posterPath.startsWith('http') ? series.posterPath : 'https://image.tmdb.org/t/p/w500' + series.posterPath}"
+                <img th:with="posterUrl=${@imageUrlService.seriesPosterUrl(series, 'w500')}"
+                     th:if="${posterUrl != null and !posterUrl.isEmpty()}"
+                     th:src="${posterUrl}"
                      th:alt="${series.title}">
-                <div th:if="${(series.posterLocalPath == null or series.posterLocalPath.isEmpty())
-                              and (series.posterPath == null or series.posterPath.isEmpty())}"
+                <div th:with="posterUrl=${@imageUrlService.seriesPosterUrl(series, 'w500')}"
+                     th:if="${posterUrl == null or posterUrl.isEmpty()}"
                      class="detail-poster-placeholder">
                     <i class="fas fa-tv"></i>
                 </div>
@@ -93,7 +91,7 @@
                 </div>
 
                 <div class="detail-list-actions" sec:authorize="isAuthenticated()"
-                     th:attr="data-content-type='series',data-content-id=${series.id},data-content-title=${series.title},data-content-poster=${series.posterLocalPath ?: ''}">
+                     th:attr="data-content-type='series',data-content-id=${series.id},data-content-title=${series.title},data-content-poster=${@imageUrlService.seriesPosterUrl(series, 'w500') ?: ''}">
                     <button class="btn-list" id="btnFavorite" onclick="toggleList('FAVORITE')">
                         <i class="far fa-heart"></i> <span>Favorito</span>
                     </button>

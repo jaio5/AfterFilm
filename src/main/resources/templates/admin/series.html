@@ -160,7 +160,10 @@
                 tbody.innerHTML = data.content.map(s => `
                     <tr>
                         <td>${s.id}</td>
-                        <td><a href="/serie/${s.id}" style="color:var(--accent)">${s.title}</a></td>
+                        <td style="display:flex;align-items:center;gap:0.6rem">
+                            ${s.posterUrl ? `<img src="${escapeHtml(s.posterUrl)}" alt="" style="width:34px;height:50px;border-radius:4px;object-fit:cover;background:var(--bg-elevated)">` : '<div style="width:34px;height:50px;border-radius:4px;background:var(--bg-elevated);display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fas fa-tv"></i></div>'}
+                            <a href="/serie/${s.id}" style="color:var(--accent)">${s.title}</a>
+                        </td>
                         <td>${s.numberOfSeasons || '—'}</td>
                         <td style="font-size:0.78rem">${s.genres || '—'}</td>
                         <td><span class="badge-info">${s.status || '—'}</span></td>

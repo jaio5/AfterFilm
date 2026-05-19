@@ -48,21 +48,19 @@
     <!-- Hero section -->
     <div class="detail-hero">
         <div class="detail-hero-backdrop"
-             th:with="backdropUrl=${movie.posterLocalPath != null and !movie.posterLocalPath.isEmpty() ? '/images/' + movie.posterLocalPath : (movie.posterPath != null and !movie.posterPath.isEmpty() ? 'https://image.tmdb.org/t/p/w500' + movie.posterPath : null)}"
+             th:with="backdropUrl=${@imageUrlService.moviePosterUrl(movie, 'w500')}"
              th:style="${backdropUrl != null ? 'background-image: url(' + backdropUrl + ')' : 'background: var(--bg-elevated)'}">
     </div>
         <div class="detail-hero-content">
 
             <!-- Poster -->
             <div class="detail-poster">
-                <img th:if="${movie.posterLocalPath != null and !movie.posterLocalPath.isEmpty()}"
-                     th:src="${movie.posterLocalPath}" th:alt="${movie.title}">
-                <img th:if="${(movie.posterLocalPath == null or movie.posterLocalPath.isEmpty())
-                              and (movie.posterPath != null and !movie.posterPath.isEmpty())}"
-                     th:src="${movie.posterPath.startsWith('http') ? movie.posterPath : 'https://image.tmdb.org/t/p/w500' + movie.posterPath}"
+                <img th:with="posterUrl=${@imageUrlService.moviePosterUrl(movie, 'w500')}"
+                     th:if="${posterUrl != null and !posterUrl.isEmpty()}"
+                     th:src="${posterUrl}"
                      th:alt="${movie.title}">
-                <div th:if="${(movie.posterLocalPath == null or movie.posterLocalPath.isEmpty())
-                              and (movie.posterPath == null or movie.posterPath.isEmpty())}"
+                <div th:with="posterUrl=${@imageUrlService.moviePosterUrl(movie, 'w500')}"
+                     th:if="${posterUrl == null or posterUrl.isEmpty()}"
                      class="detail-poster-placeholder">
                     <i class="fas fa-film"></i>
                 </div>
@@ -94,7 +92,7 @@
 
                 <!-- Favoritos / Quiero ver (solo usuarios autenticados) -->
                 <div class="detail-list-actions" sec:authorize="isAuthenticated()"
-                     th:attr="data-content-type='movie',data-content-id=${movie.id},data-content-title=${movie.title},data-content-poster=${movie.posterLocalPath ?: ''}">
+                     th:attr="data-content-type='movie',data-content-id=${movie.id},data-content-title=${movie.title},data-content-poster=${@imageUrlService.moviePosterUrl(movie, 'w500') ?: ''}">
                     <button class="btn-list" id="btnFavorite" onclick="toggleList('FAVORITE')">
                         <i class="far fa-heart"></i> <span>Favorito</span>
                     </button>

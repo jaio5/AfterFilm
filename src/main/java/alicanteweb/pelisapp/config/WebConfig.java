@@ -6,6 +6,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.nio.file.Path;
+
 /**
  * Configuración para servir archivos estáticos de imágenes y videos
  */
@@ -25,7 +27,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         // Configurar para servir imágenes desde el directorio local
-        String imageResourceLocation = "file:" + imagesStoragePath + "/";
+        String imageResourceLocation = Path.of(imagesStoragePath).toAbsolutePath().normalize().toUri().toString();
         String imagePathPattern = imagesServeBase + "/**";
 
         registry.addResourceHandler(imagePathPattern)
@@ -34,7 +36,7 @@ public class WebConfig implements WebMvcConfigurer {
 
         // Configurar para servir archivos de video (pero solo para acceso directo simple)
         // Los endpoints de descarga/streaming con range están en MovieFileController
-        String movieResourceLocation = "file:" + moviesStoragePath + "/";
+        String movieResourceLocation = Path.of(moviesStoragePath).toAbsolutePath().normalize().toUri().toString();
         String moviePathPattern = "/video/**";
 
         registry.addResourceHandler(moviePathPattern)
