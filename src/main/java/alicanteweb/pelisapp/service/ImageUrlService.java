@@ -68,11 +68,15 @@ public class ImageUrlService {
         if (localPath == null || localPath.isBlank()) {
             return null;
         }
+        String supabaseUrl = supabaseImageStorage.displayUrlForStoredPath(localPath);
+        if (supabaseUrl != null) {
+            return supabaseUrl;
+        }
         if (localPath.startsWith("http://") || localPath.startsWith("https://")) {
             return localPath;
         }
 
-        String supabaseUrl = supabaseImageStorage.publicUrlForLegacyPath(localPath);
+        supabaseUrl = supabaseImageStorage.publicUrlForLegacyPath(localPath);
         if (supabaseUrl != null) {
             return supabaseUrl;
         }

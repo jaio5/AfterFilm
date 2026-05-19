@@ -6,7 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 @ActiveProfiles("test")
 @SpringBootTest
-class PelisAppApplicationTests {
+class AfterFilmApplicationTests {
 
 	@Test
 	void contextLoads() {

@@ -4,9 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class PelisAppApplication {
+public class AfterFilmApplication {
 	public static void main(String[] args) {
-		SpringApplication.run(PelisAppApplication.class, args);
+		SpringApplication.run(AfterFilmApplication.class, args);
 	}
 
 }

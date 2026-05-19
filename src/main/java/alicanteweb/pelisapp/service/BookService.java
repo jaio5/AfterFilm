@@ -149,7 +149,11 @@ public class BookService {
         if (coverUrl == null || coverUrl.isBlank()) {
             return null;
         }
-        if (supabaseImageStorage.wantsSupabase() && !supabaseImageStorage.isSupabasePublicUrl(coverUrl)) {
+        String supabaseUrl = supabaseImageStorage.displayUrlForStoredPath(coverUrl);
+        if (supabaseUrl != null) {
+            return supabaseUrl;
+        }
+        if (supabaseImageStorage.wantsSupabase()) {
             return null;
         }
         return coverUrl;

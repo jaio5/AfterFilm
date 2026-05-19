@@ -12,6 +12,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Component
@@ -74,19 +75,57 @@ public class SupabaseImageStorage {
             throw new IOException("Supabase Storage respondió HTTP " + response.statusCode() + ": " + response.body());
         }
 
-        String publicUrl = publicUrl(objectKey);
-        log.info("Imagen subida a Supabase Storage: {}", publicUrl);
-        return publicUrl;
+        String displayUrl = displayUrl(objectKey);
+        log.info("Imagen subida a Supabase Storage: {}", objectKey);
+        return displayUrl;
+    }
+
+    public Optional<StoredImage> fetch(String objectKey) throws IOException, InterruptedException {
+        if (!isConfigured() || objectKey == null || objectKey.isBlank()) {
+            return Optional.empty();
+        }
+        for (String candidateKey : objectKeyCandidates(objectKey)) {
+            String objectUrl = supabaseUrl + "/storage/v1/object/" + urlEncode(bucket) + "/" + encodePath(candidateKey);
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(objectUrl))
+                    .header("Authorization", "Bearer " + serviceRole)
+                    .header("apikey", serviceRole)
+                    .GET()
+                    .build();
+
+            HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+            if (response.statusCode() == 404) {
+                continue;
+            }
+            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+                throw new IOException("Supabase Storage respondió HTTP " + response.statusCode());
+            }
+            String contentType = response.headers().firstValue("content-type")
+                    .orElse(contentTypeFor(candidateKey, null));
+            return Optional.of(new StoredImage(response.body(), contentType));
+        }
+        return Optional.empty();
     }
 
     public boolean isSupabasePublicUrl(String url) {
         if (url == null || url.isBlank() || !isConfigured()) {
             return false;
         }
-        String cleanUrl = trimTrailingSlash(url);
-        String defaultBase = supabaseUrl + "/storage/v1/object/public/" + urlEncode(bucket);
-        String base = publicBaseUrl.isBlank() ? defaultBase : publicBaseUrl;
-        return cleanUrl.startsWith(base + "/") || cleanUrl.equals(base);
+        return objectKeyFromPublicUrl(url) != null || isProxyUrl(url);
+    }
+
+    public String displayUrlForStoredPath(String path) {
+        if (!wantsSupabase() || !isConfigured() || path == null || path.isBlank()) {
+            return null;
+        }
+        if (isProxyUrl(path)) {
+            return path;
+        }
+        String objectKey = objectKeyFromPublicUrl(path);
+        if (objectKey != null) {
+            return displayUrl(objectKey);
+        }
+        return publicUrlForLegacyPath(path);
     }
 
     public String publicUrlForLegacyPath(String path) {
@@ -94,7 +133,7 @@ public class SupabaseImageStorage {
             return null;
         }
         if (path.startsWith("http://") || path.startsWith("https://")) {
-            return path;
+            return null;
         }
         String cleanPath = path.trim().replace("\\", "/");
         if (cleanPath.startsWith("/images/")) {
@@ -104,7 +143,64 @@ public class SupabaseImageStorage {
         } else if (cleanPath.startsWith("/")) {
             cleanPath = cleanPath.substring(1);
         }
-        return publicUrl(trimSlashes(cleanPath));
+        return displayUrl(objectKeyFromRelativePath(cleanPath));
+    }
+
+    public String displayUrl(String objectKey) {
+        if (objectKey == null || objectKey.isBlank()) {
+            return null;
+        }
+        return "/supabase-images/" + encodePath(trimSlashes(objectKey));
+    }
+
+    public String objectKeyFromRequestPath(String path) {
+        return trimSlashes(path);
+    }
+
+    private java.util.List<String> objectKeyCandidates(String objectKey) {
+        String cleanObjectKey = trimSlashes(objectKey);
+        java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>();
+        if (!cleanObjectKey.isBlank()) {
+            candidates.add(cleanObjectKey);
+            if (!prefix.isBlank() && cleanObjectKey.startsWith(prefix + "/")) {
+                candidates.add(cleanObjectKey.substring(prefix.length() + 1));
+            } else if (!prefix.isBlank()) {
+                candidates.add(prefix + "/" + cleanObjectKey);
+            }
+        }
+        return new java.util.ArrayList<>(candidates);
+    }
+
+    private String objectKeyFromRelativePath(String relativePath) {
+        String cleanRelativePath = trimSlashes(relativePath);
+        if (cleanRelativePath.isBlank()) {
+            return cleanRelativePath;
+        }
+        if (!prefix.isBlank() && !cleanRelativePath.equals(prefix) && !cleanRelativePath.startsWith(prefix + "/")) {
+            return prefix + "/" + cleanRelativePath;
+        }
+        return cleanRelativePath;
+    }
+
+    private String objectKeyFromPublicUrl(String url) {
+        if (url == null || url.isBlank() || !isConfigured()) {
+            return null;
+        }
+        String cleanUrl = url.trim();
+        String defaultBase = supabaseUrl + "/storage/v1/object/public/" + urlEncode(bucket);
+        String base = publicBaseUrl.isBlank() ? defaultBase : publicBaseUrl;
+        String cleanBase = trimTrailingSlash(base);
+        if (cleanUrl.equals(cleanBase)) {
+            return "";
+        }
+        if (cleanUrl.startsWith(cleanBase + "/")) {
+            return cleanUrl.substring(cleanBase.length() + 1);
+        }
+        return null;
+    }
+
+    private boolean isProxyUrl(String url) {
+        return url != null && (url.startsWith("/supabase-images/") || url.startsWith("supabase-images/"));
     }
 
     private String publicUrl(String objectKey) {
@@ -167,5 +263,8 @@ public class SupabaseImageStorage {
         while (clean.startsWith("/")) clean = clean.substring(1);
         while (clean.endsWith("/")) clean = clean.substring(0, clean.length() - 1);
         return clean;
+    }
+
+    public record StoredImage(byte[] content, String contentType) {
     }
 }

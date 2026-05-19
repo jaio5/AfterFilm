@@ -61,7 +61,7 @@ public class SecurityConfig {
                 auth.requestMatchers("/", "/login", "/register").permitAll();
                 auth.requestMatchers("/confirm-account/**", "/resend-confirmation", "/request-confirmation").permitAll();
                 auth.requestMatchers("/api/auth/**").permitAll();
-                auth.requestMatchers("/css/**", "/js/**", "/images/**").permitAll();
+                auth.requestMatchers("/css/**", "/js/**", "/images/**", "/supabase-images/**").permitAll();
                 auth.requestMatchers("/pelicula/**").permitAll();
                 auth.requestMatchers("/peliculas/**").permitAll();
                 auth.requestMatchers("/series", "/serie/**", "/libros", "/libro/**").permitAll();
