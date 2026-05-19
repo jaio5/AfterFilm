@@ -21,6 +21,5 @@ COPY --from=builder /build/target/PelisApp-0.0.1-SNAPSHOT.jar /app/pelisapp.jar
 EXPOSE 8080
 
 ENV SERVER_ADDRESS=0.0.0.0
-ENV SERVER_PORT=8080
 
 ENTRYPOINT ["java", "-jar", "/app/pelisapp.jar"]
