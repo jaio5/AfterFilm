@@ -125,16 +125,26 @@
                     <tbody>
                         <tr th:each="movie : ${movies}">
                             <td>
-                                <img th:src="@{'/data/images/posters/' + ${movie.posterLocalPath}}"
+                                <img th:if="${movie.posterLocalPath != null and !movie.posterLocalPath.isBlank()}"
+                                     th:src="${movie.posterLocalPath.startsWith('/') ? movie.posterLocalPath : '/images/' + movie.posterLocalPath}"
                                      th:alt="${movie.title}"
                                      style="width:44px;height:66px;object-fit:cover;border-radius:4px;background:var(--bg-elevated)" />
+                                <img th:if="${(movie.posterLocalPath == null or movie.posterLocalPath.isBlank()) and (movie.posterPath != null and !movie.posterPath.isBlank())}"
+                                     th:src="${movie.posterPath.startsWith('http') ? movie.posterPath : 'https://image.tmdb.org/t/p/w92' + movie.posterPath}"
+                                     th:alt="${movie.title}"
+                                     style="width:44px;height:66px;object-fit:cover;border-radius:4px;background:var(--bg-elevated)" />
+                                <div th:if="${(movie.posterLocalPath == null or movie.posterLocalPath.isBlank()) and (movie.posterPath == null or movie.posterPath.isBlank())}"
+                                     style="width:44px;height:66px;border-radius:4px;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;color:var(--text-muted)">
+                                    <i class="fas fa-film"></i>
+                                </div>
                             </td>
                             <td>
                                 <a th:href="@{'/pelicula/' + ${movie.id}}" style="color:var(--text-primary);font-weight:500" th:text="${movie.title}">Título</a>
                             </td>
                             <td>
-                                <span th:if="${movie.posterLocalPath != null}" class="badge-ok"><i class="fas fa-check"></i> OK</span>
-                                <span th:if="${movie.posterLocalPath == null}" class="badge-err"><i class="fas fa-times"></i> Falta</span>
+                                <span th:if="${movie.posterLocalPath != null and !movie.posterLocalPath.isBlank()}" class="badge-ok"><i class="fas fa-check"></i> Local</span>
+                                <span th:if="${(movie.posterLocalPath == null or movie.posterLocalPath.isBlank()) and (movie.posterPath != null and !movie.posterPath.isBlank())}" class="badge-info"><i class="fas fa-cloud"></i> Remota</span>
+                                <span th:if="${(movie.posterLocalPath == null or movie.posterLocalPath.isBlank()) and (movie.posterPath == null or movie.posterPath.isBlank())}" class="badge-err"><i class="fas fa-times"></i> Falta</span>
                             </td>
                             <td>
                                 <button class="btn-ghost" style="font-size:0.75rem;padding:0.25rem 0.6rem"

@@ -273,17 +273,31 @@ public class WebController {
         if (redirect != null) return "❌ Sin permisos de administrador";
         try {
             long totalMovies = movieRepository.count();
-            long moviesWithPosters = movieRepository.findAll().stream()
-                .mapToLong(movie -> (movie.getPosterLocalPath() != null && !movie.getPosterLocalPath().isBlank()) ? 1 : 0)
-                .sum();
-            long missingPosters = totalMovies - moviesWithPosters;
+            List<Movie> movies = movieRepository.findAll();
+            long moviesWithLocalPosters = movies.stream()
+                    .filter(this::hasLocalPoster)
+                    .count();
+            long moviesWithRemotePostersOnly = movies.stream()
+                    .filter(movie -> !hasLocalPoster(movie) && hasRemotePoster(movie))
+                    .count();
+            long moviesWithAnyPoster = moviesWithLocalPosters + moviesWithRemotePostersOnly;
+            long missingPosters = totalMovies - moviesWithAnyPoster;
 
             String result = String.format("""
 📊 Estadísticas de carátulas:
 Total películas: %d
-Con carátula: %d (%.1f%%)
+Con carátula visible: %d (%.1f%%)
+Guardadas localmente: %d
+Solo remotas (TMDB): %d
 Sin carátula: %d (%.1f%%)
-""", totalMovies, moviesWithPosters, (moviesWithPosters * 100.0 / totalMovies), missingPosters, (missingPosters * 100.0 / totalMovies));
+""",
+                    totalMovies,
+                    moviesWithAnyPoster,
+                    percentage(moviesWithAnyPoster, totalMovies),
+                    moviesWithLocalPosters,
+                    moviesWithRemotePostersOnly,
+                    missingPosters,
+                    percentage(missingPosters, totalMovies));
 
             log.info(result);
             return result;
@@ -291,6 +305,22 @@ Sin carátula: %d (%.1f%%)
             log.error("❌ Error obteniendo estadísticas: {}", e.getMessage());
             return "❌ Error obteniendo estadísticas: " + e.getMessage();
         }
+    }
+
+    private boolean hasLocalPoster(Movie movie) {
+        return movie.getPosterLocalPath() != null && !movie.getPosterLocalPath().isBlank();
+    }
+
+    private boolean hasRemotePoster(Movie movie) {
+        return movie.getPosterPath() != null && !movie.getPosterPath().isBlank();
+    }
+
+    private boolean hasVisiblePoster(Movie movie) {
+        return hasLocalPoster(movie) || hasRemotePoster(movie);
+    }
+
+    private double percentage(long value, long total) {
+        return total > 0 ? value * 100.0 / total : 0.0;
     }
 
     // ============= ADMIN REVIEW MANAGEMENT =============
@@ -653,8 +683,7 @@ Sin carátula: %d (%.1f%%)
         int errors = 0;
 
         for (Movie movie : movieRepository.findAll()) {
-            boolean hasLocalPoster = movie.getPosterLocalPath() != null && !movie.getPosterLocalPath().isBlank();
-            if (!includeExisting && hasLocalPoster) {
+            if (!includeExisting && hasVisiblePoster(movie)) {
                 skipped++;
                 continue;
             }
