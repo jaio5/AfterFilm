@@ -26,6 +26,7 @@ public class SocialService {
     private final FollowingRepository followingRepository;
     private final ReviewRepository reviewRepository;
 
+    @Transactional(readOnly = true)
     public UserPublicDTO getPublicProfile(String username, String currentUsername) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + username));
@@ -60,6 +61,7 @@ public class SocialService {
         log.info("{} dejó de seguir a {}", followerUsername, followedUsername);
     }
 
+    @Transactional(readOnly = true)
     public List<UserPublicDTO> getFollowers(String username, String currentUsername) {
         User user = userRepository.findByUsername(username).orElseThrow();
         return followingRepository.findByFollowed(user).stream()
@@ -67,6 +69,7 @@ public class SocialService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserPublicDTO> getFollowing(String username, String currentUsername) {
         User user = userRepository.findByUsername(username).orElseThrow();
         return followingRepository.findByFollower(user).stream()
@@ -74,6 +77,7 @@ public class SocialService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserPublicDTO> searchUsers(String query, String currentUsername) {
         return userRepository.findByUsernameContainingIgnoreCase(query, PageRequest.of(0, 20))
                 .getContent().stream()
@@ -82,6 +86,7 @@ public class SocialService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<UserPublicDTO> getSuggestedUsers(String currentUsername) {
         return userRepository.findAll(PageRequest.of(0, 20))
                 .getContent().stream()
@@ -90,11 +95,13 @@ public class SocialService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<Review> getUserReviews(String username) {
         User user = userRepository.findByUsername(username).orElseThrow();
         return reviewRepository.findAllByUser_IdOrderByCreatedAtDesc(user.getId());
     }
 
+    @Transactional(readOnly = true)
     public List<Review> getFeed(String username, int page, int size) {
         User user = userRepository.findByUsername(username).orElseThrow();
         List<Long> followedIds = followingRepository.findByFollower(user).stream()
@@ -115,7 +122,9 @@ public class SocialService {
                 isFollowing = followingRepository.existsByFollowerAndFollowed(currentUser, user);
             }
         }
-        String displayName = user.getDisplayName() != null ? user.getDisplayName() : user.getUsername();
+        String displayName = user.getDisplayName() != null && !user.getDisplayName().isBlank()
+                ? user.getDisplayName()
+                : user.getUsername();
         return new UserPublicDTO(user.getId(), user.getUsername(), displayName,
                 followersCount, followingCount, reviewCount, isFollowing);
     }
