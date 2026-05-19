@@ -151,7 +151,7 @@ public class TMDBSeriesLoaderService {
         if (shouldReloadPoster(show.getPosterLocalPath()) && details.hasNonNull("poster_path")) {
             String poster = details.path("poster_path").asText(null);
             if (poster != null && !poster.isBlank()) {
-                String imageUrl = poster.startsWith("http") ? poster : tmdbImageBaseUrl + "/w500" + poster;
+                String imageUrl = poster.startsWith("http") ? poster : tmdbClient.buildImageUrl(poster);
                 String stored = imageService.downloadAndSave(imageUrl, "series_" + show.getTmdbId(), "series");
                 if (stored != null) show.setPosterLocalPath(stored);
                 else show.setPosterPath(poster); // store raw path so template can prepend CDN base

@@ -314,10 +314,19 @@ public class TMDBClient {
     public String buildImageUrl(String posterPath) {
         if (posterPath == null || posterPath.isBlank()) return null;
         ensureConfigurationLoaded();
-        String clean = posterPath.startsWith("/") ? posterPath : ("/" + posterPath);
+        String clean = posterPath.startsWith("/") ? posterPath.substring(1) : posterPath;
         String base = (imagesBaseUrl != null && !imagesBaseUrl.isBlank()) ? imagesBaseUrl : "https://image.tmdb.org/t/p";
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
         String size = (posterSize != null && !posterSize.isBlank()) ? posterSize : "w500";
-        String full = base + "/" + size + clean;
+        while (size.startsWith("/")) {
+            size = size.substring(1);
+        }
+        while (size.endsWith("/")) {
+            size = size.substring(0, size.length() - 1);
+        }
+        String full = base + "/" + size + "/" + clean;
         log.debug("buildImageUrl posterPath={} -> {}", posterPath, full);
         return full;
     }

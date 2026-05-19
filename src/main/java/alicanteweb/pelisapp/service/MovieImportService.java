@@ -153,8 +153,8 @@ public class MovieImportService {
         if ((movie.getPosterPath() == null || movie.getPosterPath().isBlank()) && details.hasNonNull("poster_path")) {
             String poster = details.path("poster_path").asText(null);
             if (poster != null && !poster.isBlank()) {
-                // ImageService.downloadAndSave espera URL completa; TMDBClient/Controller suelen construirla
-                String imageUrl = poster.startsWith("http") ? poster : tmdbImageBaseUrl + poster;
+                // ImageService.downloadAndSave espera URL completa. TMDBClient normaliza base, tamaño y barras.
+                String imageUrl = poster.startsWith("http") ? poster : tmdbClient.buildImageUrl(poster);
 
                 String stored = imageService.downloadAndSave(imageUrl, "movie_" + movie.getTmdbId(), "posters");
                 if (stored != null) {
