@@ -326,7 +326,7 @@
                 const data = new FormData(form);
                 const raw = Object.fromEntries(data.entries());
                 const payload = {
-                    text: raw.text && raw.text.trim() ? raw.text.trim() : null,
+                    text: raw.text && raw.text.trim() ? raw.text.trim() : "",
                     stars: parseInt(raw.stars)
                 };
                 const bookId = raw.bookId;

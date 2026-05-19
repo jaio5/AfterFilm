@@ -404,6 +404,140 @@ Sin carátula: %d (%.1f%%)
         }
     }
 
+    private String bulkLoadMoviesUntilTarget(int targetMovies, String type) {
+        try {
+            MovieLoadResult result = loadMoviesUntilTarget(targetMovies, type);
+            return formatMovieLoadResult(result);
+        } catch (Exception e) {
+            log.error("❌ ERROR EN CARGA POR OBJETIVO: Tipo={}, Objetivo={}, Error={}",
+                    type, targetMovies, e.getMessage(), e);
+            return "❌ Error cargando películas: " + e.getMessage();
+        }
+    }
+
+    private String bulkLoadCombinedMoviesUntilTarget(int targetMovies) {
+        try {
+            int firstTarget = Math.max(1, targetMovies / 2);
+            MovieLoadResult popular = loadMoviesUntilTarget(firstTarget, "popular");
+            int remainingTarget = Math.max(0, targetMovies - popular.imported());
+            MovieLoadResult topRated = remainingTarget > 0
+                    ? loadMoviesUntilTarget(remainingTarget, "topRated")
+                    : MovieLoadResult.empty("topRated", movieRepository.count());
+
+            MovieLoadResult combined = popular.combine(topRated, targetMovies, "popular + top rated");
+            return formatMovieLoadResult(combined);
+        } catch (Exception e) {
+            log.error("❌ ERROR EN CARGA COMBINADA POR OBJETIVO: Objetivo={}, Error={}",
+                    targetMovies, e.getMessage(), e);
+            return "❌ Error cargando películas: " + e.getMessage();
+        }
+    }
+
+    private MovieLoadResult loadMoviesUntilTarget(int targetMovies, String type) {
+        int safeTarget = Math.max(1, targetMovies);
+        long totalBefore = movieRepository.count();
+        int imported = 0;
+        int omitted = 0;
+        int errors = 0;
+        int pagesChecked = 0;
+        int maxPages = 500; // TMDB limita los listados paginados a 500 páginas.
+
+        log.info("🚀 INICIANDO CARGA POR OBJETIVO: Tipo={}, Objetivo={} películas nuevas", type, safeTarget);
+
+        for (int page = 1; imported < safeTarget && page <= maxPages; page++) {
+            JsonNode response = fetchMovieListPage(type, page);
+            if (response == null || !response.has("results")) {
+                log.warn("TMDB no devolvió resultados para tipo={} página={}", type, page);
+                break;
+            }
+
+            int totalPages = response.path("total_pages").asInt(maxPages);
+            maxPages = Math.min(maxPages, Math.max(1, totalPages));
+            JsonNode results = response.path("results");
+            if (!results.isArray() || results.isEmpty()) {
+                break;
+            }
+
+            pagesChecked++;
+            for (JsonNode movieNode : results) {
+                if (imported >= safeTarget) {
+                    break;
+                }
+
+                long tmdbId = movieNode.path("id").asLong(0);
+                if (tmdbId == 0) {
+                    errors++;
+                    continue;
+                }
+
+                try {
+                    if (movieRepository.findByTmdbId(tmdbId).isPresent()) {
+                        omitted++;
+                        continue;
+                    }
+                    Movie movie = tmdbMovieLoaderService.loadMovieByTmdbId(tmdbId);
+                    if (movie != null) {
+                        imported++;
+                    } else {
+                        errors++;
+                    }
+                } catch (Exception e) {
+                    errors++;
+                    log.warn("Error importando película tmdbId={} en carga por objetivo: {}", tmdbId, e.getMessage());
+                }
+            }
+        }
+
+        long totalAfter = movieRepository.count();
+        return new MovieLoadResult(type, safeTarget, imported, omitted, errors, pagesChecked, totalBefore, totalAfter);
+    }
+
+    private JsonNode fetchMovieListPage(String type, int page) {
+        return switch (type) {
+            case "popular" -> tmdbClient.getPopular(page);
+            case "topRated" -> tmdbClient.getTopRated(page);
+            default -> throw new IllegalArgumentException("Tipo de carga no soportado: " + type);
+        };
+    }
+
+    private String formatMovieLoadResult(MovieLoadResult result) {
+        String suffix = result.imported() >= result.target()
+                ? ""
+                : " No se llegó al objetivo porque no había más resultados disponibles en esa fuente o TMDB devolvió errores.";
+        return String.format(
+                "✅ Se han cargado %d nuevas películas de %d solicitadas (%s). Omitidas por existir: %d. Errores: %d. Páginas revisadas: %d. Total: %d → %d.%s",
+                result.imported(), result.target(), result.label(), result.omitted(), result.errors(),
+                result.pagesChecked(), result.totalBefore(), result.totalAfter(), suffix);
+    }
+
+    private record MovieLoadResult(
+            String label,
+            int target,
+            int imported,
+            int omitted,
+            int errors,
+            int pagesChecked,
+            long totalBefore,
+            long totalAfter
+    ) {
+        static MovieLoadResult empty(String label, long total) {
+            return new MovieLoadResult(label, 0, 0, 0, 0, 0, total, total);
+        }
+
+        MovieLoadResult combine(MovieLoadResult other, int combinedTarget, String combinedLabel) {
+            return new MovieLoadResult(
+                    combinedLabel,
+                    combinedTarget,
+                    imported + other.imported(),
+                    omitted + other.omitted(),
+                    errors + other.errors(),
+                    pagesChecked + other.pagesChecked(),
+                    totalBefore,
+                    other.totalAfter()
+            );
+        }
+    }
+
     /**
      * Versión mejorada: devuelve un JSON con el resultado de la carga masiva
      */
@@ -544,14 +678,11 @@ Sin carátula: %d (%.1f%%)
     // Método utilitario para presets de carga masiva (switch mejorado)
     private String handlePreset(String presetName) {
         return switch (presetName.toLowerCase()) {
-            case "quick" -> bulkLoadMovies(3, "popular");
-            case "medium" -> bulkLoadMovies(10, "popular");
-            case "full" -> bulkLoadMovies(20, "popular");
-            case "ultimate" -> bulkLoadMovies(50, "popular");
-            case "categories" -> {
-                bulkLoadMovies(10, "popular");
-                yield bulkLoadMovies(10, "topRated");
-            }
+            case "quick" -> bulkLoadMoviesUntilTarget(200, "popular");
+            case "medium" -> bulkLoadMoviesUntilTarget(1000, "popular");
+            case "full" -> bulkLoadMoviesUntilTarget(4000, "popular");
+            case "ultimate" -> bulkLoadMoviesUntilTarget(10000, "popular");
+            case "categories" -> bulkLoadCombinedMoviesUntilTarget(1000);
             default -> "❌ Preset no válido: " + presetName;
         };
     }
@@ -638,18 +769,19 @@ Sin carátula: %d (%.1f%%)
     @PostMapping("/admin/bulk-loader/start-popular")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> startPopularBulkLoad(
-            @RequestParam(defaultValue = "10") int maxPages,
+            @RequestParam(defaultValue = "1000") int targetMovies,
             Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
 
         Map<String, Object> response = new HashMap<>();
         try {
-            log.info("🚀 Iniciando carga popular personalizada: {} páginas", maxPages);
-            String result = bulkLoadMovies(Math.min(maxPages, 20), "popular"); // Límite de seguridad
+            int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
+            log.info("🚀 Iniciando carga popular personalizada: {} películas nuevas", safeTarget);
+            String result = bulkLoadMoviesUntilTarget(safeTarget, "popular");
             response.put("success", true);
             response.put("message", result);
-            response.put("pages", maxPages);
+            response.put("targetMovies", safeTarget);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("❌ Error en carga popular personalizada: {}", e.getMessage());
@@ -662,20 +794,20 @@ Sin carátula: %d (%.1f%%)
     @PostMapping("/admin/bulk-loader/start-categories")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> startCategoriesBulkLoad(
-            @RequestParam(defaultValue = "5") int pagesPerCategory,
+            @RequestParam(defaultValue = "1000") int targetMovies,
             Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
 
         Map<String, Object> response = new HashMap<>();
         try {
-            log.info("🚀 Iniciando carga por categorías: {} páginas por categoría", pagesPerCategory);
-            String result1 = bulkLoadMovies(Math.min(pagesPerCategory, 10), "popular");
-            String result2 = bulkLoadMovies(Math.min(pagesPerCategory, 10), "topRated");
+            int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
+            log.info("🚀 Iniciando carga por categorías: {} películas nuevas", safeTarget);
+            String result = bulkLoadCombinedMoviesUntilTarget(safeTarget);
 
             response.put("success", true);
-            response.put("message", "Carga por categorías completada: " + result1 + " y " + result2);
-            response.put("pagesPerCategory", pagesPerCategory);
+            response.put("message", result);
+            response.put("targetMovies", safeTarget);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("❌ Error en carga por categorías: {}", e.getMessage());

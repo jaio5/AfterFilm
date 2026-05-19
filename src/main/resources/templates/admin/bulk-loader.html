@@ -72,26 +72,26 @@
             <div class="admin-module-card preset-card" onclick="usePreset('quick')">
                 <div class="admin-icon">⚡</div>
                 <h4>RÁPIDO</h4>
-                <p>~200 películas · 2-3 min</p>
-                <span class="badge-ok">3 páginas</span>
+                <p>200 películas nuevas · salta duplicadas</p>
+                <span class="badge-ok">200</span>
             </div>
             <div class="admin-module-card preset-card" onclick="usePreset('medium')">
                 <div class="admin-icon">🎯</div>
                 <h4>MEDIO</h4>
-                <p>~1,000 películas · 8-10 min</p>
-                <span class="badge-warn">10 páginas</span>
+                <p>1,000 películas nuevas · salta duplicadas</p>
+                <span class="badge-warn">1000</span>
             </div>
             <div class="admin-module-card preset-card" onclick="usePreset('full')">
                 <div class="admin-icon">🎬</div>
                 <h4>COMPLETO</h4>
-                <p>~4,000 películas · 20-25 min</p>
-                <span class="badge-info">20 páginas</span>
+                <p>4,000 películas nuevas · salta duplicadas</p>
+                <span class="badge-info">4000</span>
             </div>
             <div class="admin-module-card preset-card" onclick="usePreset('ultimate')">
                 <div class="admin-icon">🔥</div>
                 <h4>MASIVO</h4>
-                <p>~10,000 películas · 45-60 min</p>
-                <span class="badge-err">50 páginas</span>
+                <p>10,000 películas nuevas · si TMDB tiene suficientes</p>
+                <span class="badge-err">10000</span>
             </div>
             <div class="admin-module-card preset-card" onclick="usePreset('categories')">
                 <div class="admin-icon">📊</div>
@@ -120,10 +120,10 @@
                 </div>
                 <div>
                     <label style="font-size:0.8rem;color:var(--text-muted);display:flex;justify-content:space-between;margin-bottom:0.4rem">
-                        <span>Páginas</span>
-                        <span id="pageDisplay" style="color:var(--text-primary)">50 págs (~1,000 películas)</span>
+                        <span>Películas nuevas</span>
+                        <span id="pageDisplay" style="color:var(--text-primary)">1,000 películas</span>
                     </label>
-                    <input type="range" id="maxPages" min="1" max="500" value="50"
+                    <input type="range" id="maxPages" min="50" max="10000" step="50" value="1000"
                            style="width:100%;accent-color:var(--accent)"
                            oninput="updatePageDisplay()">
                 </div>
@@ -237,14 +237,12 @@
 
         function startCustomLoad() {
             const loadType = document.getElementById('loadType').value;
-            const maxPages = document.getElementById('maxPages').value;
+            const targetMovies = document.getElementById('maxPages').value;
             const endpoint = loadType === 'popular'
                 ? '/admin/bulk-loader/start-popular'
                 : '/admin/bulk-loader/start-categories';
-            const params = loadType === 'popular'
-                ? 'maxPages=' + maxPages
-                : 'pagesPerCategory=' + maxPages;
-            addLog('Iniciando carga personalizada: ' + maxPages + ' páginas (' + loadType + ')');
+            const params = 'targetMovies=' + targetMovies;
+            addLog('Iniciando carga personalizada: ' + Number(targetMovies).toLocaleString('es-ES') + ' películas nuevas (' + loadType + ')');
             fetch(endpoint + '?' + params, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
                 .then(readResponse)
                 .then(data => {
@@ -266,9 +264,9 @@
         }
 
         function updatePageDisplay() {
-            const pages  = document.getElementById('maxPages').value;
+            const targetMovies  = document.getElementById('maxPages').value;
             document.getElementById('pageDisplay').textContent =
-                pages + ' págs (~' + (pages * 20).toLocaleString('es-ES') + ' películas)';
+                Number(targetMovies).toLocaleString('es-ES') + ' películas';
         }
 
         window.addEventListener('beforeunload', () => { if (statusInterval) clearInterval(statusInterval); });
