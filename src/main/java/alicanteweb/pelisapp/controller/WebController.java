@@ -447,14 +447,27 @@ Sin carátula: %d (%.1f%%)
 
     private String bulkLoadCombinedMoviesUntilTarget(int targetMovies) {
         try {
-            int firstTarget = Math.max(1, targetMovies / 2);
-            MovieLoadResult popular = loadMoviesUntilTarget(firstTarget, "popular");
-            int remainingTarget = Math.max(0, targetMovies - popular.imported());
-            MovieLoadResult topRated = remainingTarget > 0
-                    ? loadMoviesUntilTarget(remainingTarget, "topRated")
-                    : MovieLoadResult.empty("topRated", movieRepository.count());
+            String[] sources = {
+                    "popular",
+                    "topRated",
+                    "nowPlaying",
+                    "upcoming",
+                    "discoverPopular",
+                    "discoverVoteCount",
+                    "discoverReleaseDate",
+                    "discoverRevenue"
+            };
+            MovieLoadResult combined = MovieLoadResult.empty("varias fuentes TMDB", movieRepository.count());
 
-            MovieLoadResult combined = popular.combine(topRated, targetMovies, "popular + top rated");
+            for (String source : sources) {
+                int remainingTarget = Math.max(0, targetMovies - combined.imported());
+                if (remainingTarget == 0) {
+                    break;
+                }
+                MovieLoadResult partial = loadMoviesUntilTarget(remainingTarget, source);
+                combined = combined.combine(partial, targetMovies, "varias fuentes TMDB");
+            }
+
             return formatMovieLoadResult(combined);
         } catch (Exception e) {
             log.error("❌ ERROR EN CARGA COMBINADA POR OBJETIVO: Objetivo={}, Error={}",
@@ -526,6 +539,12 @@ Sin carátula: %d (%.1f%%)
         return switch (type) {
             case "popular" -> tmdbClient.getPopular(page);
             case "topRated" -> tmdbClient.getTopRated(page);
+            case "nowPlaying" -> tmdbClient.getNowPlaying(page);
+            case "upcoming" -> tmdbClient.getUpcoming(page);
+            case "discoverPopular" -> tmdbClient.discoverMovies(page, "popularity.desc");
+            case "discoverVoteCount" -> tmdbClient.discoverMovies(page, "vote_count.desc");
+            case "discoverReleaseDate" -> tmdbClient.discoverMovies(page, "primary_release_date.desc");
+            case "discoverRevenue" -> tmdbClient.discoverMovies(page, "revenue.desc");
             default -> throw new IllegalArgumentException("Tipo de carga no soportado: " + type);
         };
     }
@@ -707,10 +726,10 @@ Sin carátula: %d (%.1f%%)
     // Método utilitario para presets de carga masiva (switch mejorado)
     private String handlePreset(String presetName) {
         return switch (presetName.toLowerCase()) {
-            case "quick" -> bulkLoadMoviesUntilTarget(200, "popular");
-            case "medium" -> bulkLoadMoviesUntilTarget(1000, "popular");
-            case "full" -> bulkLoadMoviesUntilTarget(4000, "popular");
-            case "ultimate" -> bulkLoadMoviesUntilTarget(10000, "popular");
+            case "quick" -> bulkLoadCombinedMoviesUntilTarget(200);
+            case "medium" -> bulkLoadCombinedMoviesUntilTarget(1000);
+            case "full" -> bulkLoadCombinedMoviesUntilTarget(4000);
+            case "ultimate" -> bulkLoadCombinedMoviesUntilTarget(10000);
             case "categories" -> bulkLoadCombinedMoviesUntilTarget(1000);
             default -> "❌ Preset no válido: " + presetName;
         };
@@ -806,8 +825,8 @@ Sin carátula: %d (%.1f%%)
         Map<String, Object> response = new HashMap<>();
         try {
             int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
-            log.info("🚀 Iniciando carga popular personalizada: {} películas nuevas", safeTarget);
-            String result = bulkLoadMoviesUntilTarget(safeTarget, "popular");
+            log.info("🚀 Iniciando carga personalizada con respaldo TMDB: {} películas nuevas", safeTarget);
+            String result = bulkLoadCombinedMoviesUntilTarget(safeTarget);
             response.put("success", true);
             response.put("message", result);
             response.put("targetMovies", safeTarget);

@@ -46,7 +46,7 @@ public class UserService {
         User user = userRepository.findByUsername(username)
             .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + username));
 
-        List<Review> reviews = reviewRepository.findAllByUser_Id(user.getId());
+        List<Review> reviews = reviewRepository.findAllByUser_IdOrderByCreatedAtDesc(user.getId());
         boolean isAdmin = hasAdminRole(authentication);
 
         model.addAttribute("usuario", user);

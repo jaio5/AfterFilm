@@ -191,6 +191,87 @@ public class TMDBClient {
         return null;
     }
 
+    public JsonNode getNowPlaying(int page) {
+        return getMovieList("/movie/now_playing", page, "now playing");
+    }
+
+    public JsonNode getUpcoming(int page) {
+        return getMovieList("/movie/upcoming", page, "upcoming");
+    }
+
+    public JsonNode discoverMovies(int page, String sortBy) {
+        log.debug("Discovering TMDB movies page {} sorted by {}", page, sortBy);
+        try {
+            JsonNode resp = webClient.get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path("/discover/movie")
+                                .queryParam("page", page)
+                                .queryParam("language", "es-ES")
+                                .queryParam("sort_by", sortBy)
+                                .queryParam("include_adult", false)
+                                .queryParam("include_video", false);
+
+                        if ((bearerToken == null || bearerToken.isBlank()) && apiKey != null && !apiKey.isBlank()) {
+                            uriBuilder.queryParam("api_key", apiKey);
+                        }
+
+                        return uriBuilder.build();
+                    })
+                    .headers(h -> {
+                        if (bearerToken != null && !bearerToken.isBlank()) {
+                            h.setBearerAuth(bearerToken);
+                        }
+                    })
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block(Duration.ofSeconds(10));
+
+            log.debug("TMDB discover {} page {} results: {} movies",
+                    sortBy, page, resp != null ? resp.path("results").size() : 0);
+            return resp;
+        } catch (WebClientResponseException we) {
+            log.warn("TMDB discoverMovies failed: status={} body={}", we.getStatusCode().value(), we.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.warn("TMDB discoverMovies failed: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private JsonNode getMovieList(String path, int page, String label) {
+        log.debug("Getting TMDB {} movies page {}", label, page);
+        try {
+            JsonNode resp = webClient.get()
+                    .uri(uriBuilder -> {
+                        uriBuilder.path(path)
+                                .queryParam("page", page)
+                                .queryParam("language", "es-ES");
+
+                        if ((bearerToken == null || bearerToken.isBlank()) && apiKey != null && !apiKey.isBlank()) {
+                            uriBuilder.queryParam("api_key", apiKey);
+                        }
+
+                        return uriBuilder.build();
+                    })
+                    .headers(h -> {
+                        if (bearerToken != null && !bearerToken.isBlank()) {
+                            h.setBearerAuth(bearerToken);
+                        }
+                    })
+                    .retrieve()
+                    .bodyToMono(JsonNode.class)
+                    .block(Duration.ofSeconds(10));
+
+            log.debug("TMDB {} page {} results: {} movies",
+                    label, page, resp != null ? resp.path("results").size() : 0);
+            return resp;
+        } catch (WebClientResponseException we) {
+            log.warn("TMDB {} failed: status={} body={}", label, we.getStatusCode().value(), we.getResponseBodyAsString());
+        } catch (Exception e) {
+            log.warn("TMDB {} failed: {}", label, e.getMessage());
+        }
+        return null;
+    }
+
     public JsonNode getMovieDetails(long tmdbId) {
         log.debug("Requesting TMDB movie details for tmdbId={} using {}", tmdbId, (bearerToken != null && !bearerToken.isBlank()) ? "Bearer token" : (apiKey != null && !apiKey.isBlank() ? "API key" : "no auth"));
         try {

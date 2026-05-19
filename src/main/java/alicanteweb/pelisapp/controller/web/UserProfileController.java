@@ -33,7 +33,7 @@ public class UserProfileController {
             String username = principal.getName();
             User user = userRepository.findByUsername(username)
                     .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado"));
-            List<Review> userReviews = reviewRepository.findAllByUser_Id(user.getId());
+            List<Review> userReviews = reviewRepository.findAllByUser_IdOrderByCreatedAtDesc(user.getId());
             // Seguidores y seguidos
             int followersCount = user.getFollowers() != null ? user.getFollowers().size() : 0;
             int followingCount = user.getFollowing() != null ? user.getFollowing().size() : 0;

@@ -92,7 +92,7 @@ public class SocialService {
 
     public List<Review> getUserReviews(String username) {
         User user = userRepository.findByUsername(username).orElseThrow();
-        return reviewRepository.findAllByUser_Id(user.getId());
+        return reviewRepository.findAllByUser_IdOrderByCreatedAtDesc(user.getId());
     }
 
     public List<Review> getFeed(String username, int page, int size) {
