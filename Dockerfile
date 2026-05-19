@@ -22,4 +22,4 @@ EXPOSE 8080
 
 ENV SERVER_ADDRESS=0.0.0.0
 
-ENTRYPOINT ["java", "-jar", "/app/pelisapp.jar"]
+ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT:-8080} -jar /app/pelisapp.jar"]
