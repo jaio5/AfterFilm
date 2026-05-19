@@ -229,17 +229,46 @@ public class MovieImportService {
     }
 
     private Actor findOrCreateActor(String name, Long tmdbId) {
-        // simple heuristic: search by name first (no repository method for tmdbId)
-        Actor a = new Actor();
-        a.setName(name);
-        a.setTmdbId(tmdbId);
-        return actorRepository.save(a);
+        if (tmdbId != null) {
+            Optional<Actor> existing = actorRepository.findByTmdbId(tmdbId);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
+
+        Actor actor = new Actor();
+        actor.setName(name);
+        actor.setTmdbId(tmdbId);
+        try {
+            return actorRepository.save(actor);
+        } catch (DataIntegrityViolationException ex) {
+            if (tmdbId != null) {
+                log.info("Actor concurrente detectado para tmdbId {}, reutilizando registro existente", tmdbId);
+                return actorRepository.findByTmdbId(tmdbId).orElseThrow(() -> ex);
+            }
+            throw ex;
+        }
     }
 
     private Director findOrCreateDirector(String name, Long tmdbId) {
-        Director d = new Director();
-        d.setName(name);
-        d.setTmdbId(tmdbId);
-        return directorRepository.save(d);
+        if (tmdbId != null) {
+            Optional<Director> existing = directorRepository.findByTmdbId(tmdbId);
+            if (existing.isPresent()) {
+                return existing.get();
+            }
+        }
+
+        Director director = new Director();
+        director.setName(name);
+        director.setTmdbId(tmdbId);
+        try {
+            return directorRepository.save(director);
+        } catch (DataIntegrityViolationException ex) {
+            if (tmdbId != null) {
+                log.info("Director concurrente detectado para tmdbId {}, reutilizando registro existente", tmdbId);
+                return directorRepository.findByTmdbId(tmdbId).orElseThrow(() -> ex);
+            }
+            throw ex;
+        }
     }
 }

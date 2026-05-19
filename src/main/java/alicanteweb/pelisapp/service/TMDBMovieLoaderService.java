@@ -13,6 +13,7 @@ import alicanteweb.pelisapp.tmdb.TMDBClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -455,9 +456,14 @@ public class TMDBMovieLoaderService {
                         }
                     }
 
-                    Actor savedActor = actorRepository.save(actor);
-                    log.debug("✓ Actor guardado: {} (ID: {})", name, savedActor.getId());
-                    return savedActor;
+                    try {
+                        Actor savedActor = actorRepository.save(actor);
+                        log.debug("✓ Actor guardado: {} (ID: {})", name, savedActor.getId());
+                        return savedActor;
+                    } catch (DataIntegrityViolationException ex) {
+                        log.info("Actor concurrente detectado para tmdbId {}, reutilizando registro existente", tmdbId);
+                        return actorRepository.findByTmdbId(tmdbId).orElseThrow(() -> ex);
+                    }
                 });
     }
 
@@ -491,9 +497,14 @@ public class TMDBMovieLoaderService {
                         }
                     }
 
-                    Director savedDirector = directorRepository.save(director);
-                    log.debug("✓ Director guardado: {} (ID: {})", name, savedDirector.getId());
-                    return savedDirector;
+                    try {
+                        Director savedDirector = directorRepository.save(director);
+                        log.debug("✓ Director guardado: {} (ID: {})", name, savedDirector.getId());
+                        return savedDirector;
+                    } catch (DataIntegrityViolationException ex) {
+                        log.info("Director concurrente detectado para tmdbId {}, reutilizando registro existente", tmdbId);
+                        return directorRepository.findByTmdbId(tmdbId).orElseThrow(() -> ex);
+                    }
                 });
     }
 

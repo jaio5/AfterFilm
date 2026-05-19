@@ -182,12 +182,7 @@ public class TMDBSeriesLoaderService {
                     String name = c.path("name").asText(null);
                     if (name == null) continue;
                     long actorTmdbId = c.path("id").asLong();
-                    Actor actor = actorRepository.findByTmdbId(actorTmdbId).orElseGet(() -> {
-                        Actor a = new Actor();
-                        a.setTmdbId(actorTmdbId);
-                        a.setName(name);
-                        return actorRepository.save(a);
-                    });
+                    Actor actor = findOrCreateActor(actorTmdbId, name);
                     actors.add(actor);
                 }
                 if (!actors.isEmpty()) show.setActors(actors);
@@ -201,16 +196,45 @@ public class TMDBSeriesLoaderService {
                     String name = cr.path("name").asText(null);
                     if (name == null) continue;
                     long dirTmdbId = cr.path("id").asLong();
-                    Director d = directorRepository.findByTmdbId(dirTmdbId).orElseGet(() -> {
-                        Director dir = new Director();
-                        dir.setTmdbId(dirTmdbId);
-                        dir.setName(name);
-                        return directorRepository.save(dir);
-                    });
+                    Director d = findOrCreateDirector(dirTmdbId, name);
                     directors.add(d);
                 }
                 if (!directors.isEmpty()) show.setDirectors(directors);
             }
+        }
+    }
+
+    private Actor findOrCreateActor(long tmdbId, String name) {
+        Optional<Actor> existing = actorRepository.findByTmdbId(tmdbId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        Actor actor = new Actor();
+        actor.setTmdbId(tmdbId);
+        actor.setName(name);
+        try {
+            return actorRepository.save(actor);
+        } catch (DataIntegrityViolationException ex) {
+            log.info("Actor concurrente detectado para tmdbId {}, reutilizando registro existente", tmdbId);
+            return actorRepository.findByTmdbId(tmdbId).orElseThrow(() -> ex);
+        }
+    }
+
+    private Director findOrCreateDirector(long tmdbId, String name) {
+        Optional<Director> existing = directorRepository.findByTmdbId(tmdbId);
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        Director director = new Director();
+        director.setTmdbId(tmdbId);
+        director.setName(name);
+        try {
+            return directorRepository.save(director);
+        } catch (DataIntegrityViolationException ex) {
+            log.info("Director concurrente detectado para tmdbId {}, reutilizando registro existente", tmdbId);
+            return directorRepository.findByTmdbId(tmdbId).orElseThrow(() -> ex);
         }
     }
 }
