@@ -547,16 +547,13 @@ Sin carátula: %d (%.1f%%)
                 }
 
                 try {
-                    if (movieRepository.findByTmdbId(tmdbId).isPresent()) {
-                        omitted++;
-                        bulkOmittedMovies.incrementAndGet();
-                        continue;
-                    }
+                    // Carga masiva: intentar cargar sin importar si ya existe
+                    // El objetivo es completar hasta X películas procesadas de cualquier origen
                     Movie movie = tmdbMovieLoaderService.loadMovieByTmdbId(tmdbId);
                     if (movie != null) {
                         imported++;
                         bulkImportedMovies.incrementAndGet();
-                        updateBulkProgress(String.format("Importada: %s. Nuevas: %d/%d.",
+                        updateBulkProgress(String.format("Procesada: %s. Total: %d/%d.",
                                 movie.getTitle(), bulkImportedMovies.get(), bulkTargetMovies.get()));
                     } else {
                         errors++;
