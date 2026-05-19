@@ -2,6 +2,7 @@ package alicanteweb.pelisapp.repository;
 
 import alicanteweb.pelisapp.entity.Following;
 import alicanteweb.pelisapp.entity.User;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -17,7 +18,11 @@ public interface FollowingRepository extends JpaRepository<Following, Long> {
 
     List<Following> findByFollower(User follower);
 
+    List<Following> findByFollower(User follower, Pageable pageable);
+
     List<Following> findByFollowed(User followed);
+
+    List<Following> findByFollowed(User followed, Pageable pageable);
 
     long countByFollowed(User followed);
 

@@ -28,6 +28,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     List<Review> findAllByUser_IdOrderByCreatedAtDesc(Long userId);
 
     @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
+    List<Review> findAllByUser_IdOrderByCreatedAtDesc(Long userId, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
     Page<Review> findAllByUser_Id(Long userId, Pageable pageable);
 
     List<Review> findByMovieId(Long movieId);
