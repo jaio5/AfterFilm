@@ -21,7 +21,7 @@ PelisApp es una aplicacion web para gestionar y descubrir peliculas, series y li
 - Spring Boot 3.2.10
 - Spring Security
 - Spring Data JPA / Hibernate
-- MySQL
+- PostgreSQL
 - H2 para tests
 - Thymeleaf
 - Maven
@@ -55,13 +55,13 @@ src/main/resources/
 Requisitos:
 
 - Java 17+
-- MySQL 8+
+- PostgreSQL 16+ o Docker
 - Token de TMDB si se van a importar peliculas o series
 
 Crear base de datos:
 
 ```sql
-CREATE DATABASE PelisApp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE pelisapp;
 ```
 
 Ejecutar:
@@ -70,11 +70,17 @@ Ejecutar:
 ./mvnw.cmd spring-boot:run
 ```
 
+Con Docker:
+
+```bash
+docker compose up --build
+```
+
 Por defecto la aplicacion usa el puerto configurado en `src/main/resources/application.properties`.
 
 ## Tests
 
-Los tests usan perfil `test` con H2 en memoria para no depender de MySQL ni de servicios externos.
+Los tests usan perfil `test` con H2 en memoria para no depender de PostgreSQL ni de servicios externos.
 
 ```bash
 ./mvnw.cmd test

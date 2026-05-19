@@ -23,8 +23,8 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     @Query("SELECT b.categories FROM Book b WHERE b.categories IS NOT NULL AND b.categories <> ''")
     List<String> findAllCategoryStrings();
 
-    @Query(value = "SELECT * FROM books WHERE categories REGEXP :pattern",
-           countQuery = "SELECT COUNT(*) FROM books WHERE categories REGEXP :pattern",
+    @Query(value = "SELECT * FROM books WHERE categories ~* :pattern",
+           countQuery = "SELECT COUNT(*) FROM books WHERE categories ~* :pattern",
            nativeQuery = true)
     Page<Book> findByCategoriesMatchingPattern(@Param("pattern") String pattern, Pageable pageable);
 

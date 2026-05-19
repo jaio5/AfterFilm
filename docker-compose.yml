@@ -9,7 +9,7 @@ services:
     ports:
       - "0.0.0.0:5432:5432"
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U pelisapp -d pelisapp"]
       interval: 10s
@@ -48,7 +48,7 @@ services:
       - pelisapp-network
 
 volumes:
-  db_data:
+  pg_data:
 
 networks:
   pelisapp-network:

@@ -75,7 +75,7 @@ public class BookService {
             Page<Book> page = bookRepository.findByCategoriesContainingIgnoreCase(category, pageable);
             return new PageImpl<>(mapWithRatingStats(page.getContent()), pageable, page.getTotalElements());
         }
-        // Construir patrón REGEXP: keyword1|keyword2|...
+        // Construir patrón regex para PostgreSQL: keyword1|keyword2|...
         String pattern = keywords.stream()
                 .map(k -> k.replace(" ", "[ ]?"))  // "Self Help" y "Self-Help"
                 .reduce((a, b) -> a + "|" + b)
