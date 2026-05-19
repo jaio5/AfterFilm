@@ -15,6 +15,7 @@ import alicanteweb.pelisapp.service.MoviePosterRedownloadService;
 import alicanteweb.pelisapp.service.TMDBMovieLoaderService;
 import alicanteweb.pelisapp.tmdb.TMDBClient;
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -36,6 +37,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 
 /**
  * Controlador unificado para todas las vistas web HTML
@@ -71,6 +78,24 @@ public class WebController {
 
     @Value("${spring.mail.username:}")
     private String mailUser;
+
+    private final ExecutorService bulkLoaderExecutor = Executors.newSingleThreadExecutor();
+    private final AtomicBoolean bulkLoading = new AtomicBoolean(false);
+    private final AtomicBoolean bulkCancelRequested = new AtomicBoolean(false);
+    private final AtomicInteger bulkTargetMovies = new AtomicInteger(0);
+    private final AtomicInteger bulkImportedMovies = new AtomicInteger(0);
+    private final AtomicInteger bulkOmittedMovies = new AtomicInteger(0);
+    private final AtomicInteger bulkErrorMovies = new AtomicInteger(0);
+    private final AtomicInteger bulkPagesChecked = new AtomicInteger(0);
+    private final AtomicLong bulkStartedAt = new AtomicLong(0);
+    private volatile String bulkTaskName = "";
+    private volatile String bulkCurrentSource = "";
+    private volatile String bulkLastMessage = "Sistema iniciado — listo para cargar películas";
+
+    @PreDestroy
+    public void shutdownBulkLoaderExecutor() {
+        bulkLoaderExecutor.shutdownNow();
+    }
 
 
 
@@ -460,6 +485,9 @@ Sin carátula: %d (%.1f%%)
             MovieLoadResult combined = MovieLoadResult.empty("varias fuentes TMDB", movieRepository.count());
 
             for (String source : sources) {
+                if (bulkCancelRequested.get()) {
+                    break;
+                }
                 int remainingTarget = Math.max(0, targetMovies - combined.imported());
                 if (remainingTarget == 0) {
                     break;
@@ -486,8 +514,9 @@ Sin carátula: %d (%.1f%%)
         int maxPages = 500; // TMDB limita los listados paginados a 500 páginas.
 
         log.info("🚀 INICIANDO CARGA POR OBJETIVO: Tipo={}, Objetivo={} películas nuevas", type, safeTarget);
+        bulkCurrentSource = type;
 
-        for (int page = 1; imported < safeTarget && page <= maxPages; page++) {
+        for (int page = 1; imported < safeTarget && page <= maxPages && !bulkCancelRequested.get(); page++) {
             JsonNode response = fetchMovieListPage(type, page);
             if (response == null || !response.has("results")) {
                 log.warn("TMDB no devolvió resultados para tipo={} página={}", type, page);
@@ -502,30 +531,40 @@ Sin carátula: %d (%.1f%%)
             }
 
             pagesChecked++;
+            bulkPagesChecked.incrementAndGet();
+            updateBulkProgress(String.format("Revisando %s página %d. Nuevas: %d/%d. Omitidas: %d. Errores: %d.",
+                    type, page, bulkImportedMovies.get(), bulkTargetMovies.get(), bulkOmittedMovies.get(), bulkErrorMovies.get()));
             for (JsonNode movieNode : results) {
-                if (imported >= safeTarget) {
+                if (imported >= safeTarget || bulkCancelRequested.get()) {
                     break;
                 }
 
                 long tmdbId = movieNode.path("id").asLong(0);
                 if (tmdbId == 0) {
                     errors++;
+                    bulkErrorMovies.incrementAndGet();
                     continue;
                 }
 
                 try {
                     if (movieRepository.findByTmdbId(tmdbId).isPresent()) {
                         omitted++;
+                        bulkOmittedMovies.incrementAndGet();
                         continue;
                     }
                     Movie movie = tmdbMovieLoaderService.loadMovieByTmdbId(tmdbId);
                     if (movie != null) {
                         imported++;
+                        bulkImportedMovies.incrementAndGet();
+                        updateBulkProgress(String.format("Importada: %s. Nuevas: %d/%d.",
+                                movie.getTitle(), bulkImportedMovies.get(), bulkTargetMovies.get()));
                     } else {
                         errors++;
+                        bulkErrorMovies.incrementAndGet();
                     }
                 } catch (Exception e) {
                     errors++;
+                    bulkErrorMovies.incrementAndGet();
                     log.warn("Error importando película tmdbId={} en carga por objetivo: {}", tmdbId, e.getMessage());
                 }
             }
@@ -533,6 +572,10 @@ Sin carátula: %d (%.1f%%)
 
         long totalAfter = movieRepository.count();
         return new MovieLoadResult(type, safeTarget, imported, omitted, errors, pagesChecked, totalBefore, totalAfter);
+    }
+
+    private void updateBulkProgress(String message) {
+        bulkLastMessage = message;
     }
 
     private JsonNode fetchMovieListPage(String type, int page) {
@@ -735,6 +778,62 @@ Sin carátula: %d (%.1f%%)
         };
     }
 
+    private int presetTarget(String presetName) {
+        return switch (presetName.toLowerCase()) {
+            case "quick" -> 200;
+            case "medium", "categories" -> 1000;
+            case "full" -> 4000;
+            case "ultimate" -> 10000;
+            default -> -1;
+        };
+    }
+
+    private ResponseEntity<Map<String, Object>> startBulkLoadInBackground(
+            String taskName,
+            int targetMovies,
+            Supplier<String> loader
+    ) {
+        int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
+        if (!bulkLoading.compareAndSet(false, true)) {
+            return ResponseEntity.status(409).body(Map.of(
+                    "success", false,
+                    "message", "Ya hay una carga en progreso"
+            ));
+        }
+
+        bulkCancelRequested.set(false);
+        bulkTargetMovies.set(safeTarget);
+        bulkImportedMovies.set(0);
+        bulkOmittedMovies.set(0);
+        bulkErrorMovies.set(0);
+        bulkPagesChecked.set(0);
+        bulkStartedAt.set(System.currentTimeMillis());
+        bulkTaskName = taskName;
+        bulkCurrentSource = "";
+        bulkLastMessage = taskName + " iniciada en segundo plano. Puedes dejar esta página abierta y ver el progreso.";
+
+        bulkLoaderExecutor.submit(() -> {
+            try {
+                String result = loader.get();
+                bulkLastMessage = bulkCancelRequested.get()
+                        ? "Carga cancelada. " + result
+                        : result;
+            } catch (Exception e) {
+                log.error("❌ Error en carga masiva en segundo plano: {}", e.getMessage(), e);
+                bulkLastMessage = "❌ Error en carga masiva: " + e.getMessage();
+            } finally {
+                bulkLoading.set(false);
+                bulkCurrentSource = "";
+            }
+        });
+
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", bulkLastMessage,
+                "targetMovies", safeTarget
+        ));
+    }
+
 
     @PostMapping("/resend-confirmation")
     @ResponseBody
@@ -770,24 +869,18 @@ Sin carátula: %d (%.1f%%)
     public ResponseEntity<Map<String, Object>> usePreset(@PathVariable String presetName, Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
-        Map<String, Object> response = new HashMap<>();
-        try {
-            String message = handlePreset(presetName);
-            if (message.startsWith("❌")) {
-                response.put("success", false);
-                response.put("message", message);
-            } else {
-                response.put("success", true);
-                response.put("message", message);
-                response.put("preset", presetName);
-            }
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("❌ Error ejecutando preset {}: {}", presetName, e.getMessage());
-            response.put("success", false);
-            response.put("message", "Error ejecutando preset: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
+        int target = presetTarget(presetName);
+        if (target < 1) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "success", false,
+                    "message", "❌ Preset no válido: " + presetName
+            ));
         }
+        return startBulkLoadInBackground(
+                "Preset " + presetName,
+                target,
+                () -> bulkLoadCombinedMoviesUntilTarget(target)
+        );
     }
 
     @GetMapping("/admin/bulk-loader/status")
@@ -801,7 +894,21 @@ Sin carátula: %d (%.1f%%)
             status.put("success", true);
             status.put("movieCount", movieCount);
             status.put("currentMovieCount", movieCount);
-            status.put("isLoading", false);
+            status.put("isLoading", bulkLoading.get());
+            status.put("taskName", bulkTaskName);
+            status.put("currentSource", bulkCurrentSource);
+            status.put("targetMovies", bulkTargetMovies.get());
+            status.put("processedMovies", bulkImportedMovies.get());
+            status.put("omittedMovies", bulkOmittedMovies.get());
+            status.put("errorMovies", bulkErrorMovies.get());
+            status.put("pagesChecked", bulkPagesChecked.get());
+            status.put("currentPage", bulkImportedMovies.get());
+            status.put("totalPages", bulkTargetMovies.get());
+            status.put("progress", bulkTargetMovies.get() > 0
+                    ? Math.min(100, (int) Math.round(bulkImportedMovies.get() * 100.0 / bulkTargetMovies.get()))
+                    : 0);
+            status.put("lastMessage", bulkLastMessage);
+            status.put("startedAt", bulkStartedAt.get());
             status.put("lastUpdate", System.currentTimeMillis());
             return ResponseEntity.ok(status);
 
@@ -822,21 +929,13 @@ Sin carátula: %d (%.1f%%)
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
 
-        Map<String, Object> response = new HashMap<>();
-        try {
-            int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
-            log.info("🚀 Iniciando carga personalizada con respaldo TMDB: {} películas nuevas", safeTarget);
-            String result = bulkLoadCombinedMoviesUntilTarget(safeTarget);
-            response.put("success", true);
-            response.put("message", result);
-            response.put("targetMovies", safeTarget);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("❌ Error en carga popular personalizada: {}", e.getMessage());
-            response.put("success", false);
-            response.put("message", "Error iniciando carga: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
-        }
+        int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
+        log.info("🚀 Programando carga personalizada con respaldo TMDB: {} películas nuevas", safeTarget);
+        return startBulkLoadInBackground(
+                "Carga personalizada",
+                safeTarget,
+                () -> bulkLoadCombinedMoviesUntilTarget(safeTarget)
+        );
     }
 
     @PostMapping("/admin/bulk-loader/start-categories")
@@ -847,22 +946,13 @@ Sin carátula: %d (%.1f%%)
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
 
-        Map<String, Object> response = new HashMap<>();
-        try {
-            int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
-            log.info("🚀 Iniciando carga por categorías: {} películas nuevas", safeTarget);
-            String result = bulkLoadCombinedMoviesUntilTarget(safeTarget);
-
-            response.put("success", true);
-            response.put("message", result);
-            response.put("targetMovies", safeTarget);
-            return ResponseEntity.ok(response);
-        } catch (Exception e) {
-            log.error("❌ Error en carga por categorías: {}", e.getMessage());
-            response.put("success", false);
-            response.put("message", "Error iniciando carga por categorías: " + e.getMessage());
-            return ResponseEntity.status(500).body(response);
-        }
+        int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
+        log.info("🚀 Programando carga por categorías: {} películas nuevas", safeTarget);
+        return startBulkLoadInBackground(
+                "Carga por categorías",
+                safeTarget,
+                () -> bulkLoadCombinedMoviesUntilTarget(safeTarget)
+        );
     }
 
     @PostMapping("/admin/bulk-loader/cancel")
@@ -874,8 +964,10 @@ Sin carátula: %d (%.1f%%)
         Map<String, Object> response = new HashMap<>();
         try {
             log.info("🛑 Solicitud de cancelación de carga masiva");
+            bulkCancelRequested.set(true);
+            bulkLastMessage = "Cancelación solicitada. La carga se detendrá al terminar la película en curso.";
             response.put("success", true);
-            response.put("message", "Carga cancelada exitosamente");
+            response.put("message", bulkLastMessage);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("❌ Error cancelando carga: {}", e.getMessage());

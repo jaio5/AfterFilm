@@ -148,6 +148,7 @@
     <script>
         let statusInterval;
         let isLoading = false;
+        let lastStatusMessage = '';
 
         document.addEventListener('DOMContentLoaded', function() {
             updateStatus();
@@ -171,6 +172,10 @@
                 .then(readResponse)
                 .then(data => {
                     isLoading = data.isLoading;
+                    if (data.lastMessage && data.lastMessage !== lastStatusMessage) {
+                        lastStatusMessage = data.lastMessage;
+                        addLog(data.lastMessage);
+                    }
                     updateUI(data);
                 })
                 .catch(err => addLog('Error actualizando estado: ' + err.message));
@@ -193,8 +198,11 @@
                 cancelBtn.style.display = 'inline-flex';
                 const pct = data.progress || 0;
                 progBar.style.width = pct + '%';
-                progText.textContent = 'Página ' + (data.currentPage || 0) + '/' + (data.totalPages || 0) +
-                    ' · ' + (data.processedMovies || 0) + ' procesadas';
+                progText.textContent = (data.taskName || 'Carga') +
+                    (data.currentSource ? ' · ' + data.currentSource : '') +
+                    ' · ' + (data.processedMovies || 0) + '/' + (data.targetMovies || 0) + ' nuevas' +
+                    ' · ' + (data.omittedMovies || 0) + ' omitidas' +
+                    ' · ' + (data.pagesChecked || 0) + ' páginas revisadas';
             } else {
                 indicator.innerHTML = '<span style="color:#86efac"><i class="fas fa-check-circle" style="margin-right:0.4rem"></i>Sistema listo</span> — ' +
                     (data.currentMovieCount || 0) + ' películas en base de datos';
@@ -224,6 +232,7 @@
             fetch('/admin/bulk-loader/preset/' + name, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
                 .then(readResponse)
                 .then(data => {
+                    if (data.message) lastStatusMessage = data.message;
                     addLog(data.success ? '✅ ' + data.message : '❌ ' + data.message);
                     updateStatus();
                 })
@@ -246,6 +255,7 @@
             fetch(endpoint + '?' + params, { method: 'POST', headers: { 'Content-Type': 'application/json' } })
                 .then(readResponse)
                 .then(data => {
+                    if (data.message) lastStatusMessage = data.message;
                     addLog(data.success ? '✅ ' + data.message : '❌ ' + data.message);
                     updateStatus();
                 })
