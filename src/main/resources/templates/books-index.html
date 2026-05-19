@@ -123,9 +123,9 @@ function renderBooks(items) {
         booksContainer.innerHTML += `
         <div class="movie-card">
             <a href="/libro/${b.id}" class="movie-card-link">
-                <div class="movie-poster-wrap">
+                <div class="movie-poster-wrap book-poster-wrap">
                     ${coverSrc
-                        ? `<img src="${coverSrc}" alt="${b.title}" loading="lazy" style="object-fit:cover">`
+                        ? `<img src="${coverSrc}" alt="${b.title}" loading="lazy">`
                         : `<div class="movie-poster-placeholder"><i class="fas fa-book"></i></div>`}
                     ${b.avgRating ? `<div class="movie-rating-badge">
                         <i class="fas fa-star"></i> ${Number(b.avgRating).toFixed(1)}

@@ -518,6 +518,16 @@ textarea.form-input {
     transform: scale(1.04);
 }
 
+.book-poster-wrap img {
+    object-fit: contain;
+    background: #111827;
+    padding: 0.25rem;
+}
+
+.movie-card:hover .book-poster-wrap img {
+    transform: none;
+}
+
 .movie-poster-placeholder {
     width: 100%;
     height: 100%;
@@ -1376,6 +1386,12 @@ textarea.form-input {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.userlist-poster img.book-cover-img {
+    object-fit: contain;
+    background: #111827;
+    padding: 0.25rem;
 }
 
 .userlist-poster-placeholder {

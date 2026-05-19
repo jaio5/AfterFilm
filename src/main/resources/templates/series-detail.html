@@ -202,7 +202,7 @@
                     </div>
                     <div class="review-stars-display">
                         <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
-                        <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
+                        <span th:if="${review.stars < 5}" th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
                     </div>
                 </div>
                 <div class="review-body">

@@ -306,6 +306,87 @@ public class AdminApiController {
         }
     }
 
+    @PostMapping("/movies/import/{tmdbId}")
+    public ResponseEntity<Map<String, Object>> importMovieFromTMDB(@PathVariable Long tmdbId) {
+        try {
+            Movie movie = tmdbMovieLoaderService.loadMovieByTmdbId(tmdbId);
+            if (movie != null) {
+                return ResponseEntity.ok(Map.of("success", true, "id", movie.getId(), "title", movie.getTitle()));
+            }
+            return ResponseEntity.ok(Map.of("success", false, "message", "No se pudo importar la película"));
+        } catch (Exception e) {
+            log.error("Error importando película {}: {}", tmdbId, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/movies/import-selected")
+    public ResponseEntity<Map<String, Object>> importSelectedMovies(@RequestParam List<Long> tmdbIds) {
+        if (tmdbIds == null || tmdbIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "No se seleccionó ninguna película"));
+        }
+        int imported = 0;
+        int omitted = 0;
+        int errors = 0;
+        for (Long tmdbId : tmdbIds) {
+            if (tmdbId == null) {
+                errors++;
+                continue;
+            }
+            try {
+                boolean alreadyImported = movieRepository.findByTmdbId(tmdbId).isPresent();
+                Movie movie = tmdbMovieLoaderService.loadMovieByTmdbId(tmdbId);
+                if (movie == null) {
+                    errors++;
+                } else if (alreadyImported) {
+                    omitted++;
+                } else {
+                    imported++;
+                }
+            } catch (Exception e) {
+                errors++;
+                log.warn("Error importando película seleccionada tmdbId={}: {}", tmdbId, e.getMessage());
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "imported", imported,
+                "omitted", omitted,
+                "errors", errors,
+                "message", String.format("Películas importadas: %d. Omitidas: %d. Errores: %d.", imported, omitted, errors)
+        ));
+    }
+
+    @GetMapping("/movies/search-tmdb")
+    public ResponseEntity<Map<String, Object>> searchMoviesOnTmdb(@RequestParam String q) {
+        try {
+            JsonNode response = tmdbClient.searchMovie(q);
+            List<Map<String, Object>> results = response == null || !response.has("results")
+                    ? List.of()
+                    : iterableToList(response.path("results")).stream()
+                    .map(item -> {
+                        long tmdbId = item.path("id").asLong();
+                        Map<String, Object> dto = new HashMap<>();
+                        dto.put("tmdbId", tmdbId);
+                        dto.put("title", item.path("title").asText(""));
+                        dto.put("originalTitle", item.path("original_title").asText(""));
+                        dto.put("releaseDate", item.path("release_date").asText(""));
+                        dto.put("overview", item.path("overview").asText(""));
+                        dto.put("posterPath", item.path("poster_path").asText(null));
+                        dto.put("alreadyImported", movieRepository.findByTmdbId(tmdbId).isPresent());
+                        return dto;
+                    }).toList();
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "results", results,
+                    "totalResults", response != null ? response.path("total_results").asInt(0) : 0
+            ));
+        } catch (Exception e) {
+            log.error("Error buscando películas en TMDB por '{}': {}", q, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/tmdb/bulk-load")
     public ResponseEntity<Map<String, Object>> bulkLoadMovies(
             @RequestParam(defaultValue = "1") int page
@@ -605,6 +686,43 @@ public class AdminApiController {
         }
     }
 
+    @PostMapping("/series/import-selected")
+    public ResponseEntity<Map<String, Object>> importSelectedSeries(@RequestParam List<Long> tmdbIds) {
+        if (tmdbIds == null || tmdbIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "No se seleccionó ninguna serie"));
+        }
+        int imported = 0;
+        int omitted = 0;
+        int errors = 0;
+        for (Long tmdbId : tmdbIds) {
+            if (tmdbId == null) {
+                errors++;
+                continue;
+            }
+            try {
+                boolean alreadyImported = tvShowRepository.findByTmdbId(tmdbId).isPresent();
+                TvShow show = tmdbSeriesLoaderService.importOrUpdateByTmdb(tmdbId);
+                if (show == null) {
+                    errors++;
+                } else if (alreadyImported) {
+                    omitted++;
+                } else {
+                    imported++;
+                }
+            } catch (Exception e) {
+                errors++;
+                log.warn("Error importando serie seleccionada tmdbId={}: {}", tmdbId, e.getMessage());
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "imported", imported,
+                "omitted", omitted,
+                "errors", errors,
+                "message", String.format("Series importadas: %d. Omitidas: %d. Errores: %d.", imported, omitted, errors)
+        ));
+    }
+
     @PostMapping("/series/import-popular")
     public ResponseEntity<Map<String, Object>> importPopularSeries(@RequestParam(defaultValue = "2") int pages) {
         try {
@@ -701,6 +819,43 @@ public class AdminApiController {
             log.error("Error importando libro {}: {}", googleId, e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
         }
+    }
+
+    @PostMapping("/books/import-selected")
+    public ResponseEntity<Map<String, Object>> importSelectedBooks(@RequestParam List<String> googleIds) {
+        if (googleIds == null || googleIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "No se seleccionó ningún libro"));
+        }
+        int imported = 0;
+        int omitted = 0;
+        int errors = 0;
+        for (String googleId : googleIds) {
+            if (googleId == null || googleId.isBlank()) {
+                errors++;
+                continue;
+            }
+            try {
+                boolean alreadyImported = bookRepository.findByGoogleBooksId(googleId).isPresent();
+                Book book = googleBooksLoaderService.importOrUpdateByGoogleId(googleId);
+                if (book == null) {
+                    errors++;
+                } else if (alreadyImported) {
+                    omitted++;
+                } else {
+                    imported++;
+                }
+            } catch (Exception e) {
+                errors++;
+                log.warn("Error importando libro seleccionado googleId={}: {}", googleId, e.getMessage());
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "imported", imported,
+                "omitted", omitted,
+                "errors", errors,
+                "message", String.format("Libros importados: %d. Omitidos: %d. Errores: %d.", imported, omitted, errors)
+        ));
     }
 
     @PostMapping("/books/search-import")
