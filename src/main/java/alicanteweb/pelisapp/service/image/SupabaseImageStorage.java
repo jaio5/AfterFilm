@@ -94,7 +94,7 @@ public class SupabaseImageStorage {
                     .build();
 
             HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
-            if (response.statusCode() == 404) {
+            if (response.statusCode() == 404 || response.statusCode() == 400) {
                 continue;
             }
             if (response.statusCode() < 200 || response.statusCode() >= 300) {
@@ -143,6 +143,7 @@ public class SupabaseImageStorage {
         } else if (cleanPath.startsWith("/")) {
             cleanPath = cleanPath.substring(1);
         }
+        cleanPath = stripKnownRoot(cleanPath);
         return displayUrl(objectKeyFromRelativePath(cleanPath));
     }
 
@@ -159,16 +160,43 @@ public class SupabaseImageStorage {
 
     private java.util.List<String> objectKeyCandidates(String objectKey) {
         String cleanObjectKey = trimSlashes(objectKey);
-        java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>();
-        if (!cleanObjectKey.isBlank()) {
-            candidates.add(cleanObjectKey);
-            if (!prefix.isBlank() && cleanObjectKey.startsWith(prefix + "/")) {
-                candidates.add(cleanObjectKey.substring(prefix.length() + 1));
-            } else if (!prefix.isBlank()) {
-                candidates.add(prefix + "/" + cleanObjectKey);
+        java.util.LinkedHashSet<String> variants = new java.util.LinkedHashSet<>();
+        addPathVariant(variants, cleanObjectKey);
+
+        for (String root : new String[]{prefix, "afterfilm/images", "pelisapp", "images"}) {
+            String cleanRoot = trimSlashes(root);
+            if (!cleanRoot.isBlank() && cleanObjectKey.startsWith(cleanRoot + "/")) {
+                addPathVariant(variants, cleanObjectKey.substring(cleanRoot.length() + 1));
             }
         }
+
+        java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>();
+        for (String variant : variants) {
+            addPathVariant(candidates, variant);
+            if (!prefix.isBlank() && !variant.equals(prefix) && !variant.startsWith(prefix + "/")) {
+                addPathVariant(candidates, prefix + "/" + variant);
+            }
+            addPathVariant(candidates, "afterfilm/images/" + variant);
+        }
         return new java.util.ArrayList<>(candidates);
+    }
+
+    private void addPathVariant(java.util.LinkedHashSet<String> paths, String path) {
+        String cleanPath = trimSlashes(path);
+        if (!cleanPath.isBlank()) {
+            paths.add(cleanPath);
+        }
+    }
+
+    private String stripKnownRoot(String path) {
+        String cleanPath = trimSlashes(path);
+        for (String root : new String[]{prefix, "afterfilm/images", "pelisapp", "images"}) {
+            String cleanRoot = trimSlashes(root);
+            if (!cleanRoot.isBlank() && cleanPath.startsWith(cleanRoot + "/")) {
+                return cleanPath.substring(cleanRoot.length() + 1);
+            }
+        }
+        return cleanPath;
     }
 
     private String objectKeyFromRelativePath(String relativePath) {

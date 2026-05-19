@@ -44,8 +44,12 @@ public class SupabaseImageController {
                     .cacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic())
                     .header(HttpHeaders.CONTENT_DISPOSITION, "inline")
                     .body(storedImage.content());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Petición interrumpida sirviendo imagen desde Supabase: {}", objectKey);
+            return ResponseEntity.status(503).build();
         } catch (Exception e) {
-            log.error("No se pudo servir imagen desde Supabase {}: {}", objectKey, e.getMessage());
+            log.error("No se pudo servir imagen desde Supabase {}: {} - {}", objectKey, e.getClass().getSimpleName(), e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
