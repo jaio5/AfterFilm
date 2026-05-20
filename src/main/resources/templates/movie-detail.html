@@ -168,7 +168,8 @@
                     <i class="fas fa-check-circle"></i>
                     <div>
                         <strong>Tu valoración:</strong>
-                        <span th:each="i : ${#numbers.sequence(1, userReview.stars)}" style="color:#f59e0b;">★</span>
+                        <span th:if="${userReview.stars != null and userReview.stars > 0}"
+                              th:each="i : ${#numbers.sequence(1, userReview.stars)}" style="color:#f59e0b;">★</span>
                         <br>
                         <em th:if="${userReview.text != null and !userReview.text.trim().isEmpty()}"
                             th:text="${userReview.text}"></em>
@@ -207,8 +208,10 @@
                            th:text="${review.user.username}">Usuario</a>
                     </div>
                     <div class="review-stars-display">
-                        <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
-                        <span th:if="${review.stars < 5}" th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
+                        <span th:if="${review.stars != null and review.stars > 0}"
+                              th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
+                        <span th:if="${review.stars != null and review.stars < 5}"
+                              th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
                     </div>
                 </div>
                 <div class="review-body">
@@ -256,7 +259,7 @@
                             <div class="dist-bar-fill"
                                  th:style="'width:' + ${movieStats.getStarPercentage(star)} + '%'"></div>
                         </div>
-                        <span th:text="${movieStats.starDistribution[star - 1]}">0</span>
+                        <span th:text="${movieStats.getStarCount(star)}">0</span>
                     </div>
                 </div>
             </div>

@@ -75,11 +75,17 @@ public class MovieViewController {
         double totalRating = 0;
         int[] starDistribution = new int[5];
         for (Review review : reviews) {
-            totalRating += review.getStars();
-            starDistribution[review.getStars() - 1]++;
+            Integer stars = review.getStars();
+            if (stars == null || stars < 1 || stars > 5) {
+                log.warn("Reseña {} con puntuación inválida: {}", review.getId(), stars);
+                continue;
+            }
+            totalRating += stars;
+            starDistribution[stars - 1]++;
         }
-        double averageRating = totalRating / reviews.size();
-        return new MovieStats(reviews.size(), averageRating, starDistribution);
+        int validReviews = java.util.Arrays.stream(starDistribution).sum();
+        double averageRating = validReviews > 0 ? totalRating / validReviews : 0.0;
+        return new MovieStats(validReviews, averageRating, starDistribution);
     }
 
     public record MovieStats(int totalReviews, double averageRating, int[] starDistribution) {
@@ -88,8 +94,11 @@ public class MovieViewController {
         }
         public int getStarPercentage(int star) {
             if (totalReviews == 0) return 0;
-            int count = (star >= 1 && star <= 5) ? starDistribution[star - 1] : 0;
+            int count = getStarCount(star);
             return (int) Math.round(count * 100.0 / totalReviews);
+        }
+        public int getStarCount(int star) {
+            return (star >= 1 && star <= 5) ? starDistribution[star - 1] : 0;
         }
     }
 }
