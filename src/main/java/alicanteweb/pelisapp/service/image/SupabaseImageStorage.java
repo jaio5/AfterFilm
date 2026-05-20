@@ -34,7 +34,7 @@ public class SupabaseImageStorage {
                                 @Value("${app.images.supabase.bucket:}") String bucket,
                                 @Value("${app.images.supabase.prefix:afterfilm/images}") String prefix,
                                 @Value("${app.images.supabase.public-base-url:}") String publicBaseUrl,
-                                @Value("${app.images.supabase.proxy-enabled:false}") boolean proxyEnabled) {
+                                @Value("${app.images.supabase.proxy-enabled:true}") boolean proxyEnabled) {
         this.provider = clean(provider);
         this.supabaseUrl = trimTrailingSlash(clean(supabaseUrl));
         this.serviceRole = clean(serviceRole);
