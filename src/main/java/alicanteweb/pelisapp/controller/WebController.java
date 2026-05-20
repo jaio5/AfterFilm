@@ -1,7 +1,9 @@
 package alicanteweb.pelisapp.controller;
 
+import alicanteweb.pelisapp.entity.Book;
 import alicanteweb.pelisapp.entity.Movie;
 import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.entity.TvShow;
 import alicanteweb.pelisapp.entity.User;
 import alicanteweb.pelisapp.repository.BookRepository;
 import alicanteweb.pelisapp.repository.MovieRepository;
@@ -9,10 +11,14 @@ import alicanteweb.pelisapp.repository.ReviewLikeRepository;
 import alicanteweb.pelisapp.repository.ReviewRepository;
 import alicanteweb.pelisapp.repository.TvShowRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
+import alicanteweb.pelisapp.service.ContentRepairService;
 import alicanteweb.pelisapp.service.EmailConfirmationService;
+import alicanteweb.pelisapp.service.GoogleBooksClient;
+import alicanteweb.pelisapp.service.GoogleBooksLoaderService;
 import alicanteweb.pelisapp.service.IEmailService;
 import alicanteweb.pelisapp.service.MoviePosterRedownloadService;
 import alicanteweb.pelisapp.service.TMDBMovieLoaderService;
+import alicanteweb.pelisapp.service.TMDBSeriesLoaderService;
 import alicanteweb.pelisapp.tmdb.TMDBClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.annotation.PreDestroy;
@@ -62,7 +68,11 @@ public class WebController {
 
     // Services
     private final TMDBMovieLoaderService tmdbMovieLoaderService;
+    private final TMDBSeriesLoaderService tmdbSeriesLoaderService;
+    private final GoogleBooksLoaderService googleBooksLoaderService;
+    private final GoogleBooksClient googleBooksClient;
     private final MoviePosterRedownloadService moviePosterRedownloadService;
+    private final ContentRepairService contentRepairService;
     private final EmailConfirmationService emailConfirmationService;
     private final IEmailService emailService;
     private final TMDBClient tmdbClient;
@@ -504,6 +514,220 @@ Sin carátula: %d (%.1f%%)
         }
     }
 
+    private String bulkLoadContentUntilTarget(String contentType, int targetItems) {
+        return switch (contentType.toLowerCase()) {
+            case "movie", "movies", "peliculas", "películas" -> bulkLoadCombinedMoviesUntilTarget(targetItems);
+            case "series", "tv" -> bulkLoadCombinedSeriesUntilTarget(targetItems);
+            case "book", "books", "libros" -> bulkLoadCombinedBooksUntilTarget(targetItems);
+            default -> "❌ Tipo de contenido no válido: " + contentType;
+        };
+    }
+
+    private String bulkLoadCombinedSeriesUntilTarget(int targetSeries) {
+        String[] sources = {"popular", "topRated", "trending"};
+        ContentLoadResult combined = ContentLoadResult.empty("varias fuentes TMDB series", tvShowRepository.count());
+        for (String source : sources) {
+            if (bulkCancelRequested.get() || combined.imported() >= targetSeries) {
+                break;
+            }
+            int remaining = Math.max(0, targetSeries - combined.imported());
+            ContentLoadResult partial = loadSeriesUntilTarget(remaining, source);
+            combined = combined.combine(partial, targetSeries, "varias fuentes TMDB series");
+        }
+        return formatContentLoadResult(combined, "series");
+    }
+
+    private ContentLoadResult loadSeriesUntilTarget(int targetSeries, String source) {
+        int safeTarget = Math.max(1, targetSeries);
+        long totalBefore = tvShowRepository.count();
+        int imported = 0;
+        int omitted = 0;
+        int errors = 0;
+        int pagesChecked = 0;
+        int maxPages = "trending".equals(source) ? 1 : 500;
+        bulkCurrentSource = "series:" + source;
+
+        for (int page = 1; imported < safeTarget && page <= maxPages && !bulkCancelRequested.get(); page++) {
+            JsonNode response = fetchSeriesListPage(source, page);
+            if (response == null || !response.has("results")) {
+                break;
+            }
+            int totalPages = response.path("total_pages").asInt(maxPages);
+            maxPages = Math.min(maxPages, Math.max(1, totalPages));
+            JsonNode results = response.path("results");
+            if (!results.isArray() || results.isEmpty()) {
+                break;
+            }
+
+            pagesChecked++;
+            bulkPagesChecked.incrementAndGet();
+            updateBulkProgress(String.format("Revisando series %s página %d. Nuevas: %d/%d. Omitidas: %d. Errores: %d.",
+                    source, page, bulkImportedMovies.get(), bulkTargetMovies.get(), bulkOmittedMovies.get(), bulkErrorMovies.get()));
+
+            for (JsonNode seriesNode : results) {
+                if (imported >= safeTarget || bulkCancelRequested.get()) {
+                    break;
+                }
+                long tmdbId = seriesNode.path("id").asLong(0);
+                if (tmdbId == 0) {
+                    errors++;
+                    bulkErrorMovies.incrementAndGet();
+                    continue;
+                }
+                try {
+                    if (tvShowRepository.findByTmdbId(tmdbId).isPresent()) {
+                        omitted++;
+                        bulkOmittedMovies.incrementAndGet();
+                        continue;
+                    }
+                    TvShow series = tmdbSeriesLoaderService.importOrUpdateByTmdb(tmdbId);
+                    if (series != null) {
+                        imported++;
+                        bulkImportedMovies.incrementAndGet();
+                        updateBulkProgress(String.format("Serie procesada: %s. Total: %d/%d.",
+                                series.getTitle(), bulkImportedMovies.get(), bulkTargetMovies.get()));
+                    } else {
+                        errors++;
+                        bulkErrorMovies.incrementAndGet();
+                    }
+                } catch (Exception e) {
+                    errors++;
+                    bulkErrorMovies.incrementAndGet();
+                    log.warn("Error importando serie tmdbId={}: {}", tmdbId, e.getMessage());
+                }
+            }
+        }
+        return new ContentLoadResult(source, safeTarget, imported, omitted, errors, pagesChecked, totalBefore, tvShowRepository.count());
+    }
+
+    private JsonNode fetchSeriesListPage(String source, int page) {
+        return switch (source) {
+            case "popular" -> tmdbClient.getTvPopular(page);
+            case "topRated" -> tmdbClient.getTvTopRated(page);
+            case "trending" -> tmdbClient.getTrending("tv", "week");
+            default -> throw new IllegalArgumentException("Tipo de carga de series no soportado: " + source);
+        };
+    }
+
+    private String bulkLoadCombinedBooksUntilTarget(int targetBooks) {
+        String[] queries = {
+                "subject:fiction", "subject:science fiction", "subject:fantasy", "subject:history",
+                "subject:biography", "subject:mystery", "subject:romance", "subject:thriller",
+                "subject:philosophy", "subject:technology", "subject:art", "subject:business"
+        };
+        ContentLoadResult combined = ContentLoadResult.empty("varias búsquedas Google Books", bookRepository.count());
+        for (String query : queries) {
+            if (bulkCancelRequested.get() || combined.imported() >= targetBooks) {
+                break;
+            }
+            int remaining = Math.max(0, targetBooks - combined.imported());
+            ContentLoadResult partial = loadBooksUntilTarget(remaining, query);
+            combined = combined.combine(partial, targetBooks, "varias búsquedas Google Books");
+        }
+        return formatContentLoadResult(combined, "libros");
+    }
+
+    private ContentLoadResult loadBooksUntilTarget(int targetBooks, String query) {
+        int safeTarget = Math.max(1, targetBooks);
+        long totalBefore = bookRepository.count();
+        int imported = 0;
+        int omitted = 0;
+        int errors = 0;
+        int pagesChecked = 0;
+        int startIndex = 0;
+        bulkCurrentSource = "libros:" + query;
+
+        while (imported < safeTarget && startIndex < 1000 && !bulkCancelRequested.get()) {
+            JsonNode response = googleBooksClient.searchBooks(query, startIndex);
+            if (response == null || !response.has("items")) {
+                break;
+            }
+            pagesChecked++;
+            bulkPagesChecked.incrementAndGet();
+            updateBulkProgress(String.format("Revisando libros %s desde %d. Nuevos: %d/%d. Omitidos: %d. Errores: %d.",
+                    query, startIndex, bulkImportedMovies.get(), bulkTargetMovies.get(), bulkOmittedMovies.get(), bulkErrorMovies.get()));
+
+            for (JsonNode item : response.path("items")) {
+                if (imported >= safeTarget || bulkCancelRequested.get()) {
+                    break;
+                }
+                String googleId = item.path("id").asText(null);
+                if (googleId == null || googleId.isBlank()) {
+                    errors++;
+                    bulkErrorMovies.incrementAndGet();
+                    continue;
+                }
+                try {
+                    if (bookRepository.findByGoogleBooksId(googleId).isPresent()) {
+                        omitted++;
+                        bulkOmittedMovies.incrementAndGet();
+                        continue;
+                    }
+                    Book book = googleBooksLoaderService.importOrUpdateByGoogleId(googleId);
+                    if (book != null) {
+                        imported++;
+                        bulkImportedMovies.incrementAndGet();
+                        updateBulkProgress(String.format("Libro procesado: %s. Total: %d/%d.",
+                                book.getTitle(), bulkImportedMovies.get(), bulkTargetMovies.get()));
+                    } else {
+                        errors++;
+                        bulkErrorMovies.incrementAndGet();
+                    }
+                } catch (Exception e) {
+                    errors++;
+                    bulkErrorMovies.incrementAndGet();
+                    log.warn("Error importando libro googleId={}: {}", googleId, e.getMessage());
+                }
+            }
+
+            int totalItems = response.path("totalItems").asInt(0);
+            startIndex += 40;
+            if (totalItems > 0 && startIndex >= totalItems) {
+                break;
+            }
+        }
+
+        return new ContentLoadResult(query, safeTarget, imported, omitted, errors, pagesChecked, totalBefore, bookRepository.count());
+    }
+
+    private String formatContentLoadResult(ContentLoadResult result, String noun) {
+        String suffix = result.imported() >= result.target()
+                ? ""
+                : " No se llegó al objetivo porque no había más resultados disponibles o la API devolvió errores.";
+        return String.format(
+                "✅ Se han cargado %d nuevos %s de %d solicitados (%s). Omitidos por existir: %d. Errores: %d. Páginas revisadas: %d. Total: %d → %d.%s",
+                result.imported(), noun, result.target(), result.label(), result.omitted(), result.errors(),
+                result.pagesChecked(), result.totalBefore(), result.totalAfter(), suffix);
+    }
+
+    private record ContentLoadResult(
+            String label,
+            int target,
+            int imported,
+            int omitted,
+            int errors,
+            int pagesChecked,
+            long totalBefore,
+            long totalAfter
+    ) {
+        static ContentLoadResult empty(String label, long total) {
+            return new ContentLoadResult(label, 0, 0, 0, 0, 0, total, total);
+        }
+
+        ContentLoadResult combine(ContentLoadResult other, int combinedTarget, String combinedLabel) {
+            return new ContentLoadResult(
+                    combinedLabel,
+                    combinedTarget,
+                    imported + other.imported(),
+                    omitted + other.omitted(),
+                    errors + other.errors(),
+                    pagesChecked + other.pagesChecked(),
+                    totalBefore,
+                    other.totalAfter()
+            );
+        }
+    }
+
     private MovieLoadResult loadMoviesUntilTarget(int targetMovies, String type) {
         int safeTarget = Math.max(1, targetMovies);
         long totalBefore = movieRepository.count();
@@ -871,6 +1095,15 @@ Sin carátula: %d (%.1f%%)
     @PostMapping("/admin/bulk-loader/preset/{presetName}")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> usePreset(@PathVariable String presetName, Authentication auth) {
+        return useContentPreset("movies", presetName, auth);
+    }
+
+    @PostMapping("/admin/bulk-loader/{contentType}/preset/{presetName}")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> useContentPreset(
+            @PathVariable String contentType,
+            @PathVariable String presetName,
+            Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
         int target = presetTarget(presetName);
@@ -881,9 +1114,9 @@ Sin carátula: %d (%.1f%%)
             ));
         }
         return startBulkLoadInBackground(
-                "Preset " + presetName,
+                "Preset " + presetName + " (" + contentType + ")",
                 target,
-                () -> bulkLoadCombinedMoviesUntilTarget(target)
+                () -> bulkLoadContentUntilTarget(contentType, target)
         );
     }
 
@@ -895,9 +1128,15 @@ Sin carátula: %d (%.1f%%)
         try {
             Map<String, Object> status = new HashMap<>();
             long movieCount = movieRepository.count();
+            long seriesCount = tvShowRepository.count();
+            long bookCount = bookRepository.count();
             status.put("success", true);
             status.put("movieCount", movieCount);
+            status.put("seriesCount", seriesCount);
+            status.put("bookCount", bookCount);
             status.put("currentMovieCount", movieCount);
+            status.put("currentSeriesCount", seriesCount);
+            status.put("currentBookCount", bookCount);
             status.put("isLoading", bulkLoading.get());
             status.put("taskName", bulkTaskName);
             status.put("currentSource", bulkCurrentSource);
@@ -929,16 +1168,17 @@ Sin carátula: %d (%.1f%%)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> startPopularBulkLoad(
             @RequestParam(defaultValue = "1000") int targetMovies,
+            @RequestParam(defaultValue = "movies") String contentType,
             Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
 
         int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
-        log.info("🚀 Programando carga personalizada con respaldo TMDB: {} películas nuevas", safeTarget);
+        log.info("🚀 Programando carga personalizada: {} nuevos ({})", safeTarget, contentType);
         return startBulkLoadInBackground(
-                "Carga personalizada",
+                "Carga personalizada (" + contentType + ")",
                 safeTarget,
-                () -> bulkLoadCombinedMoviesUntilTarget(safeTarget)
+                () -> bulkLoadContentUntilTarget(contentType, safeTarget)
         );
     }
 
@@ -946,16 +1186,17 @@ Sin carátula: %d (%.1f%%)
     @ResponseBody
     public ResponseEntity<Map<String, Object>> startCategoriesBulkLoad(
             @RequestParam(defaultValue = "1000") int targetMovies,
+            @RequestParam(defaultValue = "movies") String contentType,
             Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
 
         int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
-        log.info("🚀 Programando carga por categorías: {} películas nuevas", safeTarget);
+        log.info("🚀 Programando carga por categorías/fuentes: {} nuevos ({})", safeTarget, contentType);
         return startBulkLoadInBackground(
-                "Carga por categorías",
+                "Carga por categorías (" + contentType + ")",
                 safeTarget,
-                () -> bulkLoadCombinedMoviesUntilTarget(safeTarget)
+                () -> bulkLoadContentUntilTarget(contentType, safeTarget)
         );
     }
 
@@ -987,7 +1228,11 @@ Sin carátula: %d (%.1f%%)
         if (redirect != null) return redirect;
         try {
             long movieCount = movieRepository.count();
+            long seriesCount = tvShowRepository.count();
+            long bookCount = bookRepository.count();
             addMovieStatsToModel(model, movieCount);
+            model.addAttribute("currentSeriesCount", seriesCount);
+            model.addAttribute("currentBookCount", bookCount);
             return "admin/bulk-loader";
         } catch (Exception e) {
             return handleError(model, "Error cargando bulk loader: " + e.getMessage(), "Error cargando bulk loader");
@@ -1000,12 +1245,61 @@ Sin carátula: %d (%.1f%%)
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return "❌ Sin permisos de administrador";
         try {
-            int total = tmdbMovieLoaderService.redownloadCastDirectorImages();
-            return "✅ Redescarga de imágenes de reparto y director completada: " + total + " imágenes";
+            int movieTotal = tmdbMovieLoaderService.redownloadCastDirectorImages();
+            ContentRepairService.RepairResult people = contentRepairService.repairPeopleImages(false);
+            return "✅ Redescarga de imágenes de reparto y director completada: "
+                    + (movieTotal + people.repaired()) + " imágenes. Omitidas: "
+                    + people.skipped() + ". Errores: " + people.errors();
         } catch (Exception e) {
             log.error("❌ Error en redescarga de reparto/director: {}", e.getMessage());
             return "❌ Error en redescarga de reparto/director: " + e.getMessage();
         }
+    }
+
+    @PostMapping("/admin/repair-content")
+    @ResponseBody
+    public String repairContent(
+            @RequestParam(defaultValue = "all") String contentType,
+            @RequestParam(defaultValue = "false") boolean forceImages,
+            Authentication auth) {
+        String redirect = requireAdminOrRedirect(auth, null);
+        if (redirect != null) return "❌ Sin permisos de administrador";
+        try {
+            String normalized = contentType.toLowerCase();
+            if ("movies".equals(normalized) || "movie".equals(normalized)) {
+                ContentRepairService.RepairResult movies = contentRepairService.repairMoviePosters(forceImages);
+                return formatRepairResult("películas", movies);
+            }
+            if ("series".equals(normalized) || "tv".equals(normalized)) {
+                return formatRepairResult("series", contentRepairService.repairSeriesPostersAndCast(forceImages));
+            }
+            if ("books".equals(normalized) || "book".equals(normalized) || "libros".equals(normalized)) {
+                return formatRepairResult("libros", contentRepairService.repairBookCoversAndAuthors(forceImages));
+            }
+            if ("people".equals(normalized) || "reparto".equals(normalized)) {
+                return formatRepairResult("reparto/directores", contentRepairService.repairPeopleImages(forceImages));
+            }
+            if ("all".equals(normalized)) {
+                ContentRepairService.RepairResult movies = contentRepairService.repairMoviePosters(forceImages);
+                ContentRepairService.RepairResult series = contentRepairService.repairSeriesPostersAndCast(forceImages);
+                ContentRepairService.RepairResult books = contentRepairService.repairBookCoversAndAuthors(forceImages);
+                ContentRepairService.RepairResult people = contentRepairService.repairPeopleImages(forceImages);
+                return "✅ Reparación completa: "
+                        + formatRepairResult("películas", movies) + " | "
+                        + formatRepairResult("series", series) + " | "
+                        + formatRepairResult("libros", books) + " | "
+                        + formatRepairResult("reparto/directores", people);
+            }
+            return "❌ Tipo de contenido no válido: " + contentType;
+        } catch (Exception e) {
+            log.error("❌ Error reparando contenido {}: {}", contentType, e.getMessage(), e);
+            return "❌ Error reparando contenido: " + e.getMessage();
+        }
+    }
+
+    private String formatRepairResult(String label, ContentRepairService.RepairResult result) {
+        return String.format("%s reparados: %d. Omitidos: %d. Errores: %d",
+                label, result.repaired(), result.skipped(), result.errors());
     }
 
     @PostMapping("/admin/delete-duplicate-images")

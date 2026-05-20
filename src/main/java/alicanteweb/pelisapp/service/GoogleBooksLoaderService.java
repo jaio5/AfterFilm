@@ -79,7 +79,30 @@ public class GoogleBooksLoaderService {
         return imported;
     }
 
+    @Transactional
+    public boolean repairBookMetadataAndCover(Book book, boolean forceCover) {
+        if (book == null || book.getGoogleBooksId() == null || book.getGoogleBooksId().isBlank()) {
+            return false;
+        }
+
+        JsonNode details = googleBooksClient.getBookDetail(book.getGoogleBooksId());
+        if (details == null || details.isNull()) {
+            return false;
+        }
+
+        String previousAuthors = book.getAuthors();
+        String previousCover = book.getCoverUrl();
+        mergeFromGoogleBooks(book, details, forceCover);
+        bookRepository.save(book);
+        return !Objects.equals(previousAuthors, book.getAuthors())
+                || !Objects.equals(previousCover, book.getCoverUrl());
+    }
+
     private void mergeFromGoogleBooks(Book book, JsonNode volume) {
+        mergeFromGoogleBooks(book, volume, false);
+    }
+
+    private void mergeFromGoogleBooks(Book book, JsonNode volume, boolean forceCover) {
         JsonNode info = volume.path("volumeInfo");
         if (info.isMissingNode()) return;
 
@@ -87,7 +110,7 @@ public class GoogleBooksLoaderService {
             String t = info.path("title").asText(null);
             if (t != null) book.setTitle(t);
         }
-        if (book.getAuthors() == null) {
+        if (book.getAuthors() == null || book.getAuthors().isBlank()) {
             if (info.has("authors")) {
                 StringBuilder sb = new StringBuilder();
                 for (JsonNode a : info.path("authors")) {
@@ -130,7 +153,7 @@ public class GoogleBooksLoaderService {
             }
         }
 
-        if (shouldLoadCover(book.getCoverUrl())) {
+        if (forceCover || shouldLoadCover(book.getCoverUrl())) {
             String coverUrl = bestCoverUrl(info.path("imageLinks"));
             if (coverUrl != null) {
                 String prefix = book.getGoogleBooksId() == null || book.getGoogleBooksId().isBlank()
