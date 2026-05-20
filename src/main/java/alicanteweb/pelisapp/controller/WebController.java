@@ -742,7 +742,7 @@ Sin carátula: %d (%.1f%%)
         int errors = 0;
 
         for (Movie movie : movieRepository.findAll()) {
-            if (!includeExisting && hasVisiblePoster(movie)) {
+            if (!includeExisting && !shouldReloadPoster(movie.getPosterLocalPath())) {
                 skipped++;
                 continue;
             }
@@ -762,6 +762,13 @@ Sin carátula: %d (%.1f%%)
     }
 
     private record PosterReloadResult(int reloaded, int skipped, int errors) {}
+
+    private boolean shouldReloadPoster(String posterLocalPath) {
+        return posterLocalPath == null
+                || posterLocalPath.isBlank()
+                || posterLocalPath.startsWith("/images/")
+                || posterLocalPath.startsWith("images/");
+    }
 
     // Método utilitario para presets de carga masiva (switch mejorado)
     private String handlePreset(String presetName) {

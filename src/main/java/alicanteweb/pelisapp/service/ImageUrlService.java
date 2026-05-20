@@ -43,18 +43,12 @@ public class ImageUrlService {
         if (localUrl != null) {
             return localUrl;
         }
-        if (supabaseImageStorage.wantsSupabase()) {
-            return null;
-        }
         return tmdbImageUrl(remotePath, tmdbSize);
     }
 
     public String tmdbImageUrl(String path, String tmdbSize) {
         if (path == null || path.isBlank()) {
             return null;
-        }
-        if (supabaseImageStorage.wantsSupabase()) {
-            return supabaseImageStorage.isSupabasePublicUrl(path) ? path : null;
         }
         if (path.startsWith("http://") || path.startsWith("https://")) {
             return path;
@@ -74,11 +68,6 @@ public class ImageUrlService {
         }
         if (localPath.startsWith("http://") || localPath.startsWith("https://")) {
             return localPath;
-        }
-
-        supabaseUrl = supabaseImageStorage.publicUrlForLegacyPath(localPath);
-        if (supabaseUrl != null) {
-            return supabaseUrl;
         }
 
         String relativePath = stripServeBase(localPath);

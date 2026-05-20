@@ -45,11 +45,11 @@ public class SupabaseImageStorage {
     }
 
     public boolean isEnabled() {
-        return "supabase".equalsIgnoreCase(provider) && isConfigured();
+        return wantsSupabase() && isConfigured();
     }
 
     public boolean wantsSupabase() {
-        return "supabase".equalsIgnoreCase(provider);
+        return "supabase".equalsIgnoreCase(provider) || "true".equalsIgnoreCase(provider);
     }
 
     public boolean isConfigured() {
@@ -70,7 +70,7 @@ public class SupabaseImageStorage {
                 .header("apikey", serviceRole)
                 .header("Content-Type", contentTypeFor(filename, contentType))
                 .header("x-upsert", "true")
-                .PUT(HttpRequest.BodyPublishers.ofByteArray(content))
+                .POST(HttpRequest.BodyPublishers.ofByteArray(content))
                 .build();
 
         HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
