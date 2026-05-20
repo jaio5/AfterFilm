@@ -25,11 +25,15 @@
                 <a th:href="@{/register}" sec:authorize="!isAuthenticated()" class="btn-accent btn-sm">Registrarse</a>
                 <div class="user-menu" sec:authorize="isAuthenticated()">
                     <button class="user-avatar-btn" id="userAvatarBtn">
-                        <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
+                        <span class="user-avatar-initial"
+                              th:text="${currentUser != null and currentUser.username != null and !currentUser.username.isBlank()
+                                  ? #strings.substring(currentUser.username, 0, 1).toUpperCase()
+                                  : 'U'}">U</span>
                     </button>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="user-dropdown-header">
-                            <span class="user-dropdown-name" th:text="${#authentication.name}">Usuario</span>
+                            <span class="user-dropdown-name"
+                                  th:text="${currentUser != null and currentUser.username != null ? currentUser.username : 'Usuario'}">Usuario</span>
                         </div>
                         <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-user"></i> Mi perfil</a>
                         <a th:href="@{/feed}" class="user-dropdown-item"><i class="fas fa-stream"></i> Mi feed</a>
@@ -48,21 +52,21 @@
     </nav>
 
     <!-- Hero section -->
-    <div class="detail-hero">
+    <div class="detail-hero"
+         th:with="posterUrl=${@imageUrlService.moviePosterUrl(movie, 'w500')},fallbackPosterUrl=${@imageUrlService.tmdbImageUrl(movie.posterPath, 'w500')}">
         <div class="detail-hero-backdrop"
-             th:with="backdropUrl=${@imageUrlService.moviePosterUrl(movie, 'w500')}"
-             th:style="${backdropUrl != null ? 'background-image: url(' + backdropUrl + ')' : 'background: var(--bg-elevated)'}">
+             th:style="${posterUrl != null ? 'background-image: url(' + posterUrl + ')' : (fallbackPosterUrl != null ? 'background-image: url(' + fallbackPosterUrl + ')' : 'background: var(--bg-elevated)')}">
     </div>
         <div class="detail-hero-content">
 
             <!-- Poster -->
             <div class="detail-poster">
-                <img th:with="posterUrl=${@imageUrlService.moviePosterUrl(movie, 'w500')}"
-                     th:if="${posterUrl != null and !posterUrl.isEmpty()}"
+                <img th:if="${posterUrl != null and !posterUrl.isEmpty()}"
                      th:src="${posterUrl}"
+                     th:data-fallback-src="${fallbackPosterUrl}"
+                     onerror="if (this.dataset.fallbackSrc && this.src !== this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; } else { this.style.display='none'; const ph=this.nextElementSibling; if (ph) ph.style.display='flex'; }"
                      th:alt="${movie.title}">
-                <div th:with="posterUrl=${@imageUrlService.moviePosterUrl(movie, 'w500')}"
-                     th:if="${posterUrl == null or posterUrl.isEmpty()}"
+                <div th:style="${posterUrl != null and !posterUrl.isEmpty() ? 'display:none' : 'display:flex'}"
                      class="detail-poster-placeholder">
                     <i class="fas fa-film"></i>
                 </div>
@@ -94,7 +98,7 @@
 
                 <!-- Favoritos / Quiero ver (solo usuarios autenticados) -->
                 <div class="detail-list-actions" sec:authorize="isAuthenticated()"
-                     th:attr="data-content-type='movie',data-content-id=${movie.id},data-content-title=${movie.title},data-content-poster=${@imageUrlService.moviePosterUrl(movie, 'w500') ?: ''}">
+                     th:attr="data-content-type='movie',data-content-id=${movie.id},data-content-title=${movie.title},data-content-poster=${posterUrl ?: ''}">
                     <button class="btn-list" id="btnFavorite" onclick="toggleList('FAVORITE')">
                         <i class="far fa-heart"></i> <span>Favorito</span>
                     </button>
