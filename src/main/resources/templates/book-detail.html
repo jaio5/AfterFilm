@@ -230,7 +230,9 @@
                 </div>
                 <div class="rating-count" th:text="${stats.totalReviews + ' valoraciones'}">0</div>
                 <div style="margin-top:1rem;">
-                    <div th:each="star : ${#numbers.sequence(5, 1, -1)}" class="dist-bar-row">
+                    <div th:each="step : ${#numbers.sequence(1, 5)}"
+                         th:with="star=${6 - step}"
+                         class="dist-bar-row">
                         <span th:text="${star}">5</span>
                         <div class="dist-bar-track">
                             <div class="dist-bar-fill"
