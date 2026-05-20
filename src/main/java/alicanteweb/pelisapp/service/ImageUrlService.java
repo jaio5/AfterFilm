@@ -28,20 +28,31 @@ public class ImageUrlService {
         if (movie == null) {
             return null;
         }
-        return posterUrl(movie.getPosterLocalPath(), movie.getPosterPath(), tmdbSize);
+        return posterUrl(movie.getPosterLocalPath(), movie.getPosterPath(), tmdbSize, movie.getTmdbId(), "movie");
     }
 
     public String seriesPosterUrl(TvShow series, String tmdbSize) {
         if (series == null) {
             return null;
         }
-        return posterUrl(series.getPosterLocalPath(), series.getPosterPath(), tmdbSize);
+        return posterUrl(series.getPosterLocalPath(), series.getPosterPath(), tmdbSize, series.getTmdbId(), "series");
     }
 
     public String posterUrl(String localPath, String remotePath, String tmdbSize) {
+        return posterUrl(localPath, remotePath, tmdbSize, null, null);
+    }
+
+    private String posterUrl(String localPath, String remotePath, String tmdbSize, Long tmdbId, String filenamePrefix) {
         String localUrl = localImageUrlIfAvailable(localPath);
         if (localUrl != null) {
             return localUrl;
+        }
+        String supabaseUrl = supabaseUrlForKnownPoster(tmdbId, filenamePrefix);
+        if (supabaseUrl != null) {
+            return supabaseUrl;
+        }
+        if (supabaseImageStorage.wantsSupabase()) {
+            return null;
         }
         return tmdbImageUrl(remotePath, tmdbSize);
     }
@@ -76,6 +87,18 @@ public class ImageUrlService {
             return null;
         }
         return serveBase + "/" + relativePath.replace("\\", "/");
+    }
+
+    private String supabaseUrlForKnownPoster(Long tmdbId, String filenamePrefix) {
+        if (!supabaseImageStorage.wantsSupabase()
+                || !supabaseImageStorage.isConfigured()
+                || tmdbId == null
+                || filenamePrefix == null
+                || filenamePrefix.isBlank()) {
+            return null;
+        }
+        return supabaseImageStorage.publicUrlForLegacyPath(
+                "posters/" + filenamePrefix + "_" + tmdbId + ".jpg");
     }
 
     private String stripServeBase(String path) {
