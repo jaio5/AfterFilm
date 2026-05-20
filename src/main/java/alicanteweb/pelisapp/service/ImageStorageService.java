@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -51,40 +52,35 @@ public class ImageStorageService {
             String extension = getImageExtension(imageUrl);
             String fullFilename = filename + extension;
 
+            Path storageDir = Paths.get(storageBasePath, subfolder);
+            Path targetPath = storageDir.resolve(fullFilename);
+
+            if (!force && Files.exists(targetPath)) {
+                String supabaseUrl = uploadExistingLocalImage(targetPath, subfolder, fullFilename, extension);
+                if (supabaseUrl != null) {
+                    return supabaseUrl;
+                }
+                String relativePath = serveBasePath + "/" + subfolder + "/" + fullFilename;
+                log.debug("Image already exists: {}", relativePath);
+                return relativePath;
+            }
+
+            byte[] imageBytes = downloadBytes(imageUrl);
+
             if (supabaseImageStorage.isEnabled()) {
-                byte[] content = downloadBytes(imageUrl);
-                return supabaseImageStorage.upload(content, subfolder, fullFilename, contentType(extension));
+                return supabaseImageStorage.upload(imageBytes, subfolder, fullFilename, contentType(extension));
             }
 
             if (supabaseImageStorage.wantsSupabase()) {
                 log.warn("IMAGES_STORAGE_PROVIDER=supabase pero faltan variables de Supabase; se usa almacenamiento local como fallback");
             }
 
-            Path storageDir = Paths.get(storageBasePath, subfolder);
             Files.createDirectories(storageDir);
-            Path targetPath = storageDir.resolve(fullFilename);
+            Files.copy(new ByteArrayInputStream(imageBytes), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-            if (!force && Files.exists(targetPath)) {
-                String relativePath = serveBasePath + "/" + subfolder + "/" + fullFilename;
-                log.debug("Image already exists: {}", relativePath);
-                return relativePath;
-            }
-
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(imageUrl))
-                    .header("User-Agent", "AfterFilm/1.0")
-                    .build();
-
-            HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() == 200) {
-                Files.copy(response.body(), targetPath, StandardCopyOption.REPLACE_EXISTING);
-                String relativePath = serveBasePath + "/" + subfolder + "/" + fullFilename;
-                log.info("Downloaded image: {} -> {}", imageUrl, relativePath);
-                return relativePath;
-            }
-
-            log.warn("Failed to download image {}: HTTP {}", imageUrl, response.statusCode());
-            return null;
+            String relativePath = serveBasePath + "/" + subfolder + "/" + fullFilename;
+            log.info("Downloaded image: {} -> {}", imageUrl, relativePath);
+            return relativePath;
         } catch (IOException | InterruptedException e) {
             if (e instanceof InterruptedException) {
                 Thread.currentThread().interrupt();
@@ -119,6 +115,24 @@ public class ImageStorageService {
             case ".webp" -> "image/webp";
             default -> "image/jpeg";
         };
+    }
+
+    private String uploadExistingLocalImage(Path targetPath, String subfolder, String filename, String extension) {
+        if (!supabaseImageStorage.isEnabled()) {
+            return null;
+        }
+
+        try {
+            return supabaseImageStorage.upload(
+                    Files.readAllBytes(targetPath), subfolder, filename, contentType(extension));
+        } catch (IOException e) {
+            log.warn("No se pudo subir imagen local existente {} a Supabase: {}", targetPath, e.getMessage());
+            return null;
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            log.warn("Subida a Supabase interrumpida para {}", targetPath);
+            return null;
+        }
     }
 
     public int deleteDuplicates(String subfolder) {

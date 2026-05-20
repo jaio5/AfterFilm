@@ -167,8 +167,10 @@ public class TMDBMovieLoaderService {
                 long tmdbId = movieNode.path("id").asLong(0);
                 if (tmdbId == 0) continue;
 
-                if (movieRepository.findByTmdbId(tmdbId).isPresent()) {
-                    continue; // Ya existe, saltar
+                Optional<Movie> existing = movieRepository.findByTmdbId(tmdbId);
+                if (existing.isPresent()) {
+                    enrichExistingMovie(existing.get(), tmdbId);
+                    continue; // Ya existe, no contar como nueva
                 }
 
                 JsonNode movieDetails = tmdbClient.getMovieDetails(tmdbId);
@@ -189,6 +191,54 @@ public class TMDBMovieLoaderService {
         }
 
         return processed;
+    }
+
+    private void enrichExistingMovie(Movie movie, long tmdbId) {
+        boolean needsPoster = movie.getPosterLocalPath() == null || movie.getPosterLocalPath().isBlank();
+        boolean needsActors = movie.getActors() == null || movie.getActors().isEmpty();
+        boolean needsDirectors = movie.getDirectors() == null || movie.getDirectors().isEmpty();
+
+        if (!needsPoster && !needsActors && !needsDirectors) {
+            return;
+        }
+
+        JsonNode details = tmdbClient.getMovieDetails(tmdbId);
+        if (details == null) {
+            return;
+        }
+
+        boolean changed = false;
+        if (needsPoster) {
+            String posterPath = details.path("poster_path").asText(null);
+            if (posterPath != null && !posterPath.isBlank()) {
+                movie.setPosterPath(posterPath);
+                String fullUrl = tmdbClient.buildImageUrl(posterPath);
+                String filename = AppConstants.MOVIE_FILE_PREFIX + movie.getTmdbId();
+                String localPath = imageStorageService.downloadAndStoreImage(
+                    fullUrl, AppConstants.POSTERS_SUBFOLDER, filename);
+                if (localPath != null) {
+                    movie.setPosterLocalPath(localPath);
+                }
+                changed = true;
+            }
+        }
+
+        if (details.has(AppConstants.TMDB_CREDITS_KEY)) {
+            JsonNode credits = details.path(AppConstants.TMDB_CREDITS_KEY);
+            if (needsActors) {
+                movie.setActors(processCast(credits.path(AppConstants.TMDB_CAST_KEY)));
+                changed = true;
+            }
+            if (needsDirectors) {
+                movie.setDirectors(processCrew(credits.path(AppConstants.TMDB_CREW_KEY)));
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            movieRepository.save(movie);
+            log.debug("Película existente enriquecida: {} (tmdbId: {})", movie.getTitle(), tmdbId);
+        }
     }
 
     /**
@@ -308,6 +358,7 @@ public class TMDBMovieLoaderService {
         }
     }
 
+    @Transactional
     public int loadPopularMoviesAndReturnCount(int page) {
         JsonNode response = tmdbClient.getPopular(page);
         if (response == null || !response.has(AppConstants.TMDB_RESULTS_KEY)) return 0;
@@ -318,6 +369,7 @@ public class TMDBMovieLoaderService {
     /**
      * Carga una página de películas top rated y devuelve el número de nuevas películas añadidas
      */
+    @Transactional
     public int loadTopRatedMoviesAndReturnCount(int page) {
         JsonNode response = tmdbClient.getTopRated(page);
         if (response == null || !response.has(AppConstants.TMDB_RESULTS_KEY)) return 0;

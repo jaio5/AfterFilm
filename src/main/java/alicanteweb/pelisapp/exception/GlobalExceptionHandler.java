@@ -4,6 +4,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -75,6 +77,38 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Maneja peticiones multipart incompletas o malformadas.
+     */
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<ErrorResponse> handleMultipartException(MultipartException e) {
+        log.warn("Invalid multipart request: {}", rootCauseMessage(e));
+
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message("La subida se interrumpió o el formulario enviado no es válido")
+                .error("Invalid Multipart Request")
+                .build();
+
+        return ResponseEntity.badRequest().body(error);
+    }
+
+    /**
+     * Maneja archivos que superan el tamaño máximo configurado.
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
+        log.warn("Multipart upload exceeded maximum size: {}", rootCauseMessage(e));
+
+        ErrorResponse error = ErrorResponse.builder()
+                .status(HttpStatus.PAYLOAD_TOO_LARGE.value())
+                .message("El archivo enviado supera el tamaño máximo permitido")
+                .error("Payload Too Large")
+                .build();
+
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(error);
+    }
+
+    /**
      * Maneja todas las demás excepciones no específicas.
      */
     @ExceptionHandler(Exception.class)
@@ -88,5 +122,13 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);
+    }
+
+    private String rootCauseMessage(Throwable throwable) {
+        Throwable current = throwable;
+        while (current.getCause() != null) {
+            current = current.getCause();
+        }
+        return current.getMessage() != null ? current.getMessage() : throwable.getMessage();
     }
 }

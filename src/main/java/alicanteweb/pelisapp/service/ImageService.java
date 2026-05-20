@@ -44,9 +44,7 @@ public class ImageService {
 
             // Descargar imagen
             try (InputStream imageStream = imageDownloader.downloadImage(imageUrl)) {
-                // Guardar localmente
                 String relativePath = imageStorage.saveImage(imageStream, filename, subfolder);
-
                 log.info("✅ Imagen descargada y guardada: {} -> {}", imageUrl, relativePath);
                 return relativePath;
             }
