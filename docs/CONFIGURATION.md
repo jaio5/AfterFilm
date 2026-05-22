@@ -1,6 +1,6 @@
-# ⚙️ Guía de Configuración - PelisApp
+# ⚙️ Guía de Configuración - AfterFilm
 
-Esta documentación detalla todas las opciones de configuración disponibles para personalizar PelisApp según tus necesidades específicas.
+Esta documentación detalla todas las opciones de configuración disponibles para personalizar AfterFilm según tus necesidades específicas.
 
 ## 🔧 Configuraciones Principales
 
@@ -170,8 +170,8 @@ app.frontend-url=${FRONTEND_URL:http://localhost:3000}
 
 # Configuración de emails
 app.email.from=${spring.mail.username}
-app.email.from-name=${EMAIL_FROM_NAME:PelisApp Team}
-app.email.reply-to=${EMAIL_REPLY_TO:noreply@pelisapp.com}
+app.email.from-name=${EMAIL_FROM_NAME:AfterFilm Team}
+app.email.reply-to=${EMAIL_REPLY_TO:noreply@afterfilm.com}
 
 # Timeouts y reintentos
 app.email.send-timeout=${EMAIL_SEND_TIMEOUT:30000}
@@ -247,7 +247,7 @@ app.images.backgrounds.path=${app.images.storage-path}/backgrounds
 app.images.download.enabled=${DOWNLOAD_IMAGES:true}
 app.images.download.timeout=${DOWNLOAD_TIMEOUT:30000}
 app.images.download.max-retries=${DOWNLOAD_RETRIES:3}
-app.images.download.user-agent=${DOWNLOAD_USER_AGENT:PelisApp/1.0}
+app.images.download.user-agent=${DOWNLOAD_USER_AGENT:AfterFilm/1.0}
 
 # Optimización de imágenes
 app.images.optimize=${OPTIMIZE_IMAGES:false}
@@ -261,7 +261,7 @@ app.images.resize.max-height=${MAX_IMAGE_HEIGHT:1080}
 ```properties
 # CDN para servir imágenes (opcional)
 app.images.cdn.enabled=${CDN_ENABLED:false}
-app.images.cdn.base-url=${CDN_BASE_URL:https://cdn.pelisapp.com}
+app.images.cdn.base-url=${CDN_BASE_URL:https://cdn.afterfilm.com}
 app.images.cdn.provider=${CDN_PROVIDER:cloudinary}
 
 # Configuración Cloudinary (ejemplo)
@@ -579,4 +579,4 @@ management.endpoints.web.exposure.include=health,info,metrics,prometheus
 
 ---
 
-Esta configuración está diseñada para ser **flexible**, **segura** y **escalable**, permitiendo adaptar PelisApp a cualquier entorno y necesidad específica. 🔧
+Esta configuración está diseñada para ser **flexible**, **segura** y **escalable**, permitiendo adaptar AfterFilm a cualquier entorno y necesidad específica. 🔧

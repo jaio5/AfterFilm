@@ -1,7 +1,7 @@
 package alicanteweb.pelisapp.constants;
 
 /**
- * Constantes para la aplicación PelisApp.
+ * Constantes para la aplicación AfterFilm.
  * Centraliza valores mágicos y mejora la mantenibilidad del código.
  */
 public final class AppConstants {

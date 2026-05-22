@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PelisApp — Series</title>
+    <title>AfterFilm — Series</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
@@ -14,7 +14,7 @@
     <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-film"></i> PelisApp
+                <i class="fas fa-film"></i> AfterFilm
             </a>
             <div class="navbar-search">
                 <form id="searchForm">
@@ -22,6 +22,8 @@
                     <button type="submit"><i class="fas fa-search"></i></button>
                 </form>
             </div>
+            <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
+
             <div class="navbar-nav-links">
                 <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
                 <a th:href="@{/series}" style="color:var(--accent)"><i class="fas fa-tv"></i> Series</a>
@@ -92,7 +94,7 @@
     </div>
 
     <footer class="site-footer">
-        © 2026 PelisApp — Hecho con <i class="fas fa-heart text-accent"></i> por las series
+        © 2026 AfterFilm — Hecho con <i class="fas fa-heart text-accent"></i> por las series
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -101,6 +103,7 @@ const seriesContainer = document.getElementById('series-container');
 const paginationContainer = document.getElementById('pagination-container');
 const catalogTitle = document.getElementById('catalog-title');
 const catalogInfo = document.getElementById('catalog-info');
+const PAGE_SIZE = 24;
 
 let currentPage = 0;
 let currentGenre = null;
@@ -109,8 +112,8 @@ let searchTimeout = null;
 function loadSeries(page = 0, genre = currentGenre) {
     currentGenre = genre;
     const url = genre
-        ? `/api/series/by-genre?genre=${encodeURIComponent(genre)}&page=${page}`
-        : `/api/series?page=${page}`;
+        ? `/api/series/by-genre?genre=${encodeURIComponent(genre)}&page=${page}&size=${PAGE_SIZE}`
+        : `/api/series?page=${page}&size=${PAGE_SIZE}`;
     fetch(url)
         .then(res => res.json())
         .then(data => {
@@ -122,11 +125,7 @@ function loadSeries(page = 0, genre = currentGenre) {
 }
 
 function populateHero(series) {
-    const poster = series.posterLocalPath
-        ? '/images/' + series.posterLocalPath
-        : (series.posterPath
-            ? (series.posterPath.startsWith('http') ? series.posterPath : 'https://image.tmdb.org/t/p/original' + series.posterPath)
-            : null);
+    const poster = series.posterLocalPath || null;
     if (!poster) return;
     document.getElementById('heroBackdrop').style.backgroundImage = `url('${poster}')`;
     document.getElementById('heroEyebrow').textContent = '★ Mejor valorada del mes';
@@ -149,11 +148,7 @@ function renderSeries(items) {
         return;
     }
     items.forEach(s => {
-        const poster = s.posterLocalPath
-            ? '/images/' + s.posterLocalPath
-            : (s.posterPath
-                ? (s.posterPath.startsWith('http') ? s.posterPath : 'https://image.tmdb.org/t/p/w500' + s.posterPath)
-                : null);
+        const poster = s.posterLocalPath || null;
         const year = s.firstAirDate
             ? (Array.isArray(s.firstAirDate) ? s.firstAirDate[0] : String(s.firstAirDate).substring(0, 4))
             : '';

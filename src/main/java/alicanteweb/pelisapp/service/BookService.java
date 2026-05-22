@@ -4,6 +4,7 @@ import alicanteweb.pelisapp.dto.BookDetailDTO;
 import alicanteweb.pelisapp.dto.BookListDTO;
 import alicanteweb.pelisapp.entity.Book;
 import alicanteweb.pelisapp.repository.BookRepository;
+import alicanteweb.pelisapp.service.image.SupabaseImageStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -53,6 +54,7 @@ public class BookService {
     }
 
     private final BookRepository bookRepository;
+    private final SupabaseImageStorage supabaseImageStorage;
 
     public Page<BookListDTO> getAllBooks(Pageable pageable) {
         Page<Book> page = bookRepository.findAll(pageable);
@@ -75,7 +77,7 @@ public class BookService {
             Page<Book> page = bookRepository.findByCategoriesContainingIgnoreCase(category, pageable);
             return new PageImpl<>(mapWithRatingStats(page.getContent()), pageable, page.getTotalElements());
         }
-        // Construir patrón REGEXP: keyword1|keyword2|...
+        // Construir patrón regex para PostgreSQL: keyword1|keyword2|...
         String pattern = keywords.stream()
                 .map(k -> k.replace(" ", "[ ]?"))  // "Self Help" y "Self-Help"
                 .reduce((a, b) -> a + "|" + b)
@@ -117,7 +119,7 @@ public class BookService {
         dto.setPublisher(book.getPublisher());
         dto.setPublishedDate(book.getPublishedDate());
         dto.setCategories(book.getCategories());
-        dto.setCoverUrl(book.getCoverUrl());
+        dto.setCoverUrl(displayCoverUrl(book.getCoverUrl()));
         if (stats != null && stats[1] > 0) {
             dto.setReviewCount((int) stats[1]);
             dto.setAvgRating(stats[0]);
@@ -140,7 +142,20 @@ public class BookService {
         dto.setPageCount(book.getPageCount());
         dto.setCategories(book.getCategories());
         dto.setLanguage(book.getLanguage());
-        dto.setCoverUrl(book.getCoverUrl());
+        dto.setCoverUrl(displayCoverUrl(book.getCoverUrl()));
         return dto;
+    }
+    private String displayCoverUrl(String coverUrl) {
+        if (coverUrl == null || coverUrl.isBlank()) {
+            return null;
+        }
+        String supabaseUrl = supabaseImageStorage.displayUrlForStoredPath(coverUrl);
+        if (supabaseUrl != null) {
+            return supabaseUrl;
+        }
+        if (supabaseImageStorage.wantsSupabase()) {
+            return null;
+        }
+        return coverUrl;
     }
 }

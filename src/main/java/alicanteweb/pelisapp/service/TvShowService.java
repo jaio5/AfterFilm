@@ -26,6 +26,7 @@ import java.util.Optional;
 public class TvShowService {
 
     private final TvShowRepository tvShowRepository;
+    private final ImageUrlService imageUrlService;
 
     public Page<TvShowListDTO> getAllSeries(Pageable pageable) {
         Page<TvShow> page = tvShowRepository.findAll(pageable);
@@ -81,8 +82,8 @@ public class TvShowService {
         dto.setTmdbId(show.getTmdbId());
         dto.setTitle(show.getTitle());
         dto.setOverview(show.getOverview());
-        dto.setPosterPath(show.getPosterPath());
-        dto.setPosterLocalPath(show.getPosterLocalPath());
+        dto.setPosterPath(null);
+        dto.setPosterLocalPath(imageUrlService.seriesPosterUrl(show, "w500"));
         dto.setFirstAirDate(show.getFirstAirDate());
         dto.setNumberOfSeasons(show.getNumberOfSeasons());
         dto.setGenres(show.getGenres());
@@ -103,8 +104,8 @@ public class TvShowService {
         dto.setTitle(show.getTitle());
         dto.setOriginalTitle(show.getOriginalTitle());
         dto.setOverview(show.getOverview());
-        dto.setPosterPath(show.getPosterPath());
-        dto.setPosterLocalPath(show.getPosterLocalPath());
+        dto.setPosterPath(null);
+        dto.setPosterLocalPath(imageUrlService.seriesPosterUrl(show, "w500"));
         dto.setBackdropPath(show.getBackdropPath());
         dto.setFirstAirDate(show.getFirstAirDate());
         dto.setNumberOfSeasons(show.getNumberOfSeasons());

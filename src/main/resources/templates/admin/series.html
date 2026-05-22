@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Series - PelisApp</title>
+    <title>Admin Series - AfterFilm</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>
@@ -11,9 +11,11 @@
     <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-film"></i> PelisApp
+                <i class="fas fa-film"></i> AfterFilm
                 <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
             </a>
+            <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
+
             <div class="navbar-nav-links">
                 <a th:href="@{/admin}"><i class="fas fa-home"></i> Panel</a>
                 <a th:href="@{/series}"><i class="fas fa-tv"></i> Ver Series</a>
@@ -59,6 +61,9 @@
                 <div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
                     <input type="text" id="tmdbSearchInput" placeholder="Ej: Breaking Bad..." class="form-input" style="flex:1;min-width:220px;padding:0.4rem 0.6rem;font-size:0.85rem">
                     <button onclick="searchTmdbSeries()" class="btn-accent" style="white-space:nowrap"><i class="fas fa-search"></i> Buscar</button>
+                    <button onclick="importSelectedSeries()" id="importSelectedSeriesBtn" class="btn-ghost" style="white-space:nowrap" disabled>
+                        <i class="fas fa-download"></i> Importar seleccionadas
+                    </button>
                 </div>
                 <div id="tmdbSearchResults" style="margin-top:0.75rem;display:grid;gap:0.5rem"></div>
             </div>
@@ -110,12 +115,43 @@
     <script>
         let currentPage = 0;
         let currentQuery = '';
+        const selectedSeriesIds = new Set();
+
+        async function readResponse(response) {
+            const contentType = response.headers.get('content-type') || '';
+            const body = contentType.includes('application/json')
+                ? await response.json()
+                : await response.text();
+            if (!response.ok) {
+                const message = typeof body === 'string' ? body : (body.message || body.error || JSON.stringify(body));
+                throw new Error(message || `HTTP ${response.status}`);
+            }
+            return body;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[ch]));
+        }
+
+        function updateSelectedSeriesButton() {
+            const btn = document.getElementById('importSelectedSeriesBtn');
+            btn.disabled = selectedSeriesIds.size === 0;
+            btn.innerHTML = `<i class="fas fa-download"></i> Importar seleccionadas (${selectedSeriesIds.size})`;
+        }
+
+        function toggleSeriesSelection(tmdbId, checked) {
+            if (checked) selectedSeriesIds.add(String(tmdbId));
+            else selectedSeriesIds.delete(String(tmdbId));
+            updateSelectedSeriesButton();
+        }
 
         async function loadSeries(page = 0) {
             currentQuery = document.getElementById('seriesLocalSearch').value.trim();
             const queryParam = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
             const res = await fetch(`/api/admin/series?page=${page}&size=20${queryParam}`);
-            const data = await res.json();
+            const data = await readResponse(res);
             document.getElementById('seriesStats').textContent = currentQuery
                 ? `Encontradas: ${data.totalElements} series`
                 : `Total: ${data.totalElements} series`;
@@ -126,7 +162,10 @@
                 tbody.innerHTML = data.content.map(s => `
                     <tr>
                         <td>${s.id}</td>
-                        <td><a href="/serie/${s.id}" style="color:var(--accent)">${s.title}</a></td>
+                        <td style="display:flex;align-items:center;gap:0.6rem">
+                            ${s.posterUrl ? `<img src="${escapeHtml(s.posterUrl)}" alt="" style="width:34px;height:50px;border-radius:4px;object-fit:cover;background:var(--bg-elevated)">` : '<div style="width:34px;height:50px;border-radius:4px;background:var(--bg-elevated);display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fas fa-tv"></i></div>'}
+                            <a href="/serie/${s.id}" style="color:var(--accent)">${s.title}</a>
+                        </td>
                         <td>${s.numberOfSeasons || '—'}</td>
                         <td style="font-size:0.78rem">${s.genres || '—'}</td>
                         <td><span class="badge-info">${s.status || '—'}</span></td>
@@ -160,36 +199,37 @@
         async function searchTmdbSeries() {
             const q = document.getElementById('tmdbSearchInput').value.trim();
             if (!q) { alert('Introduce un nombre de serie'); return; }
+            selectedSeriesIds.clear();
+            updateSelectedSeriesButton();
             const resultsBox = document.getElementById('tmdbSearchResults');
             resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Buscando en TMDB...</div>';
             const res = await fetch(`/api/admin/series/search-tmdb?q=${encodeURIComponent(q)}`);
-            const data = await res.json();
+            const data = await readResponse(res);
             if (!data.success) {
-                resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${data.error || 'No se pudo buscar'}</div>`;
+                resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${escapeHtml(data.error || 'No se pudo buscar')}</div>`;
                 return;
             }
             if (!data.results || data.results.length === 0) {
                 resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Sin resultados.</div>';
                 return;
             }
-            resultsBox.innerHTML = data.results.slice(0, 8).map(s => `
-                <div style="display:flex;gap:0.75rem;align-items:center;background:var(--bg-elevated);border-radius:6px;padding:0.6rem">
-                    ${s.posterPath ? `<img src="https://image.tmdb.org/t/p/w92${s.posterPath}" alt="" style="width:42px;border-radius:4px">` : '<div style="width:42px;height:62px;background:var(--border);border-radius:4px"></div>'}
-                    <div style="flex:1;min-width:0">
-                        <div style="font-weight:700">${s.title || s.originalTitle}</div>
-                        <div style="font-size:0.78rem;color:var(--text-muted)">TMDB ${s.tmdbId} - ${s.firstAirDate || 'sin fecha'}</div>
-                    </div>
-                    <button onclick="importSearchedSeries(${s.tmdbId})" class="${s.alreadyImported ? 'btn-ghost' : 'btn-accent'}" style="white-space:nowrap" ${s.alreadyImported ? 'disabled' : ''}>
-                        ${s.alreadyImported ? 'Ya importada' : 'Importar'}
-                    </button>
-                </div>
+            resultsBox.innerHTML = data.results.slice(0, 12).map(s => `
+                <label style="display:flex;gap:0.75rem;align-items:center;background:var(--bg-elevated);border-radius:6px;padding:0.6rem;cursor:${s.alreadyImported ? 'default' : 'pointer'}">
+                    <input type="checkbox" value="${s.tmdbId}" ${s.alreadyImported ? 'disabled' : ''} onchange="toggleSeriesSelection('${s.tmdbId}', this.checked)" style="width:18px;height:18px;accent-color:var(--accent)">
+                    <div style="width:42px;height:62px;background:var(--border);border-radius:4px"></div>
+                    <span style="flex:1;min-width:0">
+                        <span style="display:block;font-weight:700">${escapeHtml(s.title || s.originalTitle || 'Sin título')}</span>
+                        <span style="display:block;font-size:0.78rem;color:var(--text-muted)">TMDB ${s.tmdbId} · ${escapeHtml(s.firstAirDate || 'sin fecha')}</span>
+                    </span>
+                    <span class="${s.alreadyImported ? 'badge-ok' : 'badge-info'}">${s.alreadyImported ? 'Ya importada' : 'Disponible'}</span>
+                </label>
             `).join('');
         }
 
         async function importSearchedSeries(tmdbId) {
             showLog(`Importando serie TMDB ID ${tmdbId}...`);
             const res = await fetch(`/api/admin/series/import/${tmdbId}`, { method: 'POST' });
-            const data = await res.json();
+            const data = await readResponse(res);
             showLog(data.success ? `Serie "${data.title}" importada (ID: ${data.id})` : `Error: ${data.error || data.message}`, !data.success);
             if (data.success) {
                 loadSeries(0);
@@ -197,10 +237,30 @@
             }
         }
 
+        async function importSelectedSeries() {
+            if (selectedSeriesIds.size === 0) { alert('Selecciona al menos una serie'); return; }
+            showLog(`Importando ${selectedSeriesIds.size} series seleccionadas...`);
+            const body = new FormData();
+            selectedSeriesIds.forEach(id => body.append('tmdbIds', id));
+            try {
+                const res = await fetch('/api/admin/series/import-selected', { method: 'POST', body });
+                const data = await readResponse(res);
+                showLog(data.message || 'Importación completada', !data.success);
+                if (data.success) {
+                    selectedSeriesIds.clear();
+                    updateSelectedSeriesButton();
+                    loadSeries(0);
+                    searchTmdbSeries();
+                }
+            } catch (err) {
+                showLog('Error: ' + err.message, true);
+            }
+        }
+
         async function importPopularSeries() {
             showLog('Importando series populares (2 páginas)...');
             const res = await fetch('/api/admin/series/import-popular?pages=2', { method: 'POST' });
-            const data = await res.json();
+            const data = await readResponse(res);
             showLog(data.success ? `✅ Importadas ${data.imported} series.` : `❌ Error: ${data.error}`, !data.success);
             if (data.success) loadSeries(0);
         }
@@ -208,7 +268,7 @@
         async function importTopRatedSeries() {
             showLog('Importando series mejor valoradas (2 páginas)...');
             const res = await fetch('/api/admin/series/import-top-rated?pages=2', { method: 'POST' });
-            const data = await res.json();
+            const data = await readResponse(res);
             showLog(data.success ? `✅ Importadas ${data.imported} series.` : `❌ Error: ${data.error}`, !data.success);
             if (data.success) loadSeries(0);
         }
@@ -218,7 +278,7 @@
             if (!id) { alert('Introduce un TMDB ID'); return; }
             showLog(`Importando serie TMDB ID ${id}...`);
             const res = await fetch(`/api/admin/series/import/${id}`, { method: 'POST' });
-            const data = await res.json();
+            const data = await readResponse(res);
             showLog(data.success ? `✅ Serie "${data.title}" importada (ID: ${data.id})` : `❌ Error: ${data.error || data.message}`, !data.success);
             if (data.success) loadSeries(0);
         }
@@ -228,7 +288,7 @@
             if (!id) { alert('Introduce un TMDB ID'); return; }
             showRepairLog(`Reimportando serie TMDB ID ${id}...`);
             const res = await fetch(`/api/admin/series/import/${id}`, { method: 'POST' });
-            const data = await res.json();
+            const data = await readResponse(res);
             showRepairLog(data.success ? `✅ Serie "${data.title}" actualizada` : `❌ Error: ${data.error || data.message}`, !data.success);
             if (data.success) loadSeries(currentPage);
         }
@@ -236,7 +296,7 @@
         async function repairPosters() {
             showRepairLog('Reparando portadas... (puede tardar varios minutos)');
             const res = await fetch('/api/admin/series/repair-posters', { method: 'POST' });
-            const data = await res.json();
+            const data = await readResponse(res);
             showRepairLog(`✅ Reparación completada. Total sin portada: ${data.total} · Reparadas: ${data.repaired} · Errores: ${data.errors}`);
             loadSeries(currentPage);
         }

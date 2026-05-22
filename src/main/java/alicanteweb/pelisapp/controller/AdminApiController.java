@@ -18,6 +18,7 @@ import alicanteweb.pelisapp.repository.UserRepository;
 import alicanteweb.pelisapp.service.AuthService;
 import alicanteweb.pelisapp.service.BookService;
 import alicanteweb.pelisapp.service.GoogleBooksLoaderService;
+import alicanteweb.pelisapp.service.ImageUrlService;
 import alicanteweb.pelisapp.service.ModerationService;
 import alicanteweb.pelisapp.service.MovieImportService;
 import alicanteweb.pelisapp.service.MoviePosterRedownloadService;
@@ -69,6 +70,7 @@ public class AdminApiController {
     private final TMDBClient tmdbClient;
     private final TvShowService tvShowService;
     private final BookService bookService;
+    private final ImageUrlService imageUrlService;
 
     // Repositories
     private final MovieRepository movieRepository;
@@ -306,6 +308,87 @@ public class AdminApiController {
         }
     }
 
+    @PostMapping("/movies/import/{tmdbId}")
+    public ResponseEntity<Map<String, Object>> importMovieFromTMDB(@PathVariable Long tmdbId) {
+        try {
+            Movie movie = tmdbMovieLoaderService.loadMovieByTmdbId(tmdbId);
+            if (movie != null) {
+                return ResponseEntity.ok(Map.of("success", true, "id", movie.getId(), "title", movie.getTitle()));
+            }
+            return ResponseEntity.ok(Map.of("success", false, "message", "No se pudo importar la película"));
+        } catch (Exception e) {
+            log.error("Error importando película {}: {}", tmdbId, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/movies/import-selected")
+    public ResponseEntity<Map<String, Object>> importSelectedMovies(@RequestParam List<Long> tmdbIds) {
+        if (tmdbIds == null || tmdbIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "No se seleccionó ninguna película"));
+        }
+        int imported = 0;
+        int omitted = 0;
+        int errors = 0;
+        for (Long tmdbId : tmdbIds) {
+            if (tmdbId == null) {
+                errors++;
+                continue;
+            }
+            try {
+                boolean alreadyImported = movieRepository.findByTmdbId(tmdbId).isPresent();
+                Movie movie = tmdbMovieLoaderService.loadMovieByTmdbId(tmdbId);
+                if (movie == null) {
+                    errors++;
+                } else if (alreadyImported) {
+                    omitted++;
+                } else {
+                    imported++;
+                }
+            } catch (Exception e) {
+                errors++;
+                log.warn("Error importando película seleccionada tmdbId={}: {}", tmdbId, e.getMessage());
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "imported", imported,
+                "omitted", omitted,
+                "errors", errors,
+                "message", String.format("Películas importadas: %d. Omitidas: %d. Errores: %d.", imported, omitted, errors)
+        ));
+    }
+
+    @GetMapping("/movies/search-tmdb")
+    public ResponseEntity<Map<String, Object>> searchMoviesOnTmdb(@RequestParam String q) {
+        try {
+            JsonNode response = tmdbClient.searchMovie(q);
+            List<Map<String, Object>> results = response == null || !response.has("results")
+                    ? List.of()
+                    : iterableToList(response.path("results")).stream()
+                    .map(item -> {
+                        long tmdbId = item.path("id").asLong();
+                        Map<String, Object> dto = new HashMap<>();
+                        dto.put("tmdbId", tmdbId);
+                        dto.put("title", item.path("title").asText(""));
+                        dto.put("originalTitle", item.path("original_title").asText(""));
+                        dto.put("releaseDate", item.path("release_date").asText(""));
+                        dto.put("overview", item.path("overview").asText(""));
+                        dto.put("posterPath", item.path("poster_path").asText(null));
+                        dto.put("alreadyImported", movieRepository.findByTmdbId(tmdbId).isPresent());
+                        return dto;
+                    }).toList();
+            return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "results", results,
+                    "totalResults", response != null ? response.path("total_results").asInt(0) : 0
+            ));
+        } catch (Exception e) {
+            log.error("Error buscando películas en TMDB por '{}': {}", q, e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", e.getMessage()));
+        }
+    }
+
     @PostMapping("/tmdb/bulk-load")
     public ResponseEntity<Map<String, Object>> bulkLoadMovies(
             @RequestParam(defaultValue = "1") int page
@@ -336,7 +419,7 @@ public class AdminApiController {
 
             for (Movie movie : movies) {
                 try {
-                    if (movie.getTmdbId() != null && (movie.getPosterLocalPath() == null || movie.getPosterLocalPath().isBlank())) {
+                    if (movie.getTmdbId() != null && shouldReloadPoster(movie.getPosterLocalPath())) {
                         boolean ok = moviePosterRedownloadService.redownloadMoviePoster(movie);
                         if (ok) {
                             reloaded++;
@@ -605,6 +688,43 @@ public class AdminApiController {
         }
     }
 
+    @PostMapping("/series/import-selected")
+    public ResponseEntity<Map<String, Object>> importSelectedSeries(@RequestParam List<Long> tmdbIds) {
+        if (tmdbIds == null || tmdbIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "No se seleccionó ninguna serie"));
+        }
+        int imported = 0;
+        int omitted = 0;
+        int errors = 0;
+        for (Long tmdbId : tmdbIds) {
+            if (tmdbId == null) {
+                errors++;
+                continue;
+            }
+            try {
+                boolean alreadyImported = tvShowRepository.findByTmdbId(tmdbId).isPresent();
+                TvShow show = tmdbSeriesLoaderService.importOrUpdateByTmdb(tmdbId);
+                if (show == null) {
+                    errors++;
+                } else if (alreadyImported) {
+                    omitted++;
+                } else {
+                    imported++;
+                }
+            } catch (Exception e) {
+                errors++;
+                log.warn("Error importando serie seleccionada tmdbId={}: {}", tmdbId, e.getMessage());
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "imported", imported,
+                "omitted", omitted,
+                "errors", errors,
+                "message", String.format("Series importadas: %d. Omitidas: %d. Errores: %d.", imported, omitted, errors)
+        ));
+    }
+
     @PostMapping("/series/import-popular")
     public ResponseEntity<Map<String, Object>> importPopularSeries(@RequestParam(defaultValue = "2") int pages) {
         try {
@@ -644,6 +764,7 @@ public class AdminApiController {
             dto.put("numberOfSeasons", s.getNumberOfSeasons());
             dto.put("genres", s.getGenres());
             dto.put("status", s.getStatus());
+            dto.put("posterUrl", imageUrlService.seriesPosterUrl(s, "w92"));
             return dto;
         }).toList();
         Map<String, Object> result = new HashMap<>();
@@ -703,6 +824,43 @@ public class AdminApiController {
         }
     }
 
+    @PostMapping("/books/import-selected")
+    public ResponseEntity<Map<String, Object>> importSelectedBooks(@RequestParam List<String> googleIds) {
+        if (googleIds == null || googleIds.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("success", false, "error", "No se seleccionó ningún libro"));
+        }
+        int imported = 0;
+        int omitted = 0;
+        int errors = 0;
+        for (String googleId : googleIds) {
+            if (googleId == null || googleId.isBlank()) {
+                errors++;
+                continue;
+            }
+            try {
+                boolean alreadyImported = bookRepository.findByGoogleBooksId(googleId).isPresent();
+                Book book = googleBooksLoaderService.importOrUpdateByGoogleId(googleId);
+                if (book == null) {
+                    errors++;
+                } else if (alreadyImported) {
+                    omitted++;
+                } else {
+                    imported++;
+                }
+            } catch (Exception e) {
+                errors++;
+                log.warn("Error importando libro seleccionado googleId={}: {}", googleId, e.getMessage());
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "imported", imported,
+                "omitted", omitted,
+                "errors", errors,
+                "message", String.format("Libros importados: %d. Omitidos: %d. Errores: %d.", imported, omitted, errors)
+        ));
+    }
+
     @PostMapping("/books/search-import")
     public ResponseEntity<Map<String, Object>> searchAndImportBooks(
             @RequestParam String q,
@@ -723,7 +881,7 @@ public class AdminApiController {
             @RequestParam(required = false) String q) {
         var pageable = PageRequest.of(page, size);
         var bookPage = (q != null && !q.isBlank())
-                ? bookRepository.findByTitleContainingIgnoreCase(q.trim(), pageable)
+                ? bookRepository.searchByTitleOrAuthors(q.trim(), pageable)
                 : bookRepository.findAll(pageable);
         var content = bookPage.getContent().stream().map(b -> {
             Map<String, Object> dto = new HashMap<>();
@@ -733,6 +891,7 @@ public class AdminApiController {
             dto.put("authors", b.getAuthors());
             dto.put("publisher", b.getPublisher());
             dto.put("publishedDate", b.getPublishedDate());
+            dto.put("coverUrl", b.getCoverUrl());
             return dto;
         }).toList();
         Map<String, Object> result = new HashMap<>();
@@ -747,9 +906,10 @@ public class AdminApiController {
     @GetMapping("/books/search-google")
     public ResponseEntity<Map<String, Object>> searchBooksOnGoogle(
             @RequestParam String q,
-            @RequestParam(defaultValue = "0") int startIndex) {
+            @RequestParam(defaultValue = "0") int startIndex,
+            @RequestParam(defaultValue = "12") int maxResults) {
         try {
-            JsonNode response = googleBooksClient.searchBooks(q, Math.max(0, startIndex));
+            JsonNode response = googleBooksClient.searchBooks(q, Math.max(0, startIndex), Math.min(Math.max(1, maxResults), 40));
             List<Map<String, Object>> results = response == null || !response.has("items")
                     ? List.of()
                     : iterableToList(response.path("items")).stream()
@@ -782,7 +942,7 @@ public class AdminApiController {
     @PostMapping("/series/repair-posters")
     public ResponseEntity<Map<String, Object>> repairSeriesPosters() {
         List<TvShow> withoutPosters = tvShowRepository.findAll().stream()
-                .filter(s -> s.getPosterLocalPath() == null || s.getPosterLocalPath().isBlank())
+                .filter(s -> shouldReloadPoster(s.getPosterLocalPath()))
                 .toList();
         int repaired = 0;
         int errors = 0;
@@ -816,6 +976,35 @@ public class AdminApiController {
             log.error("Error deleting series {}: {}", seriesId, e.getMessage());
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
+    }
+
+    @PostMapping("/books/repair-covers")
+    public ResponseEntity<Map<String, Object>> repairBookCovers() {
+        List<Book> books = bookRepository.findAll();
+        int repaired = 0;
+        int errors = 0;
+        for (Book book : books) {
+            if (book.getGoogleBooksId() == null || book.getGoogleBooksId().isBlank()) {
+                continue;
+            }
+            try {
+                Book updated = googleBooksLoaderService.importOrUpdateByGoogleId(book.getGoogleBooksId());
+                if (updated != null && updated.getCoverUrl() != null && !updated.getCoverUrl().isBlank()) {
+                    repaired++;
+                } else {
+                    errors++;
+                }
+            } catch (Exception e) {
+                log.warn("Error repairing cover for book id={}: {}", book.getId(), e.getMessage());
+                errors++;
+            }
+        }
+        return ResponseEntity.ok(Map.of(
+                "success", true,
+                "total_books", books.size(),
+                "repaired", repaired,
+                "errors", errors
+        ));
     }
 
     @PostMapping("/books/{bookId}/delete")
@@ -864,6 +1053,13 @@ public class AdminApiController {
                 .build();
             return ResponseEntity.status(500).body(errorStatus);
         }
+    }
+
+    private boolean shouldReloadPoster(String posterLocalPath) {
+        return posterLocalPath == null
+                || posterLocalPath.isBlank()
+                || posterLocalPath.startsWith("/images/")
+                || posterLocalPath.startsWith("images/");
     }
 
     private List<JsonNode> iterableToList(JsonNode arrayNode) {

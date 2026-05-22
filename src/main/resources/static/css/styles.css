@@ -1,5 +1,5 @@
 /* ============================================================
-   PelisApp — Sistema de Diseño Minimalista Premium
+   AfterFilm — Sistema de Diseño Minimalista Premium
    Paleta: #0a0a0a base · #FF6B35 acento · Inter tipografía
    ============================================================ */
 
@@ -154,6 +154,131 @@ img { display: block; max-width: 100%; }
 
 .navbar-nav-links a:hover,
 .navbar-nav-links button:hover { color: var(--text-primary); }
+
+.navbar-menu-toggle {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-surface);
+    color: var(--text-secondary);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.navbar-menu-toggle:hover,
+.navbar.menu-open .navbar-menu-toggle {
+    color: var(--text-primary);
+    border-color: rgba(255, 255, 255, 0.18);
+    background: var(--bg-elevated);
+}
+@media (max-width: 760px) {
+    .navbar {
+        min-height: 60px;
+        height: auto;
+    }
+
+    .navbar .container {
+        position: relative;
+        gap: 0.75rem;
+        padding: 0 0.85rem;
+        min-height: 60px;
+    }
+
+    .navbar:has(.navbar-search) .navbar-brand { display: none; }
+
+    .navbar-search {
+        flex: 1 1 auto;
+        max-width: none;
+        min-width: 0;
+    }
+
+    .navbar-search input {
+        font-size: 0.9rem;
+        min-width: 0;
+    }
+
+    .navbar-menu-toggle { display: inline-flex; }
+
+    .navbar-nav-links {
+        display: none;
+        position: absolute;
+        top: calc(100% + 1px);
+        left: 0.85rem;
+        right: 0.85rem;
+        z-index: 120;
+        margin-left: 0;
+        padding: 0.75rem;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        box-shadow: 0 16px 34px rgba(0, 0, 0, 0.42);
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.2rem;
+    }
+
+    .navbar.menu-open .navbar-nav-links { display: flex; }
+
+    .navbar-nav-links a,
+    .navbar-nav-links button {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        gap: 0.6rem;
+        padding: 0.7rem 0.75rem;
+        border-radius: 6px;
+        text-align: left;
+    }
+
+    .navbar-nav-links a:hover,
+    .navbar-nav-links button:hover { background: var(--bg-elevated); }
+
+    .navbar-nav-links .btn-accent {
+        justify-content: center;
+        margin-top: 0.25rem;
+    }
+
+    .navbar-nav-links .user-menu { width: 100%; }
+
+    .navbar-nav-links .user-avatar-btn {
+        width: 100%;
+        height: auto;
+        border-radius: 6px;
+        justify-content: flex-start;
+        background: transparent;
+        border: none;
+        padding: 0.7rem 0.75rem;
+    }
+
+    .navbar-nav-links .user-avatar-btn::after {
+        content: "Cuenta";
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+        font-weight: 400;
+        margin-left: 0.6rem;
+    }
+
+    .navbar-nav-links .user-dropdown {
+        position: static;
+        display: block;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        box-shadow: none;
+        border: none;
+        border-top: 1px solid var(--border);
+        border-radius: 0;
+        margin-top: 0.35rem;
+        min-width: 0;
+        background: transparent;
+    }
+}
 
 /* ── Botones ────────────────────────────────────────────────── */
 .btn-accent {
@@ -516,6 +641,16 @@ textarea.form-input {
 
 .movie-card:hover .movie-poster-wrap img {
     transform: scale(1.04);
+}
+
+.book-poster-wrap img {
+    object-fit: contain;
+    background: #111827;
+    padding: 0.25rem;
+}
+
+.movie-card:hover .book-poster-wrap img {
+    transform: none;
 }
 
 .movie-poster-placeholder {
@@ -1376,6 +1511,12 @@ textarea.form-input {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+.userlist-poster img.book-cover-img {
+    object-fit: contain;
+    background: #111827;
+    padding: 0.25rem;
 }
 
 .userlist-poster-placeholder {

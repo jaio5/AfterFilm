@@ -1,6 +1,6 @@
-# 📚 Índice de Documentación - PelisApp
+# 📚 Índice de Documentación - AfterFilm
 
-Bienvenido al centro de documentación técnica completa de PelisApp. Aquí encontrarás toda la información necesaria para entender, desarrollar, configurar y desplegar la aplicación.
+Bienvenido al centro de documentación técnica completa de AfterFilm. Aquí encontrarás toda la información necesaria para entender, desarrollar, configurar y desplegar la aplicación.
 
 ## 🚀 Inicio Rápido
 
@@ -202,7 +202,7 @@ Para preguntas técnicas o reportar problemas:
 
 ---
 
-**¡Bienvenido a PelisApp! 🎬**
+**¡Bienvenido a AfterFilm! 🎬**
 
 ### Para Desarrolladores
 1. **[Guía para Desarrolladores](DEVELOPER.md)** - Patrones, testing y contribución
@@ -391,9 +391,9 @@ graph TD
 5. **Crear PR** con descripción clara de cambios
 
 ### 📧 Contacto Directo
-- **Email del Equipo**: [team@pelisapp.com]
-- **Documentación**: [docs@pelisapp.com]
-- **Technical Support**: [support@pelisapp.com]
+- **Email del Equipo**: [team@afterfilm.com]
+- **Documentación**: [docs@afterfilm.com]
+- **Technical Support**: [support@afterfilm.com]
 
 ---
 
@@ -434,6 +434,6 @@ graph TD
 
 ---
 
-**¡Bienvenido a PelisApp!** 🎬✨ 
+**¡Bienvenido a AfterFilm!** 🎬✨ 
 
-Esta documentación está diseñada para ser tu guía completa en el mundo de PelisApp. No dudes en explorar, contribuir y mejorar junto con nosotros.
+Esta documentación está diseñada para ser tu guía completa en el mundo de AfterFilm. No dudes en explorar, contribuir y mejorar junto con nosotros.

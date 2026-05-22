@@ -1,6 +1,6 @@
-# 🧪 Guía de Testing y Debugging - PelisApp
+# 🧪 Guía de Testing y Debugging - AfterFilm
 
-Esta guía proporciona información completa sobre cómo realizar testing, debugging y troubleshooting en PelisApp.
+Esta guía proporciona información completa sobre cómo realizar testing, debugging y troubleshooting en AfterFilm.
 
 ## 🎯 Estrategias de Testing
 
@@ -316,7 +316,7 @@ spring.jpa.properties.hibernate.session.events.log.LOG_QUERIES_SLOWER_THAN_MS=10
 
 BASE_URL="http://localhost:8080"
 
-echo "🧪 Testing PelisApp API..."
+echo "🧪 Testing AfterFilm API..."
 
 # Test health check
 echo "1. Testing health check..."
@@ -350,8 +350,8 @@ echo "✅ All tests completed!"
 ```json
 {
   "info": {
-    "name": "PelisApp API Tests",
-    "description": "Complete test suite for PelisApp"
+    "name": "AfterFilm API Tests",
+    "description": "Complete test suite for AfterFilm"
   },
   "item": [
     {
@@ -414,4 +414,4 @@ echo "✅ All tests completed!"
 
 ---
 
-Esta guía debe ser tu primera referencia para debugging y troubleshooting en PelisApp. Mantén esta documentación actualizada según surjan nuevos problemas y soluciones.
+Esta guía debe ser tu primera referencia para debugging y troubleshooting en AfterFilm. Mantén esta documentación actualizada según surjan nuevos problemas y soluciones.

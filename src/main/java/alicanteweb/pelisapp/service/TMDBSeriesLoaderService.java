@@ -148,10 +148,10 @@ public class TMDBSeriesLoaderService {
             show.setLanguage(details.path("original_language").asText(null));
         }
         // Poster — only attempt download if not already stored locally
-        if (show.getPosterLocalPath() == null && details.hasNonNull("poster_path")) {
+        if (shouldReloadPoster(show.getPosterLocalPath()) && details.hasNonNull("poster_path")) {
             String poster = details.path("poster_path").asText(null);
             if (poster != null && !poster.isBlank()) {
-                String imageUrl = poster.startsWith("http") ? poster : tmdbImageBaseUrl + "/w500" + poster;
+                String imageUrl = poster.startsWith("http") ? poster : tmdbClient.buildImageUrl(poster);
                 String stored = imageService.downloadAndSave(imageUrl, "series_" + show.getTmdbId(), "series");
                 if (stored != null) show.setPosterLocalPath(stored);
                 else show.setPosterPath(poster); // store raw path so template can prepend CDN base
@@ -182,12 +182,7 @@ public class TMDBSeriesLoaderService {
                     String name = c.path("name").asText(null);
                     if (name == null) continue;
                     long actorTmdbId = c.path("id").asLong();
-                    Actor actor = actorRepository.findByTmdbId(actorTmdbId).orElseGet(() -> {
-                        Actor a = new Actor();
-                        a.setTmdbId(actorTmdbId);
-                        a.setName(name);
-                        return actorRepository.save(a);
-                    });
+                    Actor actor = findOrCreateActor(actorTmdbId, name, c.path("profile_path").asText(null));
                     actors.add(actor);
                 }
                 if (!actors.isEmpty()) show.setActors(actors);
@@ -201,16 +196,102 @@ public class TMDBSeriesLoaderService {
                     String name = cr.path("name").asText(null);
                     if (name == null) continue;
                     long dirTmdbId = cr.path("id").asLong();
-                    Director d = directorRepository.findByTmdbId(dirTmdbId).orElseGet(() -> {
-                        Director dir = new Director();
-                        dir.setTmdbId(dirTmdbId);
-                        dir.setName(name);
-                        return directorRepository.save(dir);
-                    });
+                    Director d = findOrCreateDirector(dirTmdbId, name, cr.path("profile_path").asText(null));
                     directors.add(d);
                 }
                 if (!directors.isEmpty()) show.setDirectors(directors);
             }
+        }
+    }
+
+    private boolean shouldReloadPoster(String posterLocalPath) {
+        return posterLocalPath == null
+                || posterLocalPath.isBlank()
+                || posterLocalPath.startsWith("/images/")
+                || posterLocalPath.startsWith("images/");
+    }
+
+    private Actor findOrCreateActor(long tmdbId, String name, String profilePath) {
+        Optional<Actor> existing = actorRepository.findByTmdbId(tmdbId);
+        if (existing.isPresent()) {
+            Actor actor = existing.get();
+            enrichActorImage(actor, profilePath);
+            return actor;
+        }
+
+        Actor actor = new Actor();
+        actor.setTmdbId(tmdbId);
+        actor.setName(name);
+        enrichActorImage(actor, profilePath);
+        try {
+            return actorRepository.save(actor);
+        } catch (DataIntegrityViolationException ex) {
+            log.info("Actor concurrente detectado para tmdbId {}, reutilizando registro existente", tmdbId);
+            return actorRepository.findByTmdbId(tmdbId).orElseThrow(() -> ex);
+        }
+    }
+
+    private Director findOrCreateDirector(long tmdbId, String name, String profilePath) {
+        Optional<Director> existing = directorRepository.findByTmdbId(tmdbId);
+        if (existing.isPresent()) {
+            Director director = existing.get();
+            enrichDirectorImage(director, profilePath);
+            return director;
+        }
+
+        Director director = new Director();
+        director.setTmdbId(tmdbId);
+        director.setName(name);
+        enrichDirectorImage(director, profilePath);
+        try {
+            return directorRepository.save(director);
+        } catch (DataIntegrityViolationException ex) {
+            log.info("Director concurrente detectado para tmdbId {}, reutilizando registro existente", tmdbId);
+            return directorRepository.findByTmdbId(tmdbId).orElseThrow(() -> ex);
+        }
+    }
+
+    private void enrichActorImage(Actor actor, String profilePath) {
+        if (profilePath == null || profilePath.isBlank() || "/".equals(profilePath) || "null".equals(profilePath)) {
+            return;
+        }
+        boolean changed = false;
+        if (actor.getProfilePath() == null || actor.getProfilePath().isBlank()) {
+            actor.setProfilePath(profilePath);
+            changed = true;
+        }
+        if (shouldReloadPoster(actor.getProfileLocalPath())) {
+            String localPath = imageService.downloadAndSave(
+                    tmdbClient.buildImageUrl(profilePath), "actor_" + actor.getTmdbId(), "profiles");
+            if (localPath != null) {
+                actor.setProfileLocalPath(localPath);
+                changed = true;
+            }
+        }
+        if (changed && actor.getId() != null) {
+            actorRepository.save(actor);
+        }
+    }
+
+    private void enrichDirectorImage(Director director, String profilePath) {
+        if (profilePath == null || profilePath.isBlank() || "/".equals(profilePath) || "null".equals(profilePath)) {
+            return;
+        }
+        boolean changed = false;
+        if (director.getProfilePath() == null || director.getProfilePath().isBlank()) {
+            director.setProfilePath(profilePath);
+            changed = true;
+        }
+        if (shouldReloadPoster(director.getProfileLocalPath())) {
+            String localPath = imageService.downloadAndSave(
+                    tmdbClient.buildImageUrl(profilePath), "director_" + director.getTmdbId(), "profiles");
+            if (localPath != null) {
+                director.setProfileLocalPath(localPath);
+                changed = true;
+            }
+        }
+        if (changed && director.getId() != null) {
+            directorRepository.save(director);
         }
     }
 }

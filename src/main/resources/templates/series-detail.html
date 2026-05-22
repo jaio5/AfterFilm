@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${series.title + ' — PelisApp'}">Serie — PelisApp</title>
+    <title th:text="${series.title + ' — AfterFilm'}">Serie — AfterFilm</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
@@ -13,7 +13,9 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> PelisApp</a>
+            <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> AfterFilm</a>
+            <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
+
             <div class="navbar-nav-links">
                 <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
                 <a th:href="@{/series}" style="color:var(--accent)"><i class="fas fa-tv"></i> Series</a>
@@ -48,19 +50,17 @@
     <!-- Hero section -->
     <div class="detail-hero">
         <div class="detail-hero-backdrop"
-             th:with="backdropUrl=${series.posterLocalPath != null and !series.posterLocalPath.isEmpty() ? '/images/' + series.posterLocalPath : (series.posterPath != null and !series.posterPath.isEmpty() ? 'https://image.tmdb.org/t/p/w500' + series.posterPath : null)}"
+             th:with="backdropUrl=${@imageUrlService.seriesPosterUrl(series, 'w500')}"
              th:style="${backdropUrl != null ? 'background-image: url(' + backdropUrl + ')' : 'background: var(--bg-elevated)'}">
         </div>
         <div class="detail-hero-content">
             <div class="detail-poster">
-                <img th:if="${series.posterLocalPath != null and !series.posterLocalPath.isEmpty()}"
-                     th:src="${'/images/' + series.posterLocalPath}" th:alt="${series.title}">
-                <img th:if="${(series.posterLocalPath == null or series.posterLocalPath.isEmpty())
-                              and (series.posterPath != null and !series.posterPath.isEmpty())}"
-                     th:src="${series.posterPath.startsWith('http') ? series.posterPath : 'https://image.tmdb.org/t/p/w500' + series.posterPath}"
+                <img th:with="posterUrl=${@imageUrlService.seriesPosterUrl(series, 'w500')}"
+                     th:if="${posterUrl != null and !posterUrl.isEmpty()}"
+                     th:src="${posterUrl}"
                      th:alt="${series.title}">
-                <div th:if="${(series.posterLocalPath == null or series.posterLocalPath.isEmpty())
-                              and (series.posterPath == null or series.posterPath.isEmpty())}"
+                <div th:with="posterUrl=${@imageUrlService.seriesPosterUrl(series, 'w500')}"
+                     th:if="${posterUrl == null or posterUrl.isEmpty()}"
                      class="detail-poster-placeholder">
                     <i class="fas fa-tv"></i>
                 </div>
@@ -93,7 +93,7 @@
                 </div>
 
                 <div class="detail-list-actions" sec:authorize="isAuthenticated()"
-                     th:attr="data-content-type='series',data-content-id=${series.id},data-content-title=${series.title},data-content-poster=${series.posterLocalPath ?: ''}">
+                     th:attr="data-content-type='series',data-content-id=${series.id},data-content-title=${series.title},data-content-poster=${@imageUrlService.seriesPosterUrl(series, 'w500') ?: ''}">
                     <button class="btn-list" id="btnFavorite" onclick="toggleList('FAVORITE')">
                         <i class="far fa-heart"></i> <span>Favorito</span>
                     </button>
@@ -202,7 +202,7 @@
                     </div>
                     <div class="review-stars-display">
                         <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
-                        <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
+                        <span th:if="${review.stars < 5}" th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
                     </div>
                 </div>
                 <div class="review-body">
@@ -241,7 +241,9 @@
                 </div>
                 <div class="rating-count" th:text="${stats.totalReviews + ' valoraciones'}">0</div>
                 <div style="margin-top:1rem;">
-                    <div th:each="star : ${#numbers.sequence(5, 1, -1)}" class="dist-bar-row">
+                    <div th:each="step : ${#numbers.sequence(1, 5)}"
+                         th:with="star=${6 - step}"
+                         class="dist-bar-row">
                         <span th:text="${star}">5</span>
                         <div class="dist-bar-track">
                             <div class="dist-bar-fill"
@@ -278,7 +280,7 @@
     </div>
 
     <footer class="site-footer">
-        © 2026 PelisApp — <i class="fas fa-heart text-accent"></i> por las series
+        © 2026 AfterFilm — <i class="fas fa-heart text-accent"></i> por las series
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -335,7 +337,7 @@
                 const data = new FormData(form);
                 const raw = Object.fromEntries(data.entries());
                 const payload = {
-                    text: raw.text && raw.text.trim() ? raw.text.trim() : null,
+                    text: raw.text && raw.text.trim() ? raw.text.trim() : "",
                     stars: parseInt(raw.stars)
                 };
                 const seriesId = raw.seriesId;

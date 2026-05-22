@@ -16,11 +16,10 @@ FROM maven:3.9.9-eclipse-temurin-17
 
 WORKDIR /app
 
-COPY --from=builder /build/target/PelisApp-0.0.1-SNAPSHOT.jar /app/pelisapp.jar
+COPY --from=builder /build/target/AfterFilm-0.0.1-SNAPSHOT.jar /app/afterfilm.jar
 
-EXPOSE 8080
+EXPOSE 10000
 
 ENV SERVER_ADDRESS=0.0.0.0
-ENV SERVER_PORT=8080
 
-ENTRYPOINT ["java", "-jar", "/app/pelisapp.jar"]
+ENTRYPOINT ["sh", "-c", "exec java -Dserver.port=${PORT:-10000} -jar /app/afterfilm.jar"]

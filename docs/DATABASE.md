@@ -1,10 +1,10 @@
-# 🗄️ Documentación de Base de Datos - PelisApp
+# 🗄️ Documentación de Base de Datos - AfterFilm
 
-Esta documentación describe el modelo de datos, esquema de base de datos y estructura relacional de PelisApp.
+Esta documentación describe el modelo de datos, esquema de base de datos y estructura relacional de AfterFilm.
 
 ## 📊 Visión General
 
-PelisApp utiliza **MySQL 8.0+** como base de datos relacional con **JPA/Hibernate** para el mapeo objeto-relacional. El diseño sigue principios de normalización y optimización para consultas eficientes.
+AfterFilm utiliza **MySQL 8.0+** como base de datos relacional con **JPA/Hibernate** para el mapeo objeto-relacional. El diseño sigue principios de normalización y optimización para consultas eficientes.
 
 ### Características del Esquema
 - **Normalización 3NF**: Evita redundancia de datos
@@ -578,7 +578,7 @@ INSERT INTO schema_version (version, description) VALUES
 
 ### Configuración MySQL Recomendada
 ```ini
-# my.cnf optimizado para PelisApp
+# my.cnf optimizado para AfterFilm
 [mysqld]
 # InnoDB settings
 innodb_buffer_pool_size = 1G
@@ -638,4 +638,4 @@ Ver directorio `/scripts/` para:
 
 ---
 
-Este modelo de datos está diseñado para ser **escalable**, **eficiente** y **mantenible**, proporcionando una base sólida para todas las funcionalidades de PelisApp.
+Este modelo de datos está diseñado para ser **escalable**, **eficiente** y **mantenible**, proporcionando una base sólida para todas las funcionalidades de AfterFilm.

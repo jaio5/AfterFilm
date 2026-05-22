@@ -1,11 +1,11 @@
-# 🏗️ Arquitectura del Sistema - PelisApp
+# 🏗️ Arquitectura del Sistema - AfterFilm
 
-Esta documentación describe la arquitectura, patrones de diseño y estructura técnica del proyecto PelisApp.
+Esta documentación describe la arquitectura, patrones de diseño y estructura técnica del proyecto AfterFilm.
 
 ## 📐 Arquitectura General
 
 ### Patrón de Arquitectura
-**PelisApp** sigue una **arquitectura en capas (Layered Architecture)** con separación clara de responsabilidades:
+**AfterFilm** sigue una **arquitectura en capas (Layered Architecture)** con separación clara de responsabilidades:
 
 ```
 ┌─────────────────────────────────────────────┐
@@ -39,7 +39,7 @@ Esta documentación describe la arquitectura, patrones de diseño y estructura t
 ### Organización Principal
 ```
 src/main/java/alicanteweb/pelisapp/
-├── 🚀 PelisAppApplication.java          # Punto de entrada Spring Boot
+├── 🚀 AfterFilmApplication.java          # Punto de entrada Spring Boot
 │
 ├── 🎮 controller/                       # Capa de Presentación
 │   ├── WebController.java              # Vistas HTML (Thymeleaf)

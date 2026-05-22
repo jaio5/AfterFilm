@@ -1,9 +1,9 @@
--- PelisApp: esquema final para MySQL 8+ (no destructivo)
+-- AfterFilm: esquema final para MySQL 8+ (no destructivo)
 -- UTF8MB4, compatible con JPA/Hibernate IDENTITY (AUTO_INCREMENT)
 -- Ejecutar con privilegios suficientes. Hacer backup antes de aplicar en producción.
 
-CREATE DATABASE IF NOT EXISTS `PelisApp` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
-USE `PelisApp`;
+CREATE DATABASE IF NOT EXISTS `AfterFilm` CHARACTER SET = utf8mb4 COLLATE = utf8mb4_unicode_ci;
+USE `AfterFilm`;
 
 -- Tabla usuario (coincide con entidad User @Table("usuario"))
 CREATE TABLE IF NOT EXISTS `usuario` (

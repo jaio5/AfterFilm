@@ -13,6 +13,7 @@ import alicanteweb.pelisapp.tmdb.TMDBClient;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -166,8 +167,10 @@ public class TMDBMovieLoaderService {
                 long tmdbId = movieNode.path("id").asLong(0);
                 if (tmdbId == 0) continue;
 
-                if (movieRepository.findByTmdbId(tmdbId).isPresent()) {
-                    continue; // Ya existe, saltar
+                Optional<Movie> existing = movieRepository.findByTmdbId(tmdbId);
+                if (existing.isPresent()) {
+                    enrichExistingMovie(existing.get(), tmdbId);
+                    continue; // Ya existe, no contar como nueva
                 }
 
                 JsonNode movieDetails = tmdbClient.getMovieDetails(tmdbId);
@@ -188,6 +191,100 @@ public class TMDBMovieLoaderService {
         }
 
         return processed;
+    }
+
+    private void enrichExistingMovie(Movie movie, long tmdbId) {
+        boolean needsPoster = movie.getPosterLocalPath() == null || movie.getPosterLocalPath().isBlank();
+        boolean needsActors = movie.getActors() == null || movie.getActors().isEmpty();
+        boolean needsDirectors = movie.getDirectors() == null || movie.getDirectors().isEmpty();
+
+        if (!needsPoster && !needsActors && !needsDirectors) {
+            return;
+        }
+
+        JsonNode details = tmdbClient.getMovieDetails(tmdbId);
+        if (details == null) {
+            return;
+        }
+
+        boolean changed = false;
+        if (needsPoster) {
+            String posterPath = details.path("poster_path").asText(null);
+            if (posterPath != null && !posterPath.isBlank()) {
+                movie.setPosterPath(posterPath);
+                String fullUrl = tmdbClient.buildImageUrl(posterPath);
+                String filename = AppConstants.MOVIE_FILE_PREFIX + movie.getTmdbId();
+                String localPath = imageStorageService.downloadAndStoreImage(
+                    fullUrl, AppConstants.POSTERS_SUBFOLDER, filename);
+                if (localPath != null) {
+                    movie.setPosterLocalPath(localPath);
+                }
+                changed = true;
+            }
+        }
+
+        if (details.has(AppConstants.TMDB_CREDITS_KEY)) {
+            JsonNode credits = details.path(AppConstants.TMDB_CREDITS_KEY);
+            if (needsActors) {
+                movie.setActors(processCast(credits.path(AppConstants.TMDB_CAST_KEY)));
+                changed = true;
+            }
+            if (needsDirectors) {
+                movie.setDirectors(processCrew(credits.path(AppConstants.TMDB_CREW_KEY)));
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            movieRepository.save(movie);
+            log.debug("Película existente enriquecida: {} (tmdbId: {})", movie.getTitle(), tmdbId);
+        }
+    }
+
+    @Transactional
+    public boolean repairMovieMetadataAndCast(Movie movie, boolean forcePoster) {
+        if (movie == null || movie.getTmdbId() == null) {
+            return false;
+        }
+        JsonNode details = tmdbClient.getMovieDetails(movie.getTmdbId());
+        if (details == null) {
+            return false;
+        }
+
+        boolean changed = false;
+        String posterPath = details.path(AppConstants.TMDB_POSTER_PATH_KEY).asText(null);
+        if (posterPath != null && !posterPath.isBlank()) {
+            movie.setPosterPath(posterPath);
+            if (forcePoster || shouldReloadImage(movie.getPosterLocalPath())) {
+                String localPath = imageStorageService.forceDownloadAndStoreImage(
+                        tmdbClient.buildImageUrl(posterPath),
+                        AppConstants.POSTERS_SUBFOLDER,
+                        AppConstants.MOVIE_FILE_PREFIX + movie.getTmdbId());
+                if (localPath != null) {
+                    movie.setPosterLocalPath(localPath);
+                    changed = true;
+                }
+            }
+        }
+
+        if (details.has(AppConstants.TMDB_CREDITS_KEY)) {
+            JsonNode credits = details.path(AppConstants.TMDB_CREDITS_KEY);
+            Set<Actor> actors = processCast(credits.path(AppConstants.TMDB_CAST_KEY));
+            if (!actors.isEmpty()) {
+                movie.setActors(actors);
+                changed = true;
+            }
+            Set<Director> directors = processCrew(credits.path(AppConstants.TMDB_CREW_KEY));
+            if (!directors.isEmpty()) {
+                movie.setDirectors(directors);
+                changed = true;
+            }
+        }
+
+        if (changed) {
+            movieRepository.save(movie);
+        }
+        return changed;
     }
 
     /**
@@ -307,6 +404,7 @@ public class TMDBMovieLoaderService {
         }
     }
 
+    @Transactional
     public int loadPopularMoviesAndReturnCount(int page) {
         JsonNode response = tmdbClient.getPopular(page);
         if (response == null || !response.has(AppConstants.TMDB_RESULTS_KEY)) return 0;
@@ -317,6 +415,7 @@ public class TMDBMovieLoaderService {
     /**
      * Carga una página de películas top rated y devuelve el número de nuevas películas añadidas
      */
+    @Transactional
     public int loadTopRatedMoviesAndReturnCount(int page) {
         JsonNode response = tmdbClient.getTopRated(page);
         if (response == null || !response.has(AppConstants.TMDB_RESULTS_KEY)) return 0;
@@ -429,6 +528,13 @@ public class TMDBMovieLoaderService {
      * Busca o crea un actor con información detallada
      */
     private Actor findOrCreateActorWithDetails(Long tmdbId, String name, String profilePath) {
+        Optional<Actor> existing = actorRepository.findByTmdbId(tmdbId);
+        if (existing.isPresent()) {
+            Actor actor = existing.get();
+            enrichActorWithProfile(actor, profilePath);
+            return actor;
+        }
+
         return actorRepository.findByTmdbId(tmdbId)
                 .orElseGet(() -> {
                     log.debug("Creando nuevo actor: {}", name);
@@ -436,35 +542,66 @@ public class TMDBMovieLoaderService {
                     actor.setTmdbId(tmdbId);
                     actor.setName(name);
 
-                    // Configurar foto de perfil
-                    if (!profilePath.isBlank() && !"/".equals(profilePath) && !"null".equals(profilePath)) {
-                        actor.setProfilePath(profilePath);
+                    enrichActorWithProfile(actor, profilePath);
 
-                        // Intentar descargar foto del perfil
-                        try {
-                            String fullUrl = tmdbClient.buildImageUrl(profilePath);
-                            String filename = AppConstants.ACTOR_FILE_PREFIX + tmdbId;
-                            String localPath = imageStorageService.downloadAndStoreImage(
-                                fullUrl, AppConstants.PROFILES_SUBFOLDER, filename);
-                            if (localPath != null) {
-                                actor.setProfileLocalPath(localPath);
-                                log.debug("✓ Foto descargada para actor {}: {}", name, localPath);
-                            }
-                        } catch (Exception e) {
-                            log.debug("⚠ No se pudo descargar foto para actor {}: {}", name, e.getMessage());
-                        }
+                    try {
+                        Actor savedActor = actorRepository.save(actor);
+                        log.debug("✓ Actor guardado: {} (ID: {})", name, savedActor.getId());
+                        return savedActor;
+                    } catch (DataIntegrityViolationException ex) {
+                        log.info("Actor concurrente detectado para tmdbId {}, reutilizando registro existente", tmdbId);
+                        return actorRepository.findByTmdbId(tmdbId).orElseThrow(() -> ex);
                     }
-
-                    Actor savedActor = actorRepository.save(actor);
-                    log.debug("✓ Actor guardado: {} (ID: {})", name, savedActor.getId());
-                    return savedActor;
                 });
+    }
+
+    private void enrichActorWithProfile(Actor actor, String profilePath) {
+        if (profilePath == null || profilePath.isBlank() || "/".equals(profilePath) || "null".equals(profilePath)) {
+            return;
+        }
+        boolean changed = false;
+        if (actor.getProfilePath() == null || actor.getProfilePath().isBlank()) {
+            actor.setProfilePath(profilePath);
+            changed = true;
+        }
+        if (shouldReloadImage(actor.getProfileLocalPath())) {
+            try {
+                String fullUrl = tmdbClient.buildImageUrl(profilePath);
+                String filename = AppConstants.ACTOR_FILE_PREFIX + actor.getTmdbId();
+                String localPath = imageStorageService.downloadAndStoreImage(
+                    fullUrl, AppConstants.PROFILES_SUBFOLDER, filename);
+                if (localPath != null) {
+                    actor.setProfileLocalPath(localPath);
+                    changed = true;
+                    log.debug("✓ Foto descargada para actor {}: {}", actor.getName(), localPath);
+                }
+            } catch (Exception e) {
+                log.debug("⚠ No se pudo descargar foto para actor {}: {}", actor.getName(), e.getMessage());
+            }
+        }
+        if (changed && actor.getId() != null) {
+            actorRepository.save(actor);
+        }
+    }
+
+    private boolean shouldReloadImage(String localPath) {
+        return localPath == null
+                || localPath.isBlank()
+                || localPath.startsWith("/images/")
+                || localPath.startsWith("images/");
     }
 
     /**
      * Busca o crea un director con información detallada
      */
     private Director findOrCreateDirectorWithDetails(Long tmdbId, String name, String profilePath) {
+        Optional<Director> existing = directorRepository.findByTmdbId(tmdbId);
+        if (existing.isPresent()) {
+            Director director = existing.get();
+            enrichDirectorWithProfile(director, profilePath);
+            return director;
+        }
+
         return directorRepository.findByTmdbId(tmdbId)
                 .orElseGet(() -> {
                     log.debug("Creando nuevo director: {}", name);
@@ -472,29 +609,46 @@ public class TMDBMovieLoaderService {
                     director.setTmdbId(tmdbId);
                     director.setName(name);
 
-                    // Configurar foto de perfil
-                    if (!profilePath.isBlank() && !"/".equals(profilePath) && !"null".equals(profilePath)) {
-                        director.setProfilePath(profilePath);
+                    enrichDirectorWithProfile(director, profilePath);
 
-                        // Intentar descargar foto del perfil
-                        try {
-                            String fullUrl = tmdbClient.buildImageUrl(profilePath);
-                            String filename = AppConstants.DIRECTOR_FILE_PREFIX + tmdbId;
-                            String localPath = imageStorageService.downloadAndStoreImage(
-                                fullUrl, AppConstants.PROFILES_SUBFOLDER, filename);
-                            if (localPath != null) {
-                                director.setProfileLocalPath(localPath);
-                                log.debug("✓ Foto descargada para director {}: {}", name, localPath);
-                            }
-                        } catch (Exception e) {
-                            log.debug("⚠ No se pudo descargar foto para director {}: {}", name, e.getMessage());
-                        }
+                    try {
+                        Director savedDirector = directorRepository.save(director);
+                        log.debug("✓ Director guardado: {} (ID: {})", name, savedDirector.getId());
+                        return savedDirector;
+                    } catch (DataIntegrityViolationException ex) {
+                        log.info("Director concurrente detectado para tmdbId {}, reutilizando registro existente", tmdbId);
+                        return directorRepository.findByTmdbId(tmdbId).orElseThrow(() -> ex);
                     }
-
-                    Director savedDirector = directorRepository.save(director);
-                    log.debug("✓ Director guardado: {} (ID: {})", name, savedDirector.getId());
-                    return savedDirector;
                 });
+    }
+
+    private void enrichDirectorWithProfile(Director director, String profilePath) {
+        if (profilePath == null || profilePath.isBlank() || "/".equals(profilePath) || "null".equals(profilePath)) {
+            return;
+        }
+        boolean changed = false;
+        if (director.getProfilePath() == null || director.getProfilePath().isBlank()) {
+            director.setProfilePath(profilePath);
+            changed = true;
+        }
+        if (shouldReloadImage(director.getProfileLocalPath())) {
+            try {
+                String fullUrl = tmdbClient.buildImageUrl(profilePath);
+                String filename = AppConstants.DIRECTOR_FILE_PREFIX + director.getTmdbId();
+                String localPath = imageStorageService.downloadAndStoreImage(
+                    fullUrl, AppConstants.PROFILES_SUBFOLDER, filename);
+                if (localPath != null) {
+                    director.setProfileLocalPath(localPath);
+                    changed = true;
+                    log.debug("✓ Foto descargada para director {}: {}", director.getName(), localPath);
+                }
+            } catch (Exception e) {
+                log.debug("⚠ No se pudo descargar foto para director {}: {}", director.getName(), e.getMessage());
+            }
+        }
+        if (changed && director.getId() != null) {
+            directorRepository.save(director);
+        }
     }
 
     /**
@@ -508,7 +662,7 @@ public class TMDBMovieLoaderService {
             if (movie.getActors() != null) {
                 for (Actor actor : movie.getActors()) {
                     if (actor.getProfilePath() != null && !actor.getProfilePath().isBlank()
-                        && (actor.getProfileLocalPath() == null || actor.getProfileLocalPath().isBlank())) {
+                        && shouldReloadImage(actor.getProfileLocalPath())) {
                         try {
                             String fullUrl = tmdbClient.buildImageUrl(actor.getProfilePath());
                             String filename = AppConstants.ACTOR_FILE_PREFIX + actor.getTmdbId();
@@ -529,7 +683,7 @@ public class TMDBMovieLoaderService {
             if (movie.getDirectors() != null) {
                 for (Director director : movie.getDirectors()) {
                     if (director.getProfilePath() != null && !director.getProfilePath().isBlank()
-                        && (director.getProfileLocalPath() == null || director.getProfileLocalPath().isBlank())) {
+                        && shouldReloadImage(director.getProfileLocalPath())) {
                         try {
                             String fullUrl = tmdbClient.buildImageUrl(director.getProfilePath());
                             String filename = AppConstants.DIRECTOR_FILE_PREFIX + director.getTmdbId();

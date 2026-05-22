@@ -13,18 +13,18 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping
 @RequiredArgsConstructor
 @Slf4j
 public class HealthApiController {
     private final SystemHealthService systemHealthService;
 
-    @GetMapping("/health")
+    @GetMapping({"/api/health", "/actuator/health"})
     public ResponseEntity<Map<String, String>> health() {
         return ResponseEntity.ok(Map.of("status", "ok"));
     }
 
-    @GetMapping("/system-health")
+    @GetMapping("/api/system-health")
     public ResponseEntity<Map<String, Object>> systemHealth() {
         try {
             log.info("🔍 Iniciando verificación completa del estado del sistema...");

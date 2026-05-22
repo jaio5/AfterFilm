@@ -4,7 +4,7 @@
 
 # Proyecto de Desarrollo de Aplicaciones Multiplataforma
 
-# PelisApp: plataforma web para catalogo, valoracion y gestion de contenido audiovisual
+# AfterFilm: plataforma web para catalogo, valoracion y gestion de contenido audiovisual
 
 **Alumno:** [Javier Barceló García]  
 **Tutor:** [Víctor Palomar]  
@@ -30,7 +30,7 @@
 
 # 1. Introduccion
 
-PelisApp es una aplicacion web desarrollada como proyecto final del ciclo de Desarrollo de Aplicaciones Multiplataforma. El objetivo principal del proyecto es construir una plataforma completa para consultar, organizar, valorar y administrar contenido audiovisual, principalmente peliculas y series, incorporando ademas funcionalidades sociales y herramientas de administracion.
+AfterFilm es una aplicacion web desarrollada como proyecto final del ciclo de Desarrollo de Aplicaciones Multiplataforma. El objetivo principal del proyecto es construir una plataforma completa para consultar, organizar, valorar y administrar contenido audiovisual, principalmente peliculas y series, incorporando ademas funcionalidades sociales y herramientas de administracion.
 
 La aplicacion permite a los usuarios registrarse, iniciar sesion, explorar un catalogo de peliculas, series y libros, consultar fichas detalladas, publicar resenas, puntuar contenido, seguir a otros usuarios y participar en una experiencia social centrada en recomendaciones y valoraciones. Desde el punto de vista administrativo, el sistema permite gestionar usuarios, importar contenido desde APIs externas, revisar resenas, moderar contenido y comprobar el estado de los servicios conectados.
 
@@ -49,7 +49,7 @@ Las plataformas de catalogacion audiovisual son un caso de uso muy adecuado para
 - Arquitectura backend escalable.
 - Pruebas y documentacion tecnica.
 
-PelisApp permite aplicar estos conocimientos en un dominio conocido por cualquier usuario: peliculas, series, libros, valoraciones y recomendaciones. Esto facilita comprender el funcionamiento de la aplicacion y, al mismo tiempo, permite trabajar con un modelo de datos suficientemente amplio.
+AfterFilm permite aplicar estos conocimientos en un dominio conocido por cualquier usuario: peliculas, series, libros, valoraciones y recomendaciones. Esto facilita comprender el funcionamiento de la aplicacion y, al mismo tiempo, permite trabajar con un modelo de datos suficientemente amplio.
 
 ## 1.2 Objetivos generales
 
@@ -120,7 +120,7 @@ Se ha seguido una arquitectura por capas para mantener el codigo organizado:
 
 Java 17 es el lenguaje principal del proyecto. Se ha utilizado por ser una version LTS estable, compatible con Spring Boot 3 y adecuada para aplicaciones empresariales. Java permite trabajar con orientacion a objetos, tipado fuerte, excepciones, colecciones, streams y un ecosistema muy amplio de librerias.
 
-En PelisApp se utiliza Java para:
+En AfterFilm se utiliza Java para:
 
 - Definir entidades JPA.
 - Crear servicios de negocio.
@@ -227,7 +227,7 @@ JavaScript se utiliza para interacciones dinamicas, llamadas a endpoints REST, a
 
 ## 2.9 TMDB API
 
-TMDB, The Movie Database, es una API externa que proporciona informacion de peliculas y series. PelisApp la utiliza para importar:
+TMDB, The Movie Database, es una API externa que proporciona informacion de peliculas y series. AfterFilm la utiliza para importar:
 
 - Titulos.
 - Sinopsis.
@@ -247,7 +247,7 @@ Google Books se utiliza para importar informacion de libros. El sistema permite 
 
 ## 2.11 Ollama e IA de moderacion
 
-Ollama permite ejecutar modelos de IA de forma local. En PelisApp se utiliza para analizar contenido generado por usuarios y ayudar a detectar texto toxico o inapropiado.
+Ollama permite ejecutar modelos de IA de forma local. En AfterFilm se utiliza para analizar contenido generado por usuarios y ayudar a detectar texto toxico o inapropiado.
 
 El sistema de moderacion combina:
 
@@ -273,7 +273,7 @@ El perfil de test se define en `src/test/resources/application-test.properties`.
 
 ## 3.1 Vision general del sistema
 
-PelisApp funciona como una aplicacion cliente-servidor web. El usuario accede mediante navegador a las paginas HTML generadas por el servidor. El backend procesa las peticiones, consulta la base de datos, llama a servicios externos cuando es necesario y devuelve vistas HTML o respuestas JSON.
+AfterFilm funciona como una aplicacion cliente-servidor web. El usuario accede mediante navegador a las paginas HTML generadas por el servidor. El backend procesa las peticiones, consulta la base de datos, llama a servicios externos cuando es necesario y devuelve vistas HTML o respuestas JSON.
 
 El flujo basico es:
 
@@ -381,7 +381,7 @@ Endpoints relacionados:
 
 ## 3.8 Funcionalidades sociales
 
-PelisApp incluye un modulo social para fomentar la interaccion entre usuarios:
+AfterFilm incluye un modulo social para fomentar la interaccion entre usuarios:
 
 - Busqueda de usuarios.
 - Perfil publico.
@@ -496,7 +496,7 @@ El administrador puede revisar contenido pendiente, aprobarlo o rechazarlo. Esto
 
 ## 3.14 Monitorizacion del sistema
 
-PelisApp incluye endpoints para comprobar el estado de:
+AfterFilm incluye endpoints para comprobar el estado de:
 
 - Base de datos.
 - TMDB.
@@ -571,7 +571,7 @@ BUILD SUCCESS
 
 # 4. Descripcion grafica de la aplicacion
 
-Esta seccion describe las pantallas principales de PelisApp. En la version final de la memoria se recomienda insertar capturas reales de cada pantalla.
+Esta seccion describe las pantallas principales de AfterFilm. En la version final de la memoria se recomienda insertar capturas reales de cada pantalla.
 
 ## 4.1 Pantalla de inicio
 
@@ -703,13 +703,13 @@ Para ejecutar el proyecto se necesitan:
 Crear una base de datos MySQL:
 
 ```sql
-CREATE DATABASE PelisApp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE AfterFilm CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
 Configurar credenciales en variables de entorno o en `application.properties`:
 
 ```properties
-spring.datasource.url=jdbc:mysql://localhost:3306/PelisApp
+spring.datasource.url=jdbc:mysql://localhost:3306/AfterFilm
 spring.datasource.username=root
 spring.datasource.password=tu_password
 ```
@@ -893,7 +893,7 @@ El presupuesto se divide en recursos humanos, hardware, software y servicios ext
 - Documentacion de Ollama: https://ollama.com
 - Documentacion de Caffeine Cache: https://github.com/ben-manes/caffeine
 - Documentacion de JJWT: https://github.com/jwtk/jjwt
-- Repositorio y documentacion interna del proyecto PelisApp: carpeta `docs/`
+- Repositorio y documentacion interna del proyecto AfterFilm: carpeta `docs/`
 
 ---
 
@@ -902,7 +902,7 @@ El presupuesto se divide en recursos humanos, hardware, software y servicios ext
 ## 9.1 Estructura del proyecto
 
 ```text
-PelisApp/
+AfterFilm/
   src/
     main/
       java/alicanteweb/pelisapp/
@@ -1047,7 +1047,7 @@ src/main/java/alicanteweb/pelisapp/config/EmailConfig.java
 Prueba de contexto de Spring:
 
 ```text
-src/test/java/alicanteweb/pelisapp/PelisAppApplicationTests.java
+src/test/java/alicanteweb/pelisapp/AfterFilmApplicationTests.java
 ```
 
 Comando:

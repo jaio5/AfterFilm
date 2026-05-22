@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Perfil — PelisApp</title>
+    <title>Mi Perfil — AfterFilm</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
@@ -13,7 +13,9 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> PelisApp</a>
+            <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> AfterFilm</a>
+            <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
+
             <div class="navbar-nav-links">
                 <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
                 <a th:href="@{/series}"><i class="fas fa-tv"></i> Series</a>
@@ -144,7 +146,7 @@
                 </span>
                 <div class="profile-review-stars">
                     <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
-                    <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"
+                    <span th:if="${review.stars < 5}" th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"
                           style="color:var(--bg-elevated)"></span>
                 </div>
                 <div class="profile-review-text"
@@ -169,7 +171,8 @@
                 <div th:each="item : ${favorites}" class="userlist-card">
                     <div class="userlist-poster">
                         <img th:if="${item.contentPoster != null and !item.contentPoster.isEmpty()}"
-                             th:src="${item.contentPoster}" th:alt="${item.contentTitle}">
+                             th:src="${item.contentPoster}" th:alt="${item.contentTitle}"
+                             th:classappend="${item.contentType == 'book' ? 'book-cover-img' : ''}">
                         <div th:unless="${item.contentPoster != null and !item.contentPoster.isEmpty()}"
                              class="userlist-poster-placeholder">
                             <i th:class="${item.contentType == 'series' ? 'fas fa-tv' : (item.contentType == 'book' ? 'fas fa-book' : 'fas fa-film')}"></i>
@@ -203,7 +206,8 @@
                 <div th:each="item : ${watchlist}" class="userlist-card">
                     <div class="userlist-poster">
                         <img th:if="${item.contentPoster != null and !item.contentPoster.isEmpty()}"
-                             th:src="${item.contentPoster}" th:alt="${item.contentTitle}">
+                             th:src="${item.contentPoster}" th:alt="${item.contentTitle}"
+                             th:classappend="${item.contentType == 'book' ? 'book-cover-img' : ''}">
                         <div th:unless="${item.contentPoster != null and !item.contentPoster.isEmpty()}"
                              class="userlist-poster-placeholder">
                             <i th:class="${item.contentType == 'series' ? 'fas fa-tv' : (item.contentType == 'book' ? 'fas fa-book' : 'fas fa-film')}"></i>
@@ -230,7 +234,7 @@
     </div><!-- /profile-content -->
 
     <footer class="site-footer">
-        © 2026 PelisApp — <i class="fas fa-heart text-accent"></i> por el cine
+        © 2026 AfterFilm — <i class="fas fa-heart text-accent"></i> por el cine
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

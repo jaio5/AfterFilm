@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${movie.title + ' — PelisApp'}">Película — PelisApp</title>
+    <title th:text="${movie.title + ' — AfterFilm'}">Película — AfterFilm</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
@@ -13,7 +13,9 @@
     <!-- Navbar -->
     <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> PelisApp</a>
+            <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> AfterFilm</a>
+            <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
+
             <div class="navbar-nav-links">
                 <a th:href="@{/}"><i class="fas fa-film"></i> Películas</a>
                 <a th:href="@{/series}"><i class="fas fa-tv"></i> Series</a>
@@ -23,11 +25,15 @@
                 <a th:href="@{/register}" sec:authorize="!isAuthenticated()" class="btn-accent btn-sm">Registrarse</a>
                 <div class="user-menu" sec:authorize="isAuthenticated()">
                     <button class="user-avatar-btn" id="userAvatarBtn">
-                        <span class="user-avatar-initial" th:text="${#authentication.name.substring(0,1)}">U</span>
+                        <span class="user-avatar-initial"
+                              th:text="${currentUser != null and currentUser.username != null and !currentUser.username.isBlank()
+                                  ? #strings.substring(currentUser.username, 0, 1).toUpperCase()
+                                  : 'U'}">U</span>
                     </button>
                     <div class="user-dropdown" id="userDropdown">
                         <div class="user-dropdown-header">
-                            <span class="user-dropdown-name" th:text="${#authentication.name}">Usuario</span>
+                            <span class="user-dropdown-name"
+                                  th:text="${currentUser != null and currentUser.username != null ? currentUser.username : 'Usuario'}">Usuario</span>
                         </div>
                         <a th:href="@{/perfil}" class="user-dropdown-item"><i class="fas fa-user"></i> Mi perfil</a>
                         <a th:href="@{/feed}" class="user-dropdown-item"><i class="fas fa-stream"></i> Mi feed</a>
@@ -46,23 +52,21 @@
     </nav>
 
     <!-- Hero section -->
-    <div class="detail-hero">
+    <div class="detail-hero"
+         th:with="posterUrl=${@imageUrlService.moviePosterUrl(movie, 'w500')},fallbackPosterUrl=${@imageUrlService.tmdbImageUrl(movie.posterPath, 'w500')}">
         <div class="detail-hero-backdrop"
-             th:with="backdropUrl=${movie.posterLocalPath != null and !movie.posterLocalPath.isEmpty() ? '/images/' + movie.posterLocalPath : (movie.posterPath != null and !movie.posterPath.isEmpty() ? 'https://image.tmdb.org/t/p/w500' + movie.posterPath : null)}"
-             th:style="${backdropUrl != null ? 'background-image: url(' + backdropUrl + ')' : 'background: var(--bg-elevated)'}">
+             th:style="${posterUrl != null ? 'background-image: url(' + posterUrl + ')' : (fallbackPosterUrl != null ? 'background-image: url(' + fallbackPosterUrl + ')' : 'background: var(--bg-elevated)')}">
     </div>
         <div class="detail-hero-content">
 
             <!-- Poster -->
             <div class="detail-poster">
-                <img th:if="${movie.posterLocalPath != null and !movie.posterLocalPath.isEmpty()}"
-                     th:src="${movie.posterLocalPath}" th:alt="${movie.title}">
-                <img th:if="${(movie.posterLocalPath == null or movie.posterLocalPath.isEmpty())
-                              and (movie.posterPath != null and !movie.posterPath.isEmpty())}"
-                     th:src="${movie.posterPath.startsWith('http') ? movie.posterPath : 'https://image.tmdb.org/t/p/w500' + movie.posterPath}"
+                <img th:if="${posterUrl != null and !posterUrl.isEmpty()}"
+                     th:src="${posterUrl}"
+                     th:data-fallback-src="${fallbackPosterUrl}"
+                     onerror="if (this.dataset.fallbackSrc && this.src !== this.dataset.fallbackSrc) { this.src = this.dataset.fallbackSrc; } else { this.style.display='none'; const ph=this.nextElementSibling; if (ph) ph.style.display='flex'; }"
                      th:alt="${movie.title}">
-                <div th:if="${(movie.posterLocalPath == null or movie.posterLocalPath.isEmpty())
-                              and (movie.posterPath == null or movie.posterPath.isEmpty())}"
+                <div th:style="${posterUrl != null and !posterUrl.isEmpty() ? 'display:none' : 'display:flex'}"
                      class="detail-poster-placeholder">
                     <i class="fas fa-film"></i>
                 </div>
@@ -94,7 +98,7 @@
 
                 <!-- Favoritos / Quiero ver (solo usuarios autenticados) -->
                 <div class="detail-list-actions" sec:authorize="isAuthenticated()"
-                     th:attr="data-content-type='movie',data-content-id=${movie.id},data-content-title=${movie.title},data-content-poster=${movie.posterLocalPath ?: ''}">
+                     th:attr="data-content-type='movie',data-content-id=${movie.id},data-content-title=${movie.title},data-content-poster=${posterUrl ?: ''}">
                     <button class="btn-list" id="btnFavorite" onclick="toggleList('FAVORITE')">
                         <i class="far fa-heart"></i> <span>Favorito</span>
                     </button>
@@ -168,7 +172,8 @@
                     <i class="fas fa-check-circle"></i>
                     <div>
                         <strong>Tu valoración:</strong>
-                        <span th:each="i : ${#numbers.sequence(1, userReview.stars)}" style="color:#f59e0b;">★</span>
+                        <span th:if="${userReview.stars != null and userReview.stars > 0}"
+                              th:each="i : ${#numbers.sequence(1, userReview.stars)}" style="color:#f59e0b;">★</span>
                         <br>
                         <em th:if="${userReview.text != null and !userReview.text.trim().isEmpty()}"
                             th:text="${userReview.text}"></em>
@@ -207,8 +212,10 @@
                            th:text="${review.user.username}">Usuario</a>
                     </div>
                     <div class="review-stars-display">
-                        <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
-                        <span th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
+                        <span th:if="${review.stars != null and review.stars > 0}"
+                              th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
+                        <span th:if="${review.stars != null and review.stars < 5}"
+                              th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
                     </div>
                 </div>
                 <div class="review-body">
@@ -250,13 +257,15 @@
                 </div>
                 <div class="rating-count" th:text="${movieStats.totalReviews + ' valoraciones'}">0</div>
                 <div style="margin-top:1rem;">
-                    <div th:each="star : ${#numbers.sequence(5, 1, -1)}" class="dist-bar-row">
+                    <div th:each="step : ${#numbers.sequence(1, 5)}"
+                         th:with="star=${6 - step}"
+                         class="dist-bar-row">
                         <span th:text="${star}">5</span>
                         <div class="dist-bar-track">
                             <div class="dist-bar-fill"
                                  th:style="'width:' + ${movieStats.getStarPercentage(star)} + '%'"></div>
                         </div>
-                        <span th:text="${movieStats.starDistribution[star - 1]}">0</span>
+                        <span th:text="${movieStats.getStarCount(star)}">0</span>
                     </div>
                 </div>
             </div>
@@ -307,7 +316,7 @@
     </div>
 
     <footer class="site-footer">
-        © 2026 PelisApp — <i class="fas fa-heart text-accent"></i> por el cine
+        © 2026 AfterFilm — <i class="fas fa-heart text-accent"></i> por el cine
     </footer>
 
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -367,7 +376,7 @@
                 const raw = Object.fromEntries(data.entries());
                 const payload = {
                     movieId: parseInt(raw.movieId),
-                    text: raw.text && raw.text.trim() ? raw.text.trim() : null,
+                    text: raw.text && raw.text.trim() ? raw.text.trim() : "",
                     stars: parseInt(raw.stars)
                 };
                 const msg = document.getElementById('resenaMessage');

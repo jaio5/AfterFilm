@@ -1,4 +1,4 @@
-# 🎉 RESUMEN FINAL - PelisApp - Todas las Funcionalidades Implementadas
+# 🎉 RESUMEN FINAL - AfterFilm - Todas las Funcionalidades Implementadas
 
 ## ✅ **ESTADO FINAL: COMPLETAMENTE FUNCIONAL**
 
@@ -177,7 +177,7 @@ spring.mail.host=smtp.gmail.com                   # CONFIGURADO
 
 ## 🎉 **CONCLUSIÓN**
 
-**PelisApp está completamente funcional con todas las características solicitadas implementadas, probadas y documentadas.**
+**AfterFilm está completamente funcional con todas las características solicitadas implementadas, probadas y documentadas.**
 
 **El sistema proporciona:**
 - Visibilidad completa del estado de conexiones

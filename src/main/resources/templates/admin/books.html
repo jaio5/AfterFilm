@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Libros - PelisApp</title>
+    <title>Admin Libros - AfterFilm</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>
@@ -11,9 +11,11 @@
     <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-film"></i> PelisApp
+                <i class="fas fa-film"></i> AfterFilm
                 <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
             </a>
+            <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
+
             <div class="navbar-nav-links">
                 <a th:href="@{/admin}"><i class="fas fa-home"></i> Panel</a>
                 <a th:href="@{/libros}"><i class="fas fa-book"></i> Ver Libros</a>
@@ -64,6 +66,9 @@
                 <div style="display:flex;gap:0.5rem;margin-top:0.5rem;flex-wrap:wrap">
                     <input type="text" id="googleSearchInput" placeholder="Ej: El nombre del viento..." class="form-input" style="flex:1;min-width:220px;padding:0.4rem 0.6rem;font-size:0.85rem">
                     <button onclick="searchGoogleBooks()" class="btn-accent" style="white-space:nowrap"><i class="fas fa-search"></i> Buscar</button>
+                    <button onclick="importSelectedBooks()" id="importSelectedBooksBtn" class="btn-ghost" style="white-space:nowrap" disabled>
+                        <i class="fas fa-download"></i> Importar seleccionados
+                    </button>
                 </div>
                 <div id="googleSearchResults" style="margin-top:0.75rem;display:grid;gap:0.5rem"></div>
             </div>
@@ -92,12 +97,60 @@
     <script>
         let currentPage = 0;
         let currentQuery = '';
+        const selectedBookIds = new Set();
+
+        async function readResponse(response) {
+            const contentType = response.headers.get('content-type') || '';
+            const body = contentType.includes('application/json')
+                ? await response.json()
+                : await response.text();
+            if (!response.ok) {
+                const message = typeof body === 'string' ? body : (body.message || body.error || JSON.stringify(body));
+                throw new Error(message || `HTTP ${response.status}`);
+            }
+            return body;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[ch]));
+        }
+
+        function jsString(value) {
+            return JSON.stringify(String(value ?? ''));
+        }
+
+        function coverHtml(url) {
+            return url
+                ? `<img src="${escapeHtml(url)}" alt="" style="width:42px;height:62px;object-fit:cover;border-radius:4px;background:var(--border)">`
+                : `<div style="width:42px;height:62px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fas fa-book"></i></div>`;
+        }
+
+        function updateSelectedBooksButton() {
+            const btn = document.getElementById('importSelectedBooksBtn');
+            btn.disabled = selectedBookIds.size === 0;
+            btn.innerHTML = `<i class="fas fa-download"></i> Importar seleccionados (${selectedBookIds.size})`;
+        }
+
+        function toggleBookSelection(googleId, checked) {
+            if (checked) selectedBookIds.add(String(googleId));
+            else selectedBookIds.delete(String(googleId));
+            updateSelectedBooksButton();
+        }
 
         async function loadBooks(page = 0) {
-            currentQuery = document.getElementById('booksLocalSearch').value.trim();
-            const queryParam = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
-            const res = await fetch(`/api/admin/books?page=${page}&size=20${queryParam}`);
-            const data = await res.json();
+            let data;
+            try {
+                currentQuery = document.getElementById('booksLocalSearch').value.trim();
+                const queryParam = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
+                const res = await fetch(`/api/admin/books?page=${page}&size=20${queryParam}`);
+                data = await readResponse(res);
+            } catch (err) {
+                document.getElementById('booksStats').textContent = 'Error cargando libros';
+                document.getElementById('booksTableBody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:#fca5a5">${escapeHtml(err.message)}</td></tr>`;
+                return;
+            }
             document.getElementById('booksStats').textContent = currentQuery
                 ? `Encontrados: ${data.totalElements} libros`
                 : `Total: ${data.totalElements} libros`;
@@ -108,12 +161,12 @@
                 tbody.innerHTML = data.content.map(b => `
                     <tr>
                         <td>${b.id}</td>
-                        <td><a href="/libro/${b.id}" style="color:var(--accent)">${b.title}</a></td>
-                        <td style="font-size:0.8rem">${b.authors || '—'}</td>
-                        <td style="font-size:0.8rem">${b.publisher || '—'}</td>
-                        <td>${b.publishedDate ? b.publishedDate.substring(0,4) : '—'}</td>
+                        <td><a href="/libro/${b.id}" style="color:var(--accent)">${escapeHtml(b.title)}</a></td>
+                        <td style="font-size:0.8rem">${escapeHtml(b.authors || '—')}</td>
+                        <td style="font-size:0.8rem">${escapeHtml(b.publisher || '—')}</td>
+                        <td>${escapeHtml(b.publishedDate ? b.publishedDate.substring(0,4) : '—')}</td>
                         <td>
-                            <button onclick="deleteBook(${b.id}, '${(b.title || '').replace(/'/g, "\\'")}')"
+                            <button onclick="deleteBook(${b.id}, ${jsString(b.title)})"
                                     style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:0.78rem;padding:0.2rem 0.4rem"
                                     title="Eliminar libro">
                                 <i class="fas fa-trash"></i>
@@ -153,59 +206,98 @@
 
         async function doSearchImport(q, maxResults) {
             showLog(`Buscando e importando "${q}" (máx ${maxResults})...`);
-            const res = await fetch(`/api/admin/books/search-import?q=${encodeURIComponent(q)}&maxResults=${maxResults}`, { method: 'POST' });
-            const data = await res.json();
-            showLog(data.success ? `✅ Importados ${data.imported} libros.` : `❌ Error: ${data.error}`, !data.success);
-            if (data.success) loadBooks(0);
+            try {
+                const res = await fetch(`/api/admin/books/search-import?q=${encodeURIComponent(q)}&maxResults=${maxResults}`, { method: 'POST' });
+                const data = await readResponse(res);
+                showLog(data.success ? `Importados ${data.imported} libros nuevos.` : `Error: ${data.error}`, !data.success);
+                if (data.success) loadBooks(0);
+            } catch (err) {
+                showLog(`Error importando libros: ${err.message}`, true);
+            }
         }
 
         async function importByGoogleId() {
             const id = document.getElementById('googleIdInput').value.trim();
             if (!id) { alert('Introduce un Google Books ID'); return; }
             showLog(`Importando libro con ID "${id}"...`);
-            const res = await fetch(`/api/admin/books/import/${encodeURIComponent(id)}`, { method: 'POST' });
-            const data = await res.json();
-            showLog(data.success ? `✅ Libro "${data.title}" importado (ID: ${data.id})` : `❌ Error: ${data.error || data.message}`, !data.success);
-            if (data.success) loadBooks(0);
+            try {
+                const res = await fetch(`/api/admin/books/import/${encodeURIComponent(id)}`, { method: 'POST' });
+                const data = await readResponse(res);
+                showLog(data.success ? `Libro "${data.title}" importado (ID: ${data.id})` : `Error: ${data.error || data.message}`, !data.success);
+                if (data.success) loadBooks(0);
+            } catch (err) {
+                showLog(`Error importando libro: ${err.message}`, true);
+            }
         }
 
         async function searchGoogleBooks() {
             const q = document.getElementById('googleSearchInput').value.trim();
             if (!q) { alert('Introduce un nombre de libro o autor'); return; }
+            selectedBookIds.clear();
+            updateSelectedBooksButton();
             const resultsBox = document.getElementById('googleSearchResults');
             resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Buscando en Google Books...</div>';
-            const res = await fetch(`/api/admin/books/search-google?q=${encodeURIComponent(q)}`);
-            const data = await res.json();
+            let data;
+            try {
+                const res = await fetch(`/api/admin/books/search-google?q=${encodeURIComponent(q)}&maxResults=20`);
+                data = await readResponse(res);
+            } catch (err) {
+                resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${escapeHtml(err.message)}</div>`;
+                return;
+            }
             if (!data.success) {
-                resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${data.error || 'No se pudo buscar'}</div>`;
+                resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${escapeHtml(data.error || 'No se pudo buscar')}</div>`;
                 return;
             }
             if (!data.results || data.results.length === 0) {
                 resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Sin resultados.</div>';
                 return;
             }
-            resultsBox.innerHTML = data.results.slice(0, 8).map(b => `
-                <div style="display:flex;gap:0.75rem;align-items:center;background:var(--bg-elevated);border-radius:6px;padding:0.6rem">
-                    ${b.coverUrl ? `<img src="${b.coverUrl}" alt="" style="width:42px;max-height:64px;border-radius:4px;object-fit:cover">` : '<div style="width:42px;height:62px;background:var(--border);border-radius:4px"></div>'}
-                    <div style="flex:1;min-width:0">
-                        <div style="font-weight:700">${b.title || 'Sin titulo'}</div>
-                        <div style="font-size:0.78rem;color:var(--text-muted)">${b.authors || 'Autor desconocido'} - ${b.publishedDate || 'sin fecha'}</div>
-                    </div>
-                    <button onclick="importSearchedBook('${String(b.googleBooksId).replace(/'/g, "\\'")}')" class="${b.alreadyImported ? 'btn-ghost' : 'btn-accent'}" style="white-space:nowrap" ${b.alreadyImported ? 'disabled' : ''}>
-                        ${b.alreadyImported ? 'Ya importado' : 'Importar'}
-                    </button>
-                </div>
+            resultsBox.innerHTML = data.results.slice(0, 12).map(b => `
+                <label style="display:flex;gap:0.75rem;align-items:center;background:var(--bg-elevated);border-radius:6px;padding:0.6rem;cursor:${b.alreadyImported ? 'default' : 'pointer'}">
+                    <input type="checkbox" value="${escapeHtml(b.googleBooksId)}" ${b.alreadyImported ? 'disabled' : ''} onchange="toggleBookSelection(this.value, this.checked)" style="width:18px;height:18px;accent-color:var(--accent)">
+                    ${coverHtml(b.coverUrl)}
+                    <span style="flex:1;min-width:0">
+                        <span style="display:block;font-weight:700">${escapeHtml(b.title || 'Sin título')}</span>
+                        <span style="display:block;font-size:0.78rem;color:var(--text-muted)">${escapeHtml(b.authors || 'Autor desconocido')} · ${escapeHtml(b.publishedDate || 'sin fecha')}</span>
+                    </span>
+                    <span class="${b.alreadyImported ? 'badge-ok' : 'badge-info'}">${b.alreadyImported ? 'Ya importado' : 'Disponible'}</span>
+                </label>
             `).join('');
         }
 
         async function importSearchedBook(googleId) {
             showLog(`Importando libro con ID "${googleId}"...`);
-            const res = await fetch(`/api/admin/books/import/${encodeURIComponent(googleId)}`, { method: 'POST' });
-            const data = await res.json();
-            showLog(data.success ? `Libro "${data.title}" importado (ID: ${data.id})` : `Error: ${data.error || data.message}`, !data.success);
-            if (data.success) {
-                loadBooks(0);
-                searchGoogleBooks();
+            try {
+                const res = await fetch(`/api/admin/books/import/${encodeURIComponent(googleId)}`, { method: 'POST' });
+                const data = await readResponse(res);
+                showLog(data.success ? `Libro "${data.title}" importado (ID: ${data.id})` : `Error: ${data.error || data.message}`, !data.success);
+                if (data.success) {
+                    loadBooks(0);
+                    searchGoogleBooks();
+                }
+            } catch (err) {
+                showLog(`Error importando libro: ${err.message}`, true);
+            }
+        }
+
+        async function importSelectedBooks() {
+            if (selectedBookIds.size === 0) { alert('Selecciona al menos un libro'); return; }
+            showLog(`Importando ${selectedBookIds.size} libros seleccionados...`);
+            const body = new FormData();
+            selectedBookIds.forEach(id => body.append('googleIds', id));
+            try {
+                const res = await fetch('/api/admin/books/import-selected', { method: 'POST', body });
+                const data = await readResponse(res);
+                showLog(data.message || 'Importación completada', !data.success);
+                if (data.success) {
+                    selectedBookIds.clear();
+                    updateSelectedBooksButton();
+                    loadBooks(0);
+                    searchGoogleBooks();
+                }
+            } catch (err) {
+                showLog('Error: ' + err.message, true);
             }
         }
 

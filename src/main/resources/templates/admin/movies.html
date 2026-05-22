@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Películas - Admin PelisApp</title>
+    <title>Películas - Admin AfterFilm</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>
@@ -11,9 +11,11 @@
     <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-film"></i> PelisApp
+                <i class="fas fa-film"></i> AfterFilm
                 <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
             </a>
+            <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
+
             <div class="navbar-nav-links">
                 <a th:href="@{/admin}"><i class="fas fa-arrow-left"></i> Panel</a>
                 <a th:href="@{/}"><i class="fas fa-home"></i> App</a>
@@ -63,6 +65,19 @@
             </div>
         </div>
 
+        <div class="admin-section">
+            <div class="admin-section-title"><i class="fas fa-magnifying-glass"></i>Buscar por nombre en TMDB</div>
+            <p style="margin-top:-0.4rem;color:var(--text-muted);font-size:0.85rem">Busca películas y selecciona una o varias para importarlas al catálogo.</p>
+            <div style="display:flex;gap:0.5rem;margin-top:0.75rem;flex-wrap:wrap">
+                <input type="text" id="tmdbSearchInput" placeholder="Ej: Matrix..." class="form-input" style="flex:1;min-width:220px;padding:0.4rem 0.6rem;font-size:0.85rem">
+                <button onclick="searchTmdbMovies()" class="btn-accent" style="white-space:nowrap"><i class="fas fa-search"></i> Buscar</button>
+                <button onclick="importSelectedMovies()" id="importSelectedMoviesBtn" class="btn-ghost" style="white-space:nowrap" disabled>
+                    <i class="fas fa-download"></i> Importar seleccionadas
+                </button>
+            </div>
+            <div id="tmdbSearchResults" style="margin-top:0.75rem;display:grid;gap:0.5rem"></div>
+        </div>
+
         <!-- Poster maintenance -->
         <div class="admin-section-title"><i class="fas fa-images"></i>Mantenimiento de Imágenes</div>
         <div class="admin-grid-2" style="margin-bottom:1.5rem">
@@ -110,18 +125,24 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="movie : ${movies}">
+                        <tr th:each="movie : ${movies}" th:with="posterUrl=${@imageUrlService.moviePosterUrl(movie, 'w92')}, remotePosterUrl=${@imageUrlService.tmdbImageUrl(movie.posterPath, 'w92')}">
                             <td>
-                                <img th:src="@{'/data/images/posters/' + ${movie.posterLocalPath}}"
+                                <img th:if="${posterUrl != null and !posterUrl.isBlank()}"
+                                     th:src="${posterUrl}"
                                      th:alt="${movie.title}"
                                      style="width:44px;height:66px;object-fit:cover;border-radius:4px;background:var(--bg-elevated)" />
+                                <div th:if="${posterUrl == null or posterUrl.isBlank()}"
+                                     style="width:44px;height:66px;border-radius:4px;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;color:var(--text-muted)">
+                                    <i class="fas fa-film"></i>
+                                </div>
                             </td>
                             <td>
                                 <a th:href="@{'/pelicula/' + ${movie.id}}" style="color:var(--text-primary);font-weight:500" th:text="${movie.title}">Título</a>
                             </td>
                             <td>
-                                <span th:if="${movie.posterLocalPath != null}" class="badge-ok"><i class="fas fa-check"></i> OK</span>
-                                <span th:if="${movie.posterLocalPath == null}" class="badge-err"><i class="fas fa-times"></i> Falta</span>
+                                <span th:if="${posterUrl != null and posterUrl == remotePosterUrl}" class="badge-info"><i class="fas fa-cloud"></i> Remota</span>
+                                <span th:if="${posterUrl != null and posterUrl != remotePosterUrl}" class="badge-ok"><i class="fas fa-check"></i> Local</span>
+                                <span th:if="${posterUrl == null or posterUrl.isBlank()}" class="badge-err"><i class="fas fa-times"></i> Falta</span>
                             </td>
                             <td>
                                 <button class="btn-ghost" style="font-size:0.75rem;padding:0.25rem 0.6rem"
@@ -146,6 +167,8 @@
     </div>
 
     <script>
+        const selectedMovieIds = new Set();
+
         function updateStatus(message, isLoading) {
             document.getElementById('status').textContent =
                 (isLoading ? '⏳ ' : '') + message;
@@ -161,6 +184,76 @@
                 throw new Error(message || `HTTP ${response.status}`);
             }
             return body;
+        }
+
+        function escapeHtml(value) {
+            return String(value ?? '').replace(/[&<>"']/g, ch => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+            }[ch]));
+        }
+
+        function updateSelectedMoviesButton() {
+            const btn = document.getElementById('importSelectedMoviesBtn');
+            btn.disabled = selectedMovieIds.size === 0;
+            btn.innerHTML = `<i class="fas fa-download"></i> Importar seleccionadas (${selectedMovieIds.size})`;
+        }
+
+        function toggleMovieSelection(tmdbId, checked) {
+            if (checked) selectedMovieIds.add(String(tmdbId));
+            else selectedMovieIds.delete(String(tmdbId));
+            updateSelectedMoviesButton();
+        }
+
+        async function searchTmdbMovies() {
+            const q = document.getElementById('tmdbSearchInput').value.trim();
+            if (!q) { alert('Introduce un nombre de película'); return; }
+            selectedMovieIds.clear();
+            updateSelectedMoviesButton();
+            const resultsBox = document.getElementById('tmdbSearchResults');
+            resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Buscando en TMDB...</div>';
+            try {
+                const response = await fetch(`/api/admin/movies/search-tmdb?q=${encodeURIComponent(q)}`);
+                const data = await readResponse(response);
+                if (!data.success) {
+                    resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${escapeHtml(data.error || data.message || 'No se pudo buscar')}</div>`;
+                    return;
+                }
+                if (!data.results || data.results.length === 0) {
+                    resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Sin resultados.</div>';
+                    return;
+                }
+                resultsBox.innerHTML = data.results.slice(0, 12).map(movie => `
+                    <label style="display:flex;gap:0.75rem;align-items:center;background:var(--bg-elevated);border-radius:6px;padding:0.6rem;cursor:${movie.alreadyImported ? 'default' : 'pointer'}">
+                        <input type="checkbox" value="${movie.tmdbId}" ${movie.alreadyImported ? 'disabled' : ''} onchange="toggleMovieSelection('${movie.tmdbId}', this.checked)" style="width:18px;height:18px;accent-color:var(--accent)">
+                        <div style="width:42px;height:62px;background:var(--border);border-radius:4px"></div>
+                        <span style="flex:1;min-width:0">
+                            <span style="display:block;font-weight:700">${escapeHtml(movie.title || movie.originalTitle || 'Sin título')}</span>
+                            <span style="display:block;font-size:0.78rem;color:var(--text-muted)">TMDB ${movie.tmdbId} · ${escapeHtml(movie.releaseDate || 'sin fecha')}</span>
+                        </span>
+                        <span class="${movie.alreadyImported ? 'badge-ok' : 'badge-info'}">${movie.alreadyImported ? 'Ya importada' : 'Disponible'}</span>
+                    </label>
+                `).join('');
+            } catch (err) {
+                resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${escapeHtml(err.message)}</div>`;
+            }
+        }
+
+        async function importSelectedMovies() {
+            if (selectedMovieIds.size === 0) { alert('Selecciona al menos una película'); return; }
+            updateStatus(`Importando ${selectedMovieIds.size} películas seleccionadas...`, true);
+            const data = new FormData();
+            selectedMovieIds.forEach(id => data.append('tmdbIds', id));
+            try {
+                const response = await fetch('/api/admin/movies/import-selected', { method: 'POST', body: data });
+                const result = await readResponse(response);
+                updateStatus(result.message || 'Importación completada', false);
+                selectedMovieIds.clear();
+                updateSelectedMoviesButton();
+                await searchTmdbMovies();
+                setTimeout(() => window.location.reload(), 1500);
+            } catch (err) {
+                updateStatus('Error: ' + err.message, false);
+            }
         }
 
         function loadMovies(type, pages) {
@@ -236,6 +329,13 @@
                 .then(r => updateStatus(r.message || 'Reparto actualizado', false))
                 .catch(e => updateStatus('Error: ' + e.message, false));
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const input = document.getElementById('tmdbSearchInput');
+            if (input) input.addEventListener('keydown', e => {
+                if (e.key === 'Enter') searchTmdbMovies();
+            });
+        });
     </script>
 </body>
 </html>

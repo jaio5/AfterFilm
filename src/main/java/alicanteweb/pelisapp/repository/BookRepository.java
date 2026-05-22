@@ -16,6 +16,9 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     Optional<Book> findByGoogleBooksId(String googleBooksId);
     List<Book> findByTitleContainingIgnoreCase(String title);
     Page<Book> findByTitleContainingIgnoreCase(String title, Pageable pageable);
+    @Query("SELECT b FROM Book b WHERE LOWER(b.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(COALESCE(b.authors, '')) LIKE LOWER(CONCAT('%', :query, '%'))")
+    Page<Book> searchByTitleOrAuthors(@Param("query") String query, Pageable pageable);
     Page<Book> findAll(Pageable pageable);
 
     Page<Book> findByCategoriesContainingIgnoreCase(String category, Pageable pageable);
@@ -23,8 +26,8 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     @Query("SELECT b.categories FROM Book b WHERE b.categories IS NOT NULL AND b.categories <> ''")
     List<String> findAllCategoryStrings();
 
-    @Query(value = "SELECT * FROM books WHERE categories REGEXP :pattern",
-           countQuery = "SELECT COUNT(*) FROM books WHERE categories REGEXP :pattern",
+    @Query(value = "SELECT * FROM books WHERE categories ~* :pattern",
+           countQuery = "SELECT COUNT(*) FROM books WHERE categories ~* :pattern",
            nativeQuery = true)
     Page<Book> findByCategoriesMatchingPattern(@Param("pattern") String pattern, Pageable pageable);
 

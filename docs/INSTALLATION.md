@@ -1,6 +1,6 @@
-# 📦 Guía de Instalación - PelisApp
+# 📦 Guía de Instalación - AfterFilm
 
-Esta guía te llevará paso a paso a través del proceso de instalación y configuración de PelisApp en tu entorno de desarrollo.
+Esta guía te llevará paso a paso a través del proceso de instalación y configuración de AfterFilm en tu entorno de desarrollo.
 
 ## 🔧 Prerrequisitos
 
@@ -24,7 +24,7 @@ Esta guía te llevará paso a paso a través del proceso de instalación y confi
 ### 1. Clonar el Repositorio
 ```bash
 git clone [url-del-repositorio]
-cd PelisApp
+cd AfterFilm
 ```
 
 ### 2. Configurar Base de Datos MySQL
@@ -127,7 +127,7 @@ ollama pull llama3
 ollama list
 ```
 
-#### Configuración para PelisApp
+#### Configuración para AfterFilm
 ```properties
 # En application.properties (ya configurado por defecto)
 app.moderation.ollama.url=http://localhost:11434
@@ -155,7 +155,7 @@ mvn clean install
 mvn spring-boot:run
 
 # O ejecutar el JAR directamente
-java -jar target/PelisApp-0.0.1-SNAPSHOT.jar
+java -jar target/AfterFilm-0.0.1-SNAPSHOT.jar
 ```
 
 ## ✅ Verificación de Instalación

@@ -41,6 +41,7 @@ public class MovieService {
     private final TMDBClient tmdbClient;
     private final MovieRepository movieRepository;
     private final MovieImportService movieImportService;
+    private final ImageUrlService imageUrlService;
 
     public MovieDetailsDTO getCombinedByMovieId(Long id) {
         Optional<Movie> opt = movieRepository.findByIdWithCastAndDirectors(id);
@@ -75,7 +76,7 @@ public class MovieService {
         dto.setTmdbId(movie.getTmdbId());
         dto.setTitle(movie.getTitle());
         dto.setOverview(movie.getDescription());
-        dto.setPosterPath(movie.getPosterPath() != null ? movie.getPosterPath() : movie.getPosterLocalPath());
+        dto.setPosterPath(imageUrlService.moviePosterUrl(movie, "w500"));
         dto.setReleaseDate(movie.getReleaseDate() != null ? movie.getReleaseDate().toString() : null);
         return dto;
     }
@@ -220,24 +221,7 @@ public class MovieService {
      * Determina qué URL usar para mostrar la imagen
      */
     private String getImageUrl(String localPath, String remotePath) {
-        // Priorizar imagen local
-        if (localPath != null && !localPath.isEmpty()) {
-            // ImageStorageService already returns full URL path (e.g. "/images/profiles/actor.jpg")
-            // ImageStorage (via ImageService) returns relative path (e.g. "profiles/actor.jpg")
-            // Handle both formats to avoid double-prefix
-            if (localPath.startsWith("/")) {
-                return localPath;
-            }
-            return "/images/" + localPath;
-        }
-
-        // Fallback a imagen remota de TMDB
-        if (remotePath != null && !remotePath.isEmpty()) {
-            return tmdbClient.buildImageUrl(remotePath);
-        }
-
-        // Sin imagen disponible
-        return null;
+        return imageUrlService.posterUrl(localPath, remotePath, "w500");
     }
 
 
@@ -275,8 +259,8 @@ public class MovieService {
         dto.setTmdbId(movie.getTmdbId());
         dto.setTitle(movie.getTitle());
         dto.setDescription(movie.getDescription());
-        dto.setPosterPath(movie.getPosterPath());
-        dto.setPosterLocalPath(movie.getPosterLocalPath());
+        dto.setPosterPath(null);
+        dto.setPosterLocalPath(imageUrlService.moviePosterUrl(movie, "w500"));
         dto.setReleaseDate(movie.getReleaseDate());
         dto.setRuntimeMinutes(movie.getRuntimeMinutes());
         dto.setCategories(movie.getCategories().stream().map(CategoryEntity::getName).toList());

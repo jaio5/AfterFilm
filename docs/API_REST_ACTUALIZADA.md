@@ -1,4 +1,4 @@
-# API REST ACTUALIZADA - PelisApp
+# API REST ACTUALIZADA - AfterFilm
 
 ## Autenticación
 

@@ -2,6 +2,9 @@ package alicanteweb.pelisapp.service;
 
 import alicanteweb.pelisapp.entity.User;
 import alicanteweb.pelisapp.entity.UserContentList;
+import alicanteweb.pelisapp.repository.BookRepository;
+import alicanteweb.pelisapp.repository.MovieRepository;
+import alicanteweb.pelisapp.repository.TvShowRepository;
 import alicanteweb.pelisapp.repository.UserContentListRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +25,10 @@ public class UserListService {
 
     private final UserContentListRepository repo;
     private final UserRepository userRepository;
+    private final MovieRepository movieRepository;
+    private final TvShowRepository tvShowRepository;
+    private final BookRepository bookRepository;
+    private final ImageUrlService imageUrlService;
 
     /**
      * Toggles the item in the given list. Returns true if now active, false if removed.
@@ -59,6 +66,29 @@ public class UserListService {
 
     public List<UserContentList> getList(String username, String listType) {
         User user = userRepository.findByUsername(username).orElseThrow();
-        return repo.findByUser_IdAndListTypeOrderByAddedAtDesc(user.getId(), listType);
+        List<UserContentList> items = repo.findByUser_IdAndListTypeOrderByAddedAtDesc(user.getId(), listType);
+        items.forEach(this::normalizePosterForDisplay);
+        return items;
+    }
+
+    private void normalizePosterForDisplay(UserContentList item) {
+        if (item == null || item.getContentType() == null || item.getContentId() == null) {
+            return;
+        }
+        String poster = switch (item.getContentType()) {
+            case "movie" -> movieRepository.findById(item.getContentId())
+                    .map(movie -> imageUrlService.moviePosterUrl(movie, "w500"))
+                    .orElse(item.getContentPoster());
+            case "series" -> tvShowRepository.findById(item.getContentId())
+                    .map(series -> imageUrlService.seriesPosterUrl(series, "w500"))
+                    .orElse(item.getContentPoster());
+            case "book" -> bookRepository.findById(item.getContentId())
+                    .map(book -> book.getCoverUrl() != null && !book.getCoverUrl().isBlank()
+                            ? book.getCoverUrl()
+                            : item.getContentPoster())
+                    .orElse(item.getContentPoster());
+            default -> item.getContentPoster();
+        };
+        item.setContentPoster(poster);
     }
 }

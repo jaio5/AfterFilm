@@ -1,22 +1,17 @@
 services:
   db:
-    image: mysql:8.0
+    image: postgres:16
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: pelisapp
-      MYSQL_USER: pelisapp
-      MYSQL_PASSWORD: pelisapp123
-      MYSQL_ROOT_PASSWORD: root123
-    command:
-      - --default-authentication-plugin=mysql_native_password
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
+      POSTGRES_DB: pelisapp
+      POSTGRES_USER: pelisapp
+      POSTGRES_PASSWORD: pelisapp123
     ports:
-      - "0.0.0.0:3307:3306"
+      - "0.0.0.0:5432:5432"
     volumes:
-      - db_data:/var/lib/mysql
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-ppelisapp123"]
+      test: ["CMD-SHELL", "pg_isready -U pelisapp -d pelisapp"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -35,7 +30,7 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: prod
       SPRING_DATASOURCE_HOST: db
-      SPRING_DATASOURCE_PORT: 3306
+      SPRING_DATASOURCE_PORT: 5432
       SPRING_DATASOURCE_DB: pelisapp
       SPRING_DATASOURCE_USERNAME: pelisapp
       SPRING_DATASOURCE_PASSWORD: pelisapp123
@@ -53,7 +48,7 @@ services:
       - pelisapp-network
 
 volumes:
-  db_data:
+  pg_data:
 
 networks:
   pelisapp-network:

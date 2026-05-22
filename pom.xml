@@ -9,10 +9,10 @@
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
 	<groupId>AlicanteWeb</groupId>
-	<artifactId>PelisApp</artifactId>
+	<artifactId>AfterFilm</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>PelisApp</name>
-	<description>PelisApp</description>
+	<name>AfterFilm</name>
+	<description>AfterFilm</description>
 	<url/>
 	<licenses>
 		<license/>
@@ -123,8 +123,8 @@
             <artifactId>thymeleaf-extras-springsecurity6</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
         <!-- Jackson JSR310 para Java 8 date/time handling (necesario para ObjectMapper.registerModule(new JavaTimeModule())) -->

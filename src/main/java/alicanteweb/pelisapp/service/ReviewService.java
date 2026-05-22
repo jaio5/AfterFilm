@@ -23,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 
 
 @Service
@@ -41,12 +42,29 @@ public class ReviewService {
 
     @Transactional
     public Review createReview(Long userId, Long movieId, String text, int stars) {
-        validateReviewInput(stars, text);
+        String reviewText = normalizeReviewText(text);
+        validateReviewInput(stars, reviewText);
         User user = findUserById(userId);
         Movie movie = findMovieById(movieId);
         checkUserBanStatus(user);
-        runModerationSync(user, text, movie.getTitle());
-        Review saved = reviewRepository.save(buildReview(user, movie, text, stars));
+        
+        // Verificar si ya existe una reseña de este usuario para esta película
+        Optional<Review> existingReview = reviewRepository.findByUserIdAndMovieId(userId, movieId);
+        if (existingReview.isPresent()) {
+            // Actualizar la reseña existente
+            Review review = existingReview.get();
+            review.setText(reviewText);
+            review.setStars(stars);
+            review.setUpdatedAt(Instant.now());
+            runModerationSync(user, reviewText, movie.getTitle());
+            Review saved = reviewRepository.save(review);
+            log.info("✅ Reseña actualizada - Usuario: {}, Película: {}, Estrellas: {}",
+                    user.getUsername(), movie.getTitle(), stars);
+            return saved;
+        }
+        
+        runModerationSync(user, reviewText, movie.getTitle());
+        Review saved = reviewRepository.save(buildReview(user, movie, reviewText, stars));
         runModerationAsync(saved);
         userService.onUserPostedReview(user.getId());
         log.info("✅ Reseña publicada - Usuario: {}, Película: {}, Estrellas: {}",
@@ -102,32 +120,68 @@ public class ReviewService {
 
     @Transactional
     public Review createSeriesReview(Long userId, Long seriesId, String text, int stars) {
-        validateReviewInput(stars, text);
+        String reviewText = normalizeReviewText(text);
+        validateReviewInput(stars, reviewText);
         User user = findUserById(userId);
         TvShow series = tvShowRepository.findById(seriesId)
                 .orElseThrow(() -> new IllegalArgumentException("Serie no encontrada: " + seriesId));
         checkUserBanStatus(user);
-        runModerationSync(user, text, series.getTitle());
-        Review saved = reviewRepository.save(buildReview(user, series, text, stars));
+        
+        // Verificar si ya existe una reseña de este usuario para esta serie
+        Optional<Review> existingReview = reviewRepository.findByUserIdAndSeriesId(userId, seriesId);
+        if (existingReview.isPresent()) {
+            // Actualizar la reseña existente
+            Review review = existingReview.get();
+            review.setText(reviewText);
+            review.setStars(stars);
+            review.setUpdatedAt(Instant.now());
+            runModerationSync(user, reviewText, series.getTitle());
+            Review saved = reviewRepository.save(review);
+            log.info("✅ Reseña de serie actualizada - Usuario: {}, Serie: {}, Estrellas: {}", user.getUsername(), series.getTitle(), stars);
+            return saved;
+        }
+        
+        runModerationSync(user, reviewText, series.getTitle());
+        Review saved = reviewRepository.save(buildReview(user, series, reviewText, stars));
         runModerationAsync(saved);
         userService.onUserPostedReview(user.getId());
-        log.info("Reseña de serie publicada - Usuario: {}, Serie: {}, Estrellas: {}", user.getUsername(), series.getTitle(), stars);
+        log.info("✅ Reseña de serie publicada - Usuario: {}, Serie: {}, Estrellas: {}", user.getUsername(), series.getTitle(), stars);
         return saved;
     }
 
     @Transactional
     public Review createBookReview(Long userId, Long bookId, String text, int stars) {
-        validateReviewInput(stars, text);
+        String reviewText = normalizeReviewText(text);
+        validateReviewInput(stars, reviewText);
         User user = findUserById(userId);
         Book book = bookRepository.findById(bookId)
                 .orElseThrow(() -> new IllegalArgumentException("Libro no encontrado: " + bookId));
         checkUserBanStatus(user);
-        runModerationSync(user, text, book.getTitle());
-        Review saved = reviewRepository.save(buildReview(user, book, text, stars));
+        
+        // Verificar si ya existe una reseña de este usuario para este libro
+        Optional<Review> existingReview = reviewRepository.findByUserIdAndBookId(userId, bookId);
+        if (existingReview.isPresent()) {
+            // Actualizar la reseña existente
+            Review review = existingReview.get();
+            review.setText(reviewText);
+            review.setStars(stars);
+            review.setUpdatedAt(Instant.now());
+            runModerationSync(user, reviewText, book.getTitle());
+            Review saved = reviewRepository.save(review);
+            log.info("✅ Reseña de libro actualizada - Usuario: {}, Libro: {}, Estrellas: {}", user.getUsername(), book.getTitle(), stars);
+            return saved;
+        }
+        
+        runModerationSync(user, reviewText, book.getTitle());
+        Review saved = reviewRepository.save(buildReview(user, book, reviewText, stars));
         runModerationAsync(saved);
         userService.onUserPostedReview(user.getId());
-        log.info("Reseña de libro publicada - Usuario: {}, Libro: {}, Estrellas: {}", user.getUsername(), book.getTitle(), stars);
+        log.info("✅ Reseña de libro publicada - Usuario: {}, Libro: {}, Estrellas: {}", user.getUsername(), book.getTitle(), stars);
         return saved;
+    }
+
+    private String normalizeReviewText(String text) {
+        return text == null || text.trim().isEmpty() ? "" : text.trim();
     }
 
     /**
@@ -229,6 +283,10 @@ public class ReviewService {
     }
 
     private void runModerationAsync(Review saved) {
+        if (saved.getText() == null || saved.getText().trim().isEmpty()) {
+            log.debug("📝 Reseña solo con estrellas - se omite moderación asíncrona, ID: {}", saved.getId());
+            return;
+        }
         moderationService.moderateReviewAsync(saved)
             .thenAccept(moderation -> log.debug("📊 Moderación asíncrona completada - ID: {}, Estado: {}",
                     saved.getId(), moderation.getStatus()))
