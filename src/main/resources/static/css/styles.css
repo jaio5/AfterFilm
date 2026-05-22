@@ -90,7 +90,10 @@ img { display: block; max-width: 100%; }
 
 .site-logo {
     height: 40px;
-    display: inline-block;
+    width: auto;
+    max-width: 150px;
+    display: block;
+    object-fit: contain;
     vertical-align: middle;
 }
 
@@ -783,6 +786,13 @@ textarea.form-input {
     font-size: 1.75rem;
     color: var(--accent);
     margin-bottom: 0.5rem;
+}
+
+.auth-logo-icon img {
+    height: 64px;
+    width: auto;
+    max-width: 220px;
+    object-fit: contain;
 }
 
 .auth-logo-name {
