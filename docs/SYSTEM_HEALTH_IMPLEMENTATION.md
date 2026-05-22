@@ -99,10 +99,12 @@ headers.set("Authorization", "Bearer " + tmdbBearerToken);
 - ✅ Información de estado del servidor (memoria, CPU)
 
 ### 5. **Página de Prueba Independiente**
-- ✅ `http://localhost:8080/connection-test.html`
-- ✅ Interfaz dedicada para verificación de conexiones
-- ✅ No requiere autenticación
+- ✅ Panel de administración en `http://localhost:8080/admin`
+- ✅ Verificación integrada en la sección de salud del sistema
+- ✅ Acceso protegido para usuarios administradores
 - ✅ Detalles técnicos completos
+
+> La página independiente de prueba fue eliminada al limpiar código legacy.
 
 ## 🎯 **Funcionalidades Verificadas**
 
@@ -215,9 +217,9 @@ spring.mail.username=javierbarcelo2106@gmail.com
 - Ve el estado en tiempo real en la parte superior
 
 ### 2. Página de Prueba:
-- Accede a `http://localhost:8080/connection-test.html`
-- No requiere autenticación
-- Información técnica detallada
+- Accede a `http://localhost:8080/admin`
+- Requiere autenticación de administrador
+- Información técnica detallada en la interfaz de administración
 
 ### 3. API Directa:
 - `GET http://localhost:8080/api/system-health`
@@ -328,10 +330,10 @@ mvn spring-boot:run
    - Requiere login (admin/admin123)
    - Vista integrada en la interfaz de administración
 
-2. **Página de Prueba:** http://localhost:8080/connection-test.html
-   - No requiere autenticación
-   - Vista detallada técnica
-   - Ideal para debugging
+2. **Estado del sistema en admin:** http://localhost:8080/admin
+  - Requiere autenticación
+  - Vista detallada técnica
+  - Ideal para debugging
 
 3. **API Directa:** http://localhost:8080/api/system-health
    - Respuesta JSON pura

@@ -432,6 +432,8 @@ Rutas web principales:
 - `/admin/bulk-loader`
 - `/admin/email-config`
 
+El modulo `/admin/books` incluye acciones de mantenimiento para reparar portadas importadas desde Google Books cuando alguna referencia queda invalida.
+
 ## 3.10 Carga de contenido desde APIs externas
 
 Una de las funciones mas importantes del proyecto es la importacion de contenido desde servicios externos.
@@ -680,7 +682,7 @@ La pantalla de moderacion permite revisar contenido detectado por el sistema aut
 
 La aplicacion incluye pantallas y endpoints para comprobar conexiones con base de datos, TMDB, Ollama, email y servidor.
 
-**Captura recomendada:** `/connection-test.html` o panel de salud en administracion.
+**Captura recomendada:** panel de salud en administracion.
 
 ---
 

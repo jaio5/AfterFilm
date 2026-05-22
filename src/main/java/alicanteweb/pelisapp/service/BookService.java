@@ -190,15 +190,15 @@ public class BookService {
         if (supabaseUrl != null) {
             return supabaseUrl;
         }
-        if (supabaseImageStorage.wantsSupabase()) {
-            return null;
-        }
-        return normalizeRemoteCoverUrl(coverUrl);
+        return isLocalStoredCover(coverUrl) ? coverUrl : null;
     }
 
-    private String normalizeRemoteCoverUrl(String url) {
-        return url.replace("http://", "https://")
-                .replace("zoom=1", "zoom=0")
-                .replace("&edge=curl", "");
+    private boolean isLocalStoredCover(String coverUrl) {
+        return !coverUrl.startsWith("http://")
+                && !coverUrl.startsWith("https://")
+                && !coverUrl.startsWith("/supabase-images/")
+                && !coverUrl.startsWith("supabase-images/")
+                && !coverUrl.startsWith("/images/")
+                && !coverUrl.startsWith("images/");
     }
 }

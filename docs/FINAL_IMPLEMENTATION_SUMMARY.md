@@ -21,7 +21,7 @@
 - ✅ Estado del servidor (memoria, CPU)
 - ✅ Configuración de email validada
 - ✅ Panel de admin con indicadores visuales en tiempo real
-- ✅ Página independiente de pruebas: `/connection-test.html`
+- ✅ Verificación integrada en el panel de administración
 
 **ENDPOINTS FUNCIONANDO:**
 ```bash
@@ -106,14 +106,16 @@ POST /admin/load-top-rated?pages=N
 
 ### **Funcionalidades Específicas:**
 - `http://localhost:8080/admin/bulk-loader` - Carga masiva de películas
-- `http://localhost:8080/connection-test.html` - Prueba de conexiones
-- `http://localhost:8080/test-download.html` - Prueba de descargas
+- `http://localhost:8080/admin` - Panel de estado y mantenimiento
+- `http://localhost:8080/admin/books` - Mantenimiento de portadas de libros
 
 ### **APIs Funcionales:**
 - `GET /api/system-health` - Estado de conexiones
 - `GET /api/movies/{id}/files` - Archivos de película
 - `GET /movies/download/{movieId}/{fileName}` - Descarga
 - `GET /movies/stream/{movieId}/{fileName}` - Streaming
+
+> Las páginas independientes de pruebas fueron retiradas y sus comprobaciones quedaron integradas en el panel de administración y en las APIs.
 
 ---
 

@@ -58,6 +58,12 @@
                         <button onclick="importByGoogleId()" class="btn-accent" style="white-space:nowrap"><i class="fas fa-plus"></i> Importar</button>
                     </div>
                 </div>
+                <div class="admin-module-card">
+                    <div class="admin-icon"><i class="fas fa-wrench"></i></div>
+                    <h4>Reparar Portadas</h4>
+                    <p>Vuelve a descargar las portadas de Google Books y elimina las rotas del catálogo</p>
+                    <button onclick="repairBookCovers()" class="btn-ghost"><i class="fas fa-sync-alt"></i> Reparar portadas</button>
+                </div>
             </div>
             <div class="admin-module-card" style="margin-top:1rem">
                 <div class="admin-icon"><i class="fas fa-magnifying-glass"></i></div>
@@ -227,6 +233,19 @@
                 if (data.success) loadBooks(0);
             } catch (err) {
                 showLog(`Error importando libro: ${err.message}`, true);
+            }
+        }
+
+        async function repairBookCovers() {
+            if (!confirm('Esto volverá a descargar las portadas de los libros. ¿Continuar?')) return;
+            showLog('Reparando portadas de libros...');
+            try {
+                const res = await fetch('/api/admin/books/repair-covers', { method: 'POST' });
+                const data = await readResponse(res);
+                showLog(`Revisión completada. Total: ${data.total_books}, reparadas: ${data.repaired}, errores: ${data.errors}`);
+                loadBooks(0);
+            } catch (err) {
+                showLog(`Error reparando portadas: ${err.message}`, true);
             }
         }
 
