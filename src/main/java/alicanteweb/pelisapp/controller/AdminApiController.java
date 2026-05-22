@@ -905,7 +905,7 @@ public class AdminApiController {
             dto.put("authors", b.getAuthors());
             dto.put("publisher", b.getPublisher());
             dto.put("publishedDate", b.getPublishedDate());
-            dto.put("coverUrl", b.getCoverUrl());
+            dto.put("coverUrl", bookService.displayCoverUrl(b.getCoverUrl()));
             return dto;
         }).toList();
         Map<String, Object> result = new HashMap<>();

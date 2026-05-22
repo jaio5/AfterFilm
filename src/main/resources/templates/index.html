@@ -123,10 +123,10 @@ let searchTimeout = null;
 
 function normalizePosterUrl(path) {
     if (!path) return null;
+    if (path.includes('image.tmdb.org')) return null;
     if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/supabase-images/') || path.startsWith('/images/')) return path;
     if (path.startsWith('supabase-images/') || path.startsWith('images/')) return '/' + path;
-    if (path.startsWith('/')) return 'https://image.tmdb.org/t/p/w500' + path;
-    return path;
+    return null;
 }
 
 function resolvePoster(item) {

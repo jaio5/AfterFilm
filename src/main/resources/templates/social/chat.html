@@ -242,8 +242,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 var icon = msg.sharedContentType === 'series' ? 'fa-tv' : (msg.sharedContentType === 'book' ? 'fa-book' : 'fa-film');
                 var link = msg.sharedContentType === 'series' ? '/serie/' : (msg.sharedContentType === 'book' ? '/libro/' : '/pelicula/');
                 html += '<a href="' + link + msg.sharedContentId + '" class="chat-shared-card">';
-                if (msg.sharedContentPoster) {
-                    html += '<img src="' + msg.sharedContentPoster + '" class="chat-shared-poster" alt="">';
+                var sharedPoster = normalizePosterUrl(msg.sharedContentPoster || '');
+                if (sharedPoster) {
+                    html += '<img src="' + escapeHtml(sharedPoster) + '" class="chat-shared-poster" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\';"><div class="chat-shared-poster-placeholder" style="display:none"><i class="fas ' + icon + '"></i></div>';
                 } else {
                     html += '<div class="chat-shared-poster-placeholder"><i class="fas ' + icon + '"></i></div>';
                 }
@@ -369,10 +370,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function normalizePosterUrl(path) {
         if (!path) return '';
+        if (path.indexOf('image.tmdb.org') >= 0) return '';
         if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0 || path.indexOf('/supabase-images/') === 0 || path.indexOf('/images/') === 0) return path;
         if (path.indexOf('supabase-images/') === 0 || path.indexOf('images/') === 0) return '/' + path;
-        if (path.indexOf('/') === 0) return 'https://image.tmdb.org/t/p/w500' + path;
-        return path;
+        return '';
     }
 
     function selectContent(id, title, poster) {
