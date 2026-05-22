@@ -121,6 +121,18 @@ let currentPage = 0;
 let currentGenre = null;
 let searchTimeout = null;
 
+function normalizePosterUrl(path) {
+    if (!path) return null;
+    if (path.includes('image.tmdb.org')) return null;
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/supabase-images/') || path.startsWith('/images/')) return path;
+    if (path.startsWith('supabase-images/') || path.startsWith('images/')) return '/' + path;
+    return null;
+}
+
+function resolvePoster(item) {
+    return item ? (normalizePosterUrl(item.posterLocalPath) || normalizePosterUrl(item.posterPath)) : null;
+}
+
 function loadMovies(page = 0, genre = null) {
     const url = genre
         ? `/api/movies/by-category?category=${encodeURIComponent(genre)}&page=${page}&size=${PAGE_SIZE}`
@@ -138,7 +150,7 @@ function loadMovies(page = 0, genre = null) {
 }
 
 function populateHero(movie) {
-    const poster = movie.posterLocalPath || null;
+    const poster = resolvePoster(movie);
     if (!poster) return;
     document.getElementById('heroBackdrop').style.backgroundImage = `url('${poster}')`;
     document.getElementById('heroEyebrow').textContent = '★ Mejor valorada del mes';
@@ -161,7 +173,7 @@ function renderMovies(movies) {
         return;
     }
     movies.forEach(movie => {
-        const poster = movie.posterLocalPath || null;
+        const poster = resolvePoster(movie);
         moviesContainer.innerHTML += `
         <div class="movie-card">
             <a href="/pelicula/${movie.id}" class="movie-card-link">

@@ -29,20 +29,20 @@ public class BookController {
     public ResponseEntity<Page<BookListDTO>> getAllBooks(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "24") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(EndpointSanitizer.page(page), EndpointSanitizer.size(size, 24, 60));
         return ResponseEntity.ok(bookService.getAllBooks(pageable));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<BookDetailDTO> getBookById(@PathVariable Long id) {
-        return bookService.getBookById(id)
+        return bookService.getBookById(EndpointSanitizer.id(id, "bookId"))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<BookListDTO>> searchBooks(@RequestParam String query) {
-        return ResponseEntity.ok(bookService.searchBooks(query));
+        return ResponseEntity.ok(bookService.searchBooks(EndpointSanitizer.requiredText(query, "query", 100)));
     }
 
     @GetMapping("/by-category")
@@ -50,8 +50,9 @@ public class BookController {
             @RequestParam String category,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "24") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(bookService.getBooksByCategory(category, pageable));
+        Pageable pageable = PageRequest.of(EndpointSanitizer.page(page), EndpointSanitizer.size(size, 24, 60));
+        return ResponseEntity.ok(bookService.getBooksByCategory(
+                EndpointSanitizer.requiredText(category, "category", 80), pageable));
     }
 
     @GetMapping("/categories")

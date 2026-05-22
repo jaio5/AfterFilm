@@ -23,7 +23,8 @@ public class SocialApiController {
             @RequestParam String q,
             @AuthenticationPrincipal UserDetails userDetails) {
         String currentUsername = userDetails != null ? userDetails.getUsername() : null;
-        return ResponseEntity.ok(socialService.searchUsers(q, currentUsername));
+        return ResponseEntity.ok(socialService.searchUsers(
+                EndpointSanitizer.requiredText(q, "q", 50), currentUsername));
     }
 
     @GetMapping("/users/{username}")
@@ -31,7 +32,7 @@ public class SocialApiController {
             @PathVariable String username,
             @AuthenticationPrincipal UserDetails userDetails) {
         String currentUsername = userDetails != null ? userDetails.getUsername() : null;
-        return ResponseEntity.ok(socialService.getPublicProfile(username, currentUsername));
+        return ResponseEntity.ok(socialService.getPublicProfile(EndpointSanitizer.username(username), currentUsername));
     }
 
     @PostMapping("/users/{username}/follow")
@@ -39,7 +40,7 @@ public class SocialApiController {
             @PathVariable String username,
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        socialService.follow(userDetails.getUsername(), username);
+        socialService.follow(userDetails.getUsername(), EndpointSanitizer.username(username));
         return ResponseEntity.ok(Map.of("following", true));
     }
 
@@ -48,7 +49,7 @@ public class SocialApiController {
             @PathVariable String username,
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        socialService.unfollow(userDetails.getUsername(), username);
+        socialService.unfollow(userDetails.getUsername(), EndpointSanitizer.username(username));
         return ResponseEntity.ok(Map.of("following", false));
     }
 
@@ -57,7 +58,7 @@ public class SocialApiController {
             @PathVariable String username,
             @AuthenticationPrincipal UserDetails userDetails) {
         String currentUsername = userDetails != null ? userDetails.getUsername() : null;
-        return ResponseEntity.ok(socialService.getFollowers(username, currentUsername));
+        return ResponseEntity.ok(socialService.getFollowers(EndpointSanitizer.username(username), currentUsername));
     }
 
     @GetMapping("/users/{username}/following")
@@ -65,7 +66,7 @@ public class SocialApiController {
             @PathVariable String username,
             @AuthenticationPrincipal UserDetails userDetails) {
         String currentUsername = userDetails != null ? userDetails.getUsername() : null;
-        return ResponseEntity.ok(socialService.getFollowing(username, currentUsername));
+        return ResponseEntity.ok(socialService.getFollowing(EndpointSanitizer.username(username), currentUsername));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

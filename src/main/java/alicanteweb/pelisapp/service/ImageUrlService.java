@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 
 @Service
 public class ImageUrlService {
@@ -47,18 +48,52 @@ public class ImageUrlService {
         if (localUrl != null) {
             return localUrl;
         }
+        String legacySupabaseUrl = supabaseUrlForStoredPath(localPath);
+        if (legacySupabaseUrl != null) {
+            return legacySupabaseUrl;
+        }
+        if (supabaseImageStorage.wantsSupabase()) {
+            return supabasePosterUrlFromTmdbId(tmdbId, filenamePrefix);
+        }
         String remoteUrl = tmdbImageUrl(remotePath, tmdbSize);
         if (remoteUrl != null) {
             return remoteUrl;
         }
-        String supabaseUrl = supabaseUrlForKnownPoster(tmdbId, filenamePrefix);
-        if (supabaseUrl != null) {
-            return supabaseUrl;
-        }
-        if (supabaseImageStorage.wantsSupabase()) {
+        return null;
+    }
+
+    private String supabasePosterUrlFromTmdbId(Long tmdbId, String filenamePrefix) {
+        if (!supabaseImageStorage.isConfigured() || tmdbId == null || filenamePrefix == null || filenamePrefix.isBlank()) {
             return null;
         }
-        return null;
+
+        String subfolder = "series".equals(filenamePrefix) ? "series" : "posters";
+        String localMatch = localPosterMatch(subfolder, filenamePrefix + "_" + tmdbId);
+        if (localMatch != null) {
+            return supabaseImageStorage.displayUrlForStoredPath(localMatch);
+        }
+
+        return supabaseImageStorage.displayUrlForStoredPath(subfolder + "/" + filenamePrefix + "_" + tmdbId + ".jpg");
+    }
+
+    private String localPosterMatch(String subfolder, String filenameStart) {
+        Path folder = storagePath.resolve(subfolder).normalize();
+        if (!folder.startsWith(storagePath) || !Files.isDirectory(folder)) {
+            return null;
+        }
+
+        try (Stream<Path> files = Files.list(folder)) {
+            return files
+                    .filter(Files::isRegularFile)
+                    .map(path -> path.getFileName().toString())
+                    .filter(name -> name.equals(filenameStart + ".jpg") || name.startsWith(filenameStart + "_"))
+                    .sorted()
+                    .findFirst()
+                    .map(name -> subfolder + "/" + name)
+                    .orElse(null);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     public String tmdbImageUrl(String path, String tmdbSize) {
@@ -78,10 +113,14 @@ public class ImageUrlService {
             return null;
         }
         if (localPath.startsWith("http://") || localPath.startsWith("https://")) {
+            if (supabaseImageStorage.wantsSupabase() && !supabaseImageStorage.isSupabasePublicUrl(localPath)) {
+                return null;
+            }
             return localPath;
         }
-        if (supabaseImageStorage.isSupabasePublicUrl(localPath)) {
-            return supabaseImageStorage.displayUrlForStoredPath(localPath);
+        String supabaseUrl = supabaseUrlForStoredPath(localPath);
+        if (supabaseUrl != null) {
+            return supabaseUrl;
         }
 
         String relativePath = stripServeBase(localPath);
@@ -92,16 +131,14 @@ public class ImageUrlService {
         return serveBase + "/" + relativePath.replace("\\", "/");
     }
 
-    private String supabaseUrlForKnownPoster(Long tmdbId, String filenamePrefix) {
+    private String supabaseUrlForStoredPath(String path) {
         if (!supabaseImageStorage.wantsSupabase()
                 || !supabaseImageStorage.isConfigured()
-                || tmdbId == null
-                || filenamePrefix == null
-                || filenamePrefix.isBlank()) {
+                || path == null
+                || path.isBlank()) {
             return null;
         }
-        return supabaseImageStorage.publicUrlForLegacyPath(
-                "posters/" + filenamePrefix + "_" + tmdbId + ".jpg");
+        return supabaseImageStorage.displayUrlForStoredPath(path);
     }
 
     private String stripServeBase(String path) {

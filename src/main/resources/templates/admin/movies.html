@@ -125,7 +125,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="movie : ${movies}" th:with="posterUrl=${@imageUrlService.moviePosterUrl(movie, 'w92')}, remotePosterUrl=${@imageUrlService.tmdbImageUrl(movie.posterPath, 'w92')}">
+                        <tr th:each="movie : ${movies}" th:with="posterUrl=${@imageUrlService.moviePosterUrl(movie, 'w92')}">
                             <td>
                                 <img th:if="${posterUrl != null and !posterUrl.isBlank()}"
                                      th:src="${posterUrl}"
@@ -140,8 +140,7 @@
                                 <a th:href="@{'/pelicula/' + ${movie.id}}" style="color:var(--text-primary);font-weight:500" th:text="${movie.title}">Título</a>
                             </td>
                             <td>
-                                <span th:if="${posterUrl != null and posterUrl == remotePosterUrl}" class="badge-info"><i class="fas fa-cloud"></i> Remota</span>
-                                <span th:if="${posterUrl != null and posterUrl != remotePosterUrl}" class="badge-ok"><i class="fas fa-check"></i> Local</span>
+                                <span th:if="${posterUrl != null and !posterUrl.isBlank()}" class="badge-ok"><i class="fas fa-check"></i> Supabase</span>
                                 <span th:if="${posterUrl == null or posterUrl.isBlank()}" class="badge-err"><i class="fas fa-times"></i> Falta</span>
                             </td>
                             <td>

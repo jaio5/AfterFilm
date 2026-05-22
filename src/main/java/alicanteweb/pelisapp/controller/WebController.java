@@ -159,15 +159,18 @@ public class WebController {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return redirect;
         try {
-            Pageable pageable = PageRequest.of(page, size);
+            int safePage = EndpointSanitizer.page(page);
+            int safeSize = EndpointSanitizer.size(size, 20, 100);
+            String safeSearch = EndpointSanitizer.optionalText(search, 80);
+            Pageable pageable = PageRequest.of(safePage, safeSize);
             Page<User> usersPage;
-            if (search != null && !search.trim().isEmpty()) {
-                usersPage = userRepository.findByUsernameContainingIgnoreCase(search, pageable);
-                model.addAttribute("search", search);
+            if (safeSearch != null) {
+                usersPage = userRepository.findByUsernameContainingIgnoreCase(safeSearch, pageable);
+                model.addAttribute("search", safeSearch);
             } else {
                 usersPage = userRepository.findAll(pageable);
             }
-            addUsersPageToModel(model, usersPage, page);
+            addUsersPageToModel(model, usersPage, safePage);
             return "admin/simple-users-fixed";
         } catch (Exception e) {
             return handleError(model, "Error cargando gestión de usuarios: " + e.getMessage(), "Error cargando usuarios");
@@ -1152,17 +1155,19 @@ Sin carátula: %d (%.1f%%)
             Authentication auth) {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
-        int target = presetTarget(presetName);
+        String safeContentType = EndpointSanitizer.contentType(contentType);
+        String safePresetName = EndpointSanitizer.requiredText(presetName, "presetName", 20).toLowerCase();
+        int target = presetTarget(safePresetName);
         if (target < 1) {
             return ResponseEntity.badRequest().body(Map.of(
                     "success", false,
-                    "message", "❌ Preset no válido: " + presetName
+                    "message", "❌ Preset no válido: " + safePresetName
             ));
         }
         return startBulkLoadInBackground(
-                "Preset " + presetName + " (" + contentType + ")",
+                "Preset " + safePresetName + " (" + safeContentType + ")",
                 target,
-                () -> bulkLoadContentUntilTarget(contentType, target)
+                () -> bulkLoadContentUntilTarget(safeContentType, target)
         );
     }
 
@@ -1219,12 +1224,13 @@ Sin carátula: %d (%.1f%%)
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
 
-        int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
-        log.info("🚀 Programando carga personalizada: {} nuevos ({})", safeTarget, contentType);
+        int safeTarget = EndpointSanitizer.size(targetMovies, 1000, 10000);
+        String safeContentType = EndpointSanitizer.contentType(contentType);
+        log.info("🚀 Programando carga personalizada: {} nuevos ({})", safeTarget, safeContentType);
         return startBulkLoadInBackground(
-                "Carga personalizada (" + contentType + ")",
+                "Carga personalizada (" + safeContentType + ")",
                 safeTarget,
-                () -> bulkLoadContentUntilTarget(contentType, safeTarget)
+                () -> bulkLoadContentUntilTarget(safeContentType, safeTarget)
         );
     }
 
@@ -1237,12 +1243,13 @@ Sin carátula: %d (%.1f%%)
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
 
-        int safeTarget = Math.min(Math.max(1, targetMovies), 10000);
-        log.info("🚀 Programando carga por categorías/fuentes: {} nuevos ({})", safeTarget, contentType);
+        int safeTarget = EndpointSanitizer.size(targetMovies, 1000, 10000);
+        String safeContentType = EndpointSanitizer.contentType(contentType);
+        log.info("🚀 Programando carga por categorías/fuentes: {} nuevos ({})", safeTarget, safeContentType);
         return startBulkLoadInBackground(
-                "Carga por categorías (" + contentType + ")",
+                "Carga por categorías (" + safeContentType + ")",
                 safeTarget,
-                () -> bulkLoadContentUntilTarget(contentType, safeTarget)
+                () -> bulkLoadContentUntilTarget(safeContentType, safeTarget)
         );
     }
 

@@ -3,6 +3,7 @@ package alicanteweb.pelisapp.controller.web;
 import alicanteweb.pelisapp.dto.ChatConversationDTO;
 import alicanteweb.pelisapp.dto.UserPublicDTO;
 import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.controller.EndpointSanitizer;
 import alicanteweb.pelisapp.service.ChatService;
 import alicanteweb.pelisapp.service.SocialService;
 import lombok.RequiredArgsConstructor;
@@ -32,13 +33,14 @@ public class SocialViewController {
                            @RequestParam(required = false) String q) {
         String currentUsername = auth != null && auth.isAuthenticated() ? auth.getName() : null;
         List<UserPublicDTO> users = null;
-        boolean hasSearch = q != null && !q.trim().isEmpty();
+        String safeQuery = EndpointSanitizer.optionalText(q, 50);
+        boolean hasSearch = safeQuery != null;
         if (hasSearch) {
-            users = socialService.searchUsers(q.trim(), currentUsername);
+            users = socialService.searchUsers(safeQuery, currentUsername);
         } else {
             users = socialService.getSuggestedUsers(currentUsername);
         }
-        model.addAttribute("q", q);
+        model.addAttribute("q", safeQuery);
         model.addAttribute("users", users);
         model.addAttribute("hasSearch", hasSearch);
         return "social/usuarios";
@@ -50,16 +52,17 @@ public class SocialViewController {
     public String publicProfile(@PathVariable String username, Model model, Authentication auth) {
         String currentUsername = auth != null && auth.isAuthenticated() ? auth.getName() : null;
         try {
-            UserPublicDTO profile = socialService.getPublicProfile(username, currentUsername);
-            List<UserPublicDTO> followers = socialService.getFollowers(username, currentUsername);
-            List<UserPublicDTO> following = socialService.getFollowing(username, currentUsername);
-            List<Review> reviews = socialService.getUserReviews(username);
+            String safeUsername = EndpointSanitizer.username(username);
+            UserPublicDTO profile = socialService.getPublicProfile(safeUsername, currentUsername);
+            List<UserPublicDTO> followers = socialService.getFollowers(safeUsername, currentUsername);
+            List<UserPublicDTO> following = socialService.getFollowing(safeUsername, currentUsername);
+            List<Review> reviews = socialService.getUserReviews(safeUsername);
             model.addAttribute("profile", profile);
             model.addAttribute("followers", followers);
             model.addAttribute("following", following);
             model.addAttribute("reviews", reviews);
             model.addAttribute("currentUsername", currentUsername);
-            model.addAttribute("isOwnProfile", username.equals(currentUsername));
+            model.addAttribute("isOwnProfile", safeUsername.equals(currentUsername));
             return "social/perfil-usuario";
         } catch (IllegalArgumentException e) {
             model.addAttribute("error", "Usuario no encontrado");
@@ -97,15 +100,16 @@ public class SocialViewController {
     public String chatWith(@PathVariable String username, Model model, Principal principal) {
         if (principal == null) return "redirect:/login";
         try {
-            UserPublicDTO otherUser = socialService.getPublicProfile(username, principal.getName());
+            String safeUsername = EndpointSanitizer.username(username);
+            UserPublicDTO otherUser = socialService.getPublicProfile(safeUsername, principal.getName());
             List<ChatConversationDTO> partners = chatService.getChatPartners(principal.getName());
             long unreadCount = chatService.getUnreadCount(principal.getName());
             model.addAttribute("otherUser", otherUser);
             model.addAttribute("partners", partners);
             model.addAttribute("unreadCount", unreadCount);
-            model.addAttribute("activePartner", username);
+            model.addAttribute("activePartner", safeUsername);
             model.addAttribute("activeStarred", partners.stream()
-                    .anyMatch(p -> p.username().equals(username) && p.starred()));
+                    .anyMatch(p -> p.username().equals(safeUsername) && p.starred()));
             model.addAttribute("currentUsername", principal.getName());
             return "social/chat";
         } catch (IllegalArgumentException e) {

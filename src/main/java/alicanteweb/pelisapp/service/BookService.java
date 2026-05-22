@@ -145,7 +145,7 @@ public class BookService {
         dto.setCoverUrl(displayCoverUrl(book.getCoverUrl()));
         return dto;
     }
-    private String displayCoverUrl(String coverUrl) {
+    public String displayCoverUrl(String coverUrl) {
         if (coverUrl == null || coverUrl.isBlank()) {
             return null;
         }

@@ -42,7 +42,9 @@ public class UserApiController {
         if (userDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        Page<Review> reviews = reviewService.getReviewsByUsername(userDetails.getUsername(), PageRequest.of(page, size));
+        Page<Review> reviews = reviewService.getReviewsByUsername(
+                userDetails.getUsername(),
+                PageRequest.of(EndpointSanitizer.page(page), EndpointSanitizer.size(size, 10, 50)));
         return ResponseEntity.ok(reviews);
     }
 }

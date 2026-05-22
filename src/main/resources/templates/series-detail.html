@@ -50,17 +50,15 @@
     <!-- Hero section -->
     <div class="detail-hero">
         <div class="detail-hero-backdrop"
-             th:with="backdropUrl=${@imageUrlService.seriesPosterUrl(series, 'w500')}"
-             th:style="${backdropUrl != null ? 'background-image: url(' + backdropUrl + ')' : 'background: var(--bg-elevated)'}">
+             th:style="${posterUrl != null and !posterUrl.isEmpty() ? 'background-image: url(' + posterUrl + ')' : 'background: var(--bg-elevated)'}">
         </div>
         <div class="detail-hero-content">
             <div class="detail-poster">
-                <img th:with="posterUrl=${@imageUrlService.seriesPosterUrl(series, 'w500')}"
-                     th:if="${posterUrl != null and !posterUrl.isEmpty()}"
+                <img th:if="${posterUrl != null and !posterUrl.isEmpty()}"
                      th:src="${posterUrl}"
+                     onerror="this.style.display='none'; const ph=this.nextElementSibling; if (ph) ph.style.display='flex';"
                      th:alt="${series.title}">
-                <div th:with="posterUrl=${@imageUrlService.seriesPosterUrl(series, 'w500')}"
-                     th:if="${posterUrl == null or posterUrl.isEmpty()}"
+                <div th:style="${posterUrl != null and !posterUrl.isEmpty() ? 'display:none' : 'display:flex'}"
                      class="detail-poster-placeholder">
                     <i class="fas fa-tv"></i>
                 </div>
@@ -93,7 +91,7 @@
                 </div>
 
                 <div class="detail-list-actions" sec:authorize="isAuthenticated()"
-                     th:attr="data-content-type='series',data-content-id=${series.id},data-content-title=${series.title},data-content-poster=${@imageUrlService.seriesPosterUrl(series, 'w500') ?: ''}">
+                     th:attr="data-content-type='series',data-content-id=${series.id},data-content-title=${series.title},data-content-poster=${posterUrl ?: ''}">
                     <button class="btn-list" id="btnFavorite" onclick="toggleList('FAVORITE')">
                         <i class="far fa-heart"></i> <span>Favorito</span>
                     </button>

@@ -109,6 +109,18 @@ let currentPage = 0;
 let currentGenre = null;
 let searchTimeout = null;
 
+function normalizePosterUrl(path) {
+    if (!path) return null;
+    if (path.includes('image.tmdb.org')) return null;
+    if (path.startsWith('http://') || path.startsWith('https://') || path.startsWith('/supabase-images/') || path.startsWith('/images/')) return path;
+    if (path.startsWith('supabase-images/') || path.startsWith('images/')) return '/' + path;
+    return null;
+}
+
+function resolvePoster(item) {
+    return item ? (normalizePosterUrl(item.posterLocalPath) || normalizePosterUrl(item.posterPath)) : null;
+}
+
 function loadSeries(page = 0, genre = currentGenre) {
     currentGenre = genre;
     const url = genre
@@ -125,7 +137,7 @@ function loadSeries(page = 0, genre = currentGenre) {
 }
 
 function populateHero(series) {
-    const poster = series.posterLocalPath || null;
+    const poster = resolvePoster(series);
     if (!poster) return;
     document.getElementById('heroBackdrop').style.backgroundImage = `url('${poster}')`;
     document.getElementById('heroEyebrow').textContent = '★ Mejor valorada del mes';
@@ -148,7 +160,7 @@ function renderSeries(items) {
         return;
     }
     items.forEach(s => {
-        const poster = s.posterLocalPath || null;
+        const poster = resolvePoster(s);
         const year = s.firstAirDate
             ? (Array.isArray(s.firstAirDate) ? s.firstAirDate[0] : String(s.firstAirDate).substring(0, 4))
             : '';

@@ -259,8 +259,9 @@ public class MovieService {
         dto.setTmdbId(movie.getTmdbId());
         dto.setTitle(movie.getTitle());
         dto.setDescription(movie.getDescription());
-        dto.setPosterPath(null);
-        dto.setPosterLocalPath(imageUrlService.moviePosterUrl(movie, "w500"));
+        String posterUrl = imageUrlService.moviePosterUrl(movie, "w500");
+        dto.setPosterPath(posterUrl);
+        dto.setPosterLocalPath(posterUrl);
         dto.setReleaseDate(movie.getReleaseDate());
         dto.setRuntimeMinutes(movie.getRuntimeMinutes());
         dto.setCategories(movie.getCategories().stream().map(CategoryEntity::getName).toList());

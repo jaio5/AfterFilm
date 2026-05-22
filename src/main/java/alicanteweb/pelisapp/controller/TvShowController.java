@@ -29,20 +29,20 @@ public class TvShowController {
     public ResponseEntity<Page<TvShowListDTO>> getAllSeries(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "24") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(EndpointSanitizer.page(page), EndpointSanitizer.size(size, 24, 60));
         return ResponseEntity.ok(tvShowService.getAllSeries(pageable));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<TvShowDetailDTO> getSeriesById(@PathVariable Long id) {
-        return tvShowService.getSeriesById(id)
+        return tvShowService.getSeriesById(EndpointSanitizer.id(id, "seriesId"))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<TvShowListDTO>> searchSeries(@RequestParam String query) {
-        return ResponseEntity.ok(tvShowService.searchSeries(query));
+        return ResponseEntity.ok(tvShowService.searchSeries(EndpointSanitizer.requiredText(query, "query", 100)));
     }
 
     @GetMapping("/top-rated-this-month")
@@ -57,8 +57,9 @@ public class TvShowController {
             @RequestParam String genre,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "24") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        return ResponseEntity.ok(tvShowService.getSeriesByGenre(genre, pageable));
+        Pageable pageable = PageRequest.of(EndpointSanitizer.page(page), EndpointSanitizer.size(size, 24, 60));
+        return ResponseEntity.ok(tvShowService.getSeriesByGenre(
+                EndpointSanitizer.requiredText(genre, "genre", 80), pageable));
     }
 
     @GetMapping("/genres")

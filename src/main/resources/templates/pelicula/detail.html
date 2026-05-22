@@ -16,9 +16,9 @@
 </header>
 <main>
     <section class="movie-detail">
-        <div class="poster">
-            <img th:if="${pelicula.posterPath != null}" th:src="${pelicula.posterPath}" alt="Poster"/>
-            <img th:unless="${pelicula.posterPath != null}" th:src="@{/img/placeholder.png}" alt="Poster"/>
+        <div class="poster" th:with="posterUrl=${@imageUrlService.moviePosterUrl(pelicula, 'w500')}">
+            <img th:if="${posterUrl != null and !posterUrl.isBlank()}" th:src="${posterUrl}" alt="Poster"/>
+            <img th:unless="${posterUrl != null and !posterUrl.isBlank()}" th:src="@{/images/placeholder.svg}" alt="Poster"/>
         </div>
         <div class="info">
             <p><strong>Año:</strong> <span th:text="${pelicula.releaseDate}">2020</span></p>
