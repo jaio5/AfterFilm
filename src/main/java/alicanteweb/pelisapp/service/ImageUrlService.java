@@ -47,6 +47,10 @@ public class ImageUrlService {
         if (localUrl != null) {
             return localUrl;
         }
+        String remoteUrl = tmdbImageUrl(remotePath, tmdbSize);
+        if (remoteUrl != null) {
+            return remoteUrl;
+        }
         String supabaseUrl = supabaseUrlForKnownPoster(tmdbId, filenamePrefix);
         if (supabaseUrl != null) {
             return supabaseUrl;
@@ -54,7 +58,7 @@ public class ImageUrlService {
         if (supabaseImageStorage.wantsSupabase()) {
             return null;
         }
-        return tmdbImageUrl(remotePath, tmdbSize);
+        return null;
     }
 
     public String tmdbImageUrl(String path, String tmdbSize) {
@@ -73,12 +77,11 @@ public class ImageUrlService {
         if (localPath == null || localPath.isBlank()) {
             return null;
         }
-        String supabaseUrl = supabaseImageStorage.displayUrlForStoredPath(localPath);
-        if (supabaseUrl != null) {
-            return supabaseUrl;
-        }
         if (localPath.startsWith("http://") || localPath.startsWith("https://")) {
             return localPath;
+        }
+        if (supabaseImageStorage.isSupabasePublicUrl(localPath)) {
+            return supabaseImageStorage.displayUrlForStoredPath(localPath);
         }
 
         String relativePath = stripServeBase(localPath);
@@ -105,6 +108,8 @@ public class ImageUrlService {
         String clean = path.trim().replace("\\", "/");
         if (clean.startsWith(serveBase + "/")) {
             clean = clean.substring(serveBase.length() + 1);
+        } else if (clean.startsWith(serveBase.substring(1) + "/")) {
+            clean = clean.substring(serveBase.length());
         } else if (clean.startsWith("/")) {
             clean = clean.substring(1);
         }
