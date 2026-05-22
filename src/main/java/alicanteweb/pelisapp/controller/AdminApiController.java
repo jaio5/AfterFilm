@@ -244,7 +244,7 @@ public class AdminApiController {
      */
     @GetMapping("/users/by-username")
     public ResponseEntity<User> findUserByUsername(@RequestParam String username) {
-        User user = authService.findUserByUsername(username);
+        User user = authService.findUserByUsername(EndpointSanitizer.username(username));
         if (user == null) {
             return ResponseEntity.notFound().build();
         }
@@ -257,7 +257,7 @@ public class AdminApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size
     ) {
-        var pageable = PageRequest.of(page, size);
+        var pageable = PageRequest.of(EndpointSanitizer.page(page), EndpointSanitizer.size(size, 20, 100));
         var userPage = userRepository.findAll(pageable);
         // Evitar exponer datos sensibles, mapear a DTO básico
         var users = userPage.getContent().stream().map(user -> {
@@ -546,7 +546,10 @@ public class AdminApiController {
     public ResponseEntity<Map<String, Object>> getAllReviews(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        var pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        var pageable = PageRequest.of(
+                EndpointSanitizer.page(page),
+                EndpointSanitizer.size(size, 20, 100),
+                Sort.by("createdAt").descending());
         var reviewsPage = reviewRepository.findAll(pageable);
         var content = reviewsPage.getContent().stream().map(r -> {
             Map<String, Object> dto = new HashMap<>();
@@ -677,7 +680,7 @@ public class AdminApiController {
     @PostMapping("/series/import/{tmdbId}")
     public ResponseEntity<Map<String, Object>> importSeriesFromTMDB(@PathVariable Long tmdbId) {
         try {
-            TvShow show = tmdbSeriesLoaderService.importOrUpdateByTmdb(tmdbId);
+            TvShow show = tmdbSeriesLoaderService.importOrUpdateByTmdb(EndpointSanitizer.id(tmdbId, "tmdbId"));
             if (show != null) {
                 return ResponseEntity.ok(Map.of("success", true, "id", show.getId(), "title", show.getTitle()));
             }
@@ -752,9 +755,12 @@ public class AdminApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String q) {
-        var pageable = PageRequest.of(page, size);
-        var showPage = (q != null && !q.isBlank())
-                ? tvShowRepository.findByTitleContainingIgnoreCase(q.trim(), pageable)
+        int safePage = EndpointSanitizer.page(page);
+        int safeSize = EndpointSanitizer.size(size, 20, 100);
+        String safeQuery = EndpointSanitizer.optionalText(q, 100);
+        var pageable = PageRequest.of(safePage, safeSize);
+        var showPage = safeQuery != null
+                ? tvShowRepository.findByTitleContainingIgnoreCase(safeQuery, pageable)
                 : tvShowRepository.findAll(pageable);
         var content = showPage.getContent().stream().map(s -> {
             Map<String, Object> dto = new HashMap<>();
@@ -771,8 +777,8 @@ public class AdminApiController {
         result.put("content", content);
         result.put("totalElements", showPage.getTotalElements());
         result.put("totalPages", showPage.getTotalPages());
-        result.put("page", page);
-        result.put("query", q);
+        result.put("page", safePage);
+        result.put("query", safeQuery);
         return ResponseEntity.ok(result);
     }
 
@@ -781,7 +787,9 @@ public class AdminApiController {
             @RequestParam String q,
             @RequestParam(defaultValue = "1") int page) {
         try {
-            JsonNode response = tmdbClient.searchTv(q, Math.max(1, page));
+            String safeQuery = EndpointSanitizer.requiredText(q, "q", 100);
+            int safePage = Math.max(1, EndpointSanitizer.page(page));
+            JsonNode response = tmdbClient.searchTv(safeQuery, safePage);
             List<Map<String, Object>> results = response == null || !response.has("results")
                     ? List.of()
                     : iterableToList(response.path("results")).stream()
@@ -800,7 +808,7 @@ public class AdminApiController {
                     "success", true,
                     "results", results,
                     "totalResults", response != null ? response.path("total_results").asInt(0) : 0,
-                    "page", response != null ? response.path("page").asInt(page) : page
+                "page", response != null ? response.path("page").asInt(safePage) : safePage
             ));
         } catch (Exception e) {
             log.error("Error buscando series en TMDB por '{}': {}", q, e.getMessage());
@@ -813,7 +821,8 @@ public class AdminApiController {
     @PostMapping("/books/import/{googleId}")
     public ResponseEntity<Map<String, Object>> importBookFromGoogle(@PathVariable String googleId) {
         try {
-            Book book = googleBooksLoaderService.importOrUpdateByGoogleId(googleId);
+            String safeGoogleId = EndpointSanitizer.requiredText(googleId, "googleId", 100);
+            Book book = googleBooksLoaderService.importOrUpdateByGoogleId(safeGoogleId);
             if (book != null) {
                 return ResponseEntity.ok(Map.of("success", true, "id", book.getId(), "title", book.getTitle()));
             }
@@ -866,7 +875,9 @@ public class AdminApiController {
             @RequestParam String q,
             @RequestParam(defaultValue = "20") int maxResults) {
         try {
-            int count = googleBooksLoaderService.searchAndImport(q, Math.min(maxResults, 40));
+            int count = googleBooksLoaderService.searchAndImport(
+                    EndpointSanitizer.requiredText(q, "q", 100),
+                    EndpointSanitizer.size(maxResults, 20, 40));
             return ResponseEntity.ok(Map.of("success", true, "imported", count));
         } catch (Exception e) {
             log.error("Error en búsqueda/importación de libros: {}", e.getMessage());
@@ -879,9 +890,12 @@ public class AdminApiController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(required = false) String q) {
-        var pageable = PageRequest.of(page, size);
-        var bookPage = (q != null && !q.isBlank())
-                ? bookRepository.searchByTitleOrAuthors(q.trim(), pageable)
+        int safePage = EndpointSanitizer.page(page);
+        int safeSize = EndpointSanitizer.size(size, 20, 100);
+        String safeQuery = EndpointSanitizer.optionalText(q, 100);
+        var pageable = PageRequest.of(safePage, safeSize);
+        var bookPage = safeQuery != null
+                ? bookRepository.searchByTitleOrAuthors(safeQuery, pageable)
                 : bookRepository.findAll(pageable);
         var content = bookPage.getContent().stream().map(b -> {
             Map<String, Object> dto = new HashMap<>();
@@ -898,8 +912,8 @@ public class AdminApiController {
         result.put("content", content);
         result.put("totalElements", bookPage.getTotalElements());
         result.put("totalPages", bookPage.getTotalPages());
-        result.put("page", page);
-        result.put("query", q);
+        result.put("page", safePage);
+        result.put("query", safeQuery);
         return ResponseEntity.ok(result);
     }
 
@@ -909,7 +923,10 @@ public class AdminApiController {
             @RequestParam(defaultValue = "0") int startIndex,
             @RequestParam(defaultValue = "12") int maxResults) {
         try {
-            JsonNode response = googleBooksClient.searchBooks(q, Math.max(0, startIndex), Math.min(Math.max(1, maxResults), 40));
+            JsonNode response = googleBooksClient.searchBooks(
+                    EndpointSanitizer.requiredText(q, "q", 100),
+                    EndpointSanitizer.page(startIndex),
+                    EndpointSanitizer.size(maxResults, 12, 40));
             List<Map<String, Object>> results = response == null || !response.has("items")
                     ? List.of()
                     : iterableToList(response.path("items")).stream()

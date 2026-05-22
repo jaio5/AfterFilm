@@ -37,29 +37,30 @@ public class MovieController {
     @GetMapping("")
     public ResponseEntity<Page<MovieListDTO>> getAllMovies(@RequestParam(defaultValue = "0") int page,
                                                           @RequestParam(defaultValue = "24") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+        Pageable pageable = PageRequest.of(EndpointSanitizer.page(page), EndpointSanitizer.size(size, 24, 60));
         Page<MovieListDTO> moviesPage = movieService.getAllMovies(pageable);
         return ResponseEntity.ok(moviesPage);
     }
 
     @GetMapping("/{id}/details")
     public MovieDetailsDTO getMovieDetails(@PathVariable Long id) {
-        return movieService.getCombinedByMovieId(id);
+        return movieService.getCombinedByMovieId(EndpointSanitizer.id(id, "movieId"));
     }
 
     @GetMapping("/tmdb/{tmdbId}/details")
     public MovieDetailsDTO getMovieDetailsByTmdbId(@PathVariable Long tmdbId) {
-        return movieService.getCombinedByTmdbId(tmdbId);
+        return movieService.getCombinedByTmdbId(EndpointSanitizer.id(tmdbId, "tmdbId"));
     }
 
     @GetMapping("/{id}/files")
     public ResponseEntity<Map<String, Object>> getMovieFiles(@PathVariable Long id) {
         try {
-            Path movieDir = Paths.get(moviesStoragePath).resolve(id.toString());
+            Long safeId = EndpointSanitizer.id(id, "movieId");
+            Path movieDir = Paths.get(moviesStoragePath).resolve(safeId.toString());
 
             if (!Files.exists(movieDir)) {
                 return ResponseEntity.ok(Map.of(
-                    "movieId", id,
+                    "movieId", safeId,
                     "files", List.of(),
                     "message", "No hay archivos disponibles para esta película"
                 ));
@@ -92,7 +93,7 @@ public class MovieController {
             }
 
             return ResponseEntity.ok(Map.of(
-                "movieId", id,
+                "movieId", safeId,
                 "files", files,
                 "totalFiles", files.size()
             ));
@@ -111,14 +112,15 @@ public class MovieController {
     public ResponseEntity<Page<MovieListDTO>> getMoviesByCategory(@RequestParam String category,
                                                                  @RequestParam(defaultValue = "0") int page,
                                                                  @RequestParam(defaultValue = "24") int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<MovieListDTO> moviesPage = movieService.getMoviesByCategory(category, pageable);
+        Pageable pageable = PageRequest.of(EndpointSanitizer.page(page), EndpointSanitizer.size(size, 24, 60));
+        Page<MovieListDTO> moviesPage = movieService.getMoviesByCategory(
+                EndpointSanitizer.requiredText(category, "category", 80), pageable);
         return ResponseEntity.ok(moviesPage);
     }
 
     @GetMapping("/search")
     public ResponseEntity<List<MovieListDTO>> searchMovies(@RequestParam String query) {
-        return ResponseEntity.ok(movieService.searchMovies(query));
+        return ResponseEntity.ok(movieService.searchMovies(EndpointSanitizer.requiredText(query, "query", 100)));
     }
 
     @GetMapping("/top-rated-this-month")

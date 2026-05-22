@@ -259,7 +259,7 @@ public class MovieService {
         dto.setTmdbId(movie.getTmdbId());
         dto.setTitle(movie.getTitle());
         dto.setDescription(movie.getDescription());
-        dto.setPosterPath(null);
+        dto.setPosterPath(imageUrlService.tmdbImageUrl(movie.getPosterPath(), "w500"));
         dto.setPosterLocalPath(imageUrlService.moviePosterUrl(movie, "w500"));
         dto.setReleaseDate(movie.getReleaseDate());
         dto.setRuntimeMinutes(movie.getRuntimeMinutes());

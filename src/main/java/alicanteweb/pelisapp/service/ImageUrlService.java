@@ -85,7 +85,7 @@ public class ImageUrlService {
             return localPath;
         }
         String supabaseUrl = supabaseUrlForStoredPath(localPath);
-        if (supabaseUrl != null && supabaseImageStorage.isSupabasePublicUrl(localPath)) {
+        if (supabaseUrl != null) {
             return supabaseUrl;
         }
 

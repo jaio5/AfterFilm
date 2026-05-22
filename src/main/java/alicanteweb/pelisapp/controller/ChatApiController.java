@@ -35,7 +35,7 @@ public class ChatApiController {
             @PathVariable String username,
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(chatService.getConversation(userDetails.getUsername(), username));
+        return ResponseEntity.ok(chatService.getConversation(userDetails.getUsername(), EndpointSanitizer.username(username)));
     }
 
     /** Send a message (optionally attaching a content recommendation) */
@@ -45,7 +45,8 @@ public class ChatApiController {
             @Valid @RequestBody SendMessageRequest req,
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(chatService.sendMessage(userDetails.getUsername(), username, req));
+        sanitizeMessageRequest(req);
+        return ResponseEntity.ok(chatService.sendMessage(userDetails.getUsername(), EndpointSanitizer.username(username), req));
     }
 
     /** Unread message count for badge */
@@ -62,7 +63,7 @@ public class ChatApiController {
             @RequestParam(defaultValue = "true") boolean starred,
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        return ResponseEntity.ok(chatService.setStarred(userDetails.getUsername(), username, starred));
+        return ResponseEntity.ok(chatService.setStarred(userDetails.getUsername(), EndpointSanitizer.username(username), starred));
     }
 
     @DeleteMapping("/conversations/{username}")
@@ -70,8 +71,20 @@ public class ChatApiController {
             @PathVariable String username,
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        chatService.deleteConversation(userDetails.getUsername(), username);
+        chatService.deleteConversation(userDetails.getUsername(), EndpointSanitizer.username(username));
         return ResponseEntity.ok(Map.of("success", true));
+    }
+
+    private void sanitizeMessageRequest(SendMessageRequest req) {
+        req.setContent(EndpointSanitizer.requiredText(req.getContent(), "content", 2000));
+        req.setSharedContentType(req.getSharedContentType() == null
+                ? null
+                : EndpointSanitizer.contentType(req.getSharedContentType()));
+        if (req.getSharedContentId() != null) {
+            req.setSharedContentId(EndpointSanitizer.id(req.getSharedContentId(), "sharedContentId"));
+        }
+        req.setSharedContentTitle(EndpointSanitizer.optionalText(req.getSharedContentTitle(), 200));
+        req.setSharedContentPoster(EndpointSanitizer.optionalText(req.getSharedContentPoster(), 1000));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

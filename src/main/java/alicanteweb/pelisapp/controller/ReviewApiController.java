@@ -39,7 +39,11 @@ public class ReviewApiController {
         if (userDetails == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
         User user = userRepository.findByUsername(userDetails.getUsername())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
-        Review review = reviewService.createReview(user.getId(), req.getMovieId(), req.getText(), req.getStars());
+        Review review = reviewService.createReview(
+                user.getId(),
+                EndpointSanitizer.id(req.getMovieId(), "movieId"),
+                EndpointSanitizer.optionalText(req.getText(), 1000),
+                req.getStars());
         return ResponseEntity.ok(toDto(review));
     }
 
@@ -48,7 +52,7 @@ public class ReviewApiController {
         if (principal == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
         User user = userRepository.findByUsername(principal.getName())
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
-        reviewService.likeReview(user.getId(), reviewId);
+        reviewService.likeReview(user.getId(), EndpointSanitizer.id(reviewId, "reviewId"));
         return ResponseEntity.ok().build();
     }
 
@@ -60,7 +64,11 @@ public class ReviewApiController {
         if (userDetails == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
         User user = userRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
-        Review review = reviewService.createSeriesReview(user.getId(), seriesId, req.getText(), req.getStars());
+        Review review = reviewService.createSeriesReview(
+                user.getId(),
+                EndpointSanitizer.id(seriesId, "seriesId"),
+                EndpointSanitizer.optionalText(req.getText(), 1000),
+                req.getStars());
         return ResponseEntity.ok(toDto(review));
     }
 
@@ -72,19 +80,23 @@ public class ReviewApiController {
         if (userDetails == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
         User user = userRepository.findByUsername(userDetails.getUsername())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
-        Review review = reviewService.createBookReview(user.getId(), bookId, req.getText(), req.getStars());
+        Review review = reviewService.createBookReview(
+                user.getId(),
+                EndpointSanitizer.id(bookId, "bookId"),
+                EndpointSanitizer.optionalText(req.getText(), 1000),
+                req.getStars());
         return ResponseEntity.ok(toDto(review));
     }
 
     @GetMapping("/series/{seriesId}")
     public ResponseEntity<List<ReviewDTO>> getReviewsBySeries(@PathVariable Long seriesId) {
-        List<Review> reviews = reviewService.getReviewsBySeriesId(seriesId);
+        List<Review> reviews = reviewService.getReviewsBySeriesId(EndpointSanitizer.id(seriesId, "seriesId"));
         return ResponseEntity.ok(reviews.stream().map(ReviewApiController::toDto).toList());
     }
 
     @GetMapping("/books/{bookId}")
     public ResponseEntity<List<ReviewDTO>> getReviewsByBook(@PathVariable Long bookId) {
-        List<Review> reviews = reviewService.getReviewsByBookId(bookId);
+        List<Review> reviews = reviewService.getReviewsByBookId(EndpointSanitizer.id(bookId, "bookId"));
         return ResponseEntity.ok(reviews.stream().map(ReviewApiController::toDto).toList());
     }
 
@@ -95,7 +107,7 @@ public class ReviewApiController {
 
     @GetMapping("/movie/{movieId}")
     public ResponseEntity<List<ReviewDTO>> getReviewsByMovie(@PathVariable Long movieId) {
-        List<Review> reviews = reviewService.getReviewsByMovieId(movieId);
+        List<Review> reviews = reviewService.getReviewsByMovieId(EndpointSanitizer.id(movieId, "movieId"));
         List<ReviewDTO> dtos = reviews.stream().map(ReviewApiController::toDto).toList();
         return ResponseEntity.ok(dtos);
     }

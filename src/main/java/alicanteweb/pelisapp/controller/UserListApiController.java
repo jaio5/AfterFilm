@@ -29,13 +29,14 @@ public class UserListApiController {
             @RequestParam(required = false, defaultValue = "") String poster,
             @AuthenticationPrincipal UserDetails userDetails) {
         if (userDetails == null) return ResponseEntity.status(401).build();
-        if (!listType.equals(UserListService.FAVORITE) && !listType.equals(UserListService.WATCHLIST)) {
-            return ResponseEntity.badRequest().body(Map.of("error", "listType must be FAVORITE or WATCHLIST"));
-        }
+        String safeListType = EndpointSanitizer.listType(listType);
+        String safeContentType = EndpointSanitizer.contentType(contentType);
+        Long safeContentId = EndpointSanitizer.id(contentId, "contentId");
         boolean active = userListService.toggle(
-                userDetails.getUsername(), listType, contentType, contentId,
-                title, poster.isEmpty() ? null : poster);
-        return ResponseEntity.ok(Map.of("active", active, "listType", listType));
+                userDetails.getUsername(), safeListType, safeContentType, safeContentId,
+                EndpointSanitizer.requiredText(title, "title", 200),
+                EndpointSanitizer.optionalText(poster, 1000));
+        return ResponseEntity.ok(Map.of("active", active, "listType", safeListType));
     }
 
     /**
@@ -51,9 +52,11 @@ public class UserListApiController {
             return ResponseEntity.ok(Map.of("favorite", false, "watchlist", false));
         }
         String username = userDetails.getUsername();
+        String safeContentType = EndpointSanitizer.contentType(contentType);
+        Long safeContentId = EndpointSanitizer.id(contentId, "contentId");
         return ResponseEntity.ok(Map.of(
-                "favorite",  userListService.isInList(username, UserListService.FAVORITE,  contentType, contentId),
-                "watchlist", userListService.isInList(username, UserListService.WATCHLIST, contentType, contentId)
+                "favorite",  userListService.isInList(username, UserListService.FAVORITE, safeContentType, safeContentId),
+                "watchlist", userListService.isInList(username, UserListService.WATCHLIST, safeContentType, safeContentId)
         ));
     }
 
