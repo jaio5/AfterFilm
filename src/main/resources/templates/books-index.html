@@ -88,6 +88,7 @@ const booksContainer = document.getElementById('books-container');
 const paginationContainer = document.getElementById('pagination-container');
 const catalogTitle = document.getElementById('catalog-title');
 const catalogInfo = document.getElementById('catalog-info');
+const PAGE_SIZE = 24;
 
 let currentPage = 0;
 let currentCategory = null;
@@ -96,8 +97,8 @@ let searchTimeout = null;
 function loadBooks(page = 0, category = currentCategory) {
     currentCategory = category;
     const url = category
-        ? `/api/books/by-category?category=${encodeURIComponent(category)}&page=${page}`
-        : `/api/books?page=${page}`;
+        ? `/api/books/by-category?category=${encodeURIComponent(category)}&page=${page}&size=${PAGE_SIZE}`
+        : `/api/books?page=${page}&size=${PAGE_SIZE}`;
     fetch(url)
         .then(res => res.json())
         .then(data => {

@@ -36,7 +36,7 @@ public class MovieController {
 
     @GetMapping("")
     public ResponseEntity<Page<MovieListDTO>> getAllMovies(@RequestParam(defaultValue = "0") int page,
-                                                          @RequestParam(defaultValue = "12") int size) {
+                                                          @RequestParam(defaultValue = "24") int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<MovieListDTO> moviesPage = movieService.getAllMovies(pageable);
         return ResponseEntity.ok(moviesPage);
@@ -110,7 +110,7 @@ public class MovieController {
     @GetMapping("/by-category")
     public ResponseEntity<Page<MovieListDTO>> getMoviesByCategory(@RequestParam String category,
                                                                  @RequestParam(defaultValue = "0") int page,
-                                                                 @RequestParam(defaultValue = "12") int size) {
+                                                                 @RequestParam(defaultValue = "24") int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<MovieListDTO> moviesPage = movieService.getMoviesByCategory(category, pageable);
         return ResponseEntity.ok(moviesPage);

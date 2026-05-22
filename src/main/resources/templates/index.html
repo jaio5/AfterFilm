@@ -115,6 +115,7 @@ const moviesContainer = document.getElementById('movies-container');
 const paginationContainer = document.getElementById('pagination-container');
 const catalogTitle = document.getElementById('catalog-title');
 const catalogInfo = document.getElementById('catalog-info');
+const PAGE_SIZE = 24;
 
 let currentPage = 0;
 let currentGenre = null;
@@ -122,8 +123,8 @@ let searchTimeout = null;
 
 function loadMovies(page = 0, genre = null) {
     const url = genre
-        ? `/api/movies/by-category?category=${encodeURIComponent(genre)}&page=${page}`
-        : `/api/movies?page=${page}`;
+        ? `/api/movies/by-category?category=${encodeURIComponent(genre)}&page=${page}&size=${PAGE_SIZE}`
+        : `/api/movies?page=${page}&size=${PAGE_SIZE}`;
     fetch(url)
         .then(res => res.json())
         .then(data => {

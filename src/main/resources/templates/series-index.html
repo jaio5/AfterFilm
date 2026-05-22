@@ -103,6 +103,7 @@ const seriesContainer = document.getElementById('series-container');
 const paginationContainer = document.getElementById('pagination-container');
 const catalogTitle = document.getElementById('catalog-title');
 const catalogInfo = document.getElementById('catalog-info');
+const PAGE_SIZE = 24;
 
 let currentPage = 0;
 let currentGenre = null;
@@ -111,8 +112,8 @@ let searchTimeout = null;
 function loadSeries(page = 0, genre = currentGenre) {
     currentGenre = genre;
     const url = genre
-        ? `/api/series/by-genre?genre=${encodeURIComponent(genre)}&page=${page}`
-        : `/api/series?page=${page}`;
+        ? `/api/series/by-genre?genre=${encodeURIComponent(genre)}&page=${page}&size=${PAGE_SIZE}`
+        : `/api/series?page=${page}&size=${PAGE_SIZE}`;
     fetch(url)
         .then(res => res.json())
         .then(data => {

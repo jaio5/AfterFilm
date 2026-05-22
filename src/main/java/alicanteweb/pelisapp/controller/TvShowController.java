@@ -28,7 +28,7 @@ public class TvShowController {
     @GetMapping("")
     public ResponseEntity<Page<TvShowListDTO>> getAllSeries(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size) {
+            @RequestParam(defaultValue = "24") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(tvShowService.getAllSeries(pageable));
     }
@@ -56,7 +56,7 @@ public class TvShowController {
     public ResponseEntity<Page<TvShowListDTO>> getSeriesByGenre(
             @RequestParam String genre,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size) {
+            @RequestParam(defaultValue = "24") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(tvShowService.getSeriesByGenre(genre, pageable));
     }

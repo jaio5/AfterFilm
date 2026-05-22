@@ -28,7 +28,7 @@ public class BookController {
     @GetMapping("")
     public ResponseEntity<Page<BookListDTO>> getAllBooks(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size) {
+            @RequestParam(defaultValue = "24") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(bookService.getAllBooks(pageable));
     }
@@ -49,7 +49,7 @@ public class BookController {
     public ResponseEntity<Page<BookListDTO>> getBooksByCategory(
             @RequestParam String category,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size) {
+            @RequestParam(defaultValue = "24") int size) {
         Pageable pageable = PageRequest.of(page, size);
         return ResponseEntity.ok(bookService.getBooksByCategory(category, pageable));
     }
