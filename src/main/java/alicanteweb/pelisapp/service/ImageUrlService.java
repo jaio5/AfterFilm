@@ -51,6 +51,10 @@ public class ImageUrlService {
         if (remoteUrl != null) {
             return remoteUrl;
         }
+        String legacySupabaseUrl = supabaseUrlForStoredPath(localPath);
+        if (legacySupabaseUrl != null) {
+            return legacySupabaseUrl;
+        }
         String supabaseUrl = supabaseUrlForKnownPoster(tmdbId, filenamePrefix);
         if (supabaseUrl != null) {
             return supabaseUrl;
@@ -80,8 +84,9 @@ public class ImageUrlService {
         if (localPath.startsWith("http://") || localPath.startsWith("https://")) {
             return localPath;
         }
-        if (supabaseImageStorage.isSupabasePublicUrl(localPath)) {
-            return supabaseImageStorage.displayUrlForStoredPath(localPath);
+        String supabaseUrl = supabaseUrlForStoredPath(localPath);
+        if (supabaseUrl != null && supabaseImageStorage.isSupabasePublicUrl(localPath)) {
+            return supabaseUrl;
         }
 
         String relativePath = stripServeBase(localPath);
@@ -90,6 +95,16 @@ public class ImageUrlService {
             return null;
         }
         return serveBase + "/" + relativePath.replace("\\", "/");
+    }
+
+    private String supabaseUrlForStoredPath(String path) {
+        if (!supabaseImageStorage.wantsSupabase()
+                || !supabaseImageStorage.isConfigured()
+                || path == null
+                || path.isBlank()) {
+            return null;
+        }
+        return supabaseImageStorage.displayUrlForStoredPath(path);
     }
 
     private String supabaseUrlForKnownPoster(Long tmdbId, String filenamePrefix) {
