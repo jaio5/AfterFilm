@@ -1099,7 +1099,9 @@ public class AdminApiController {
         for (String key : List.of("extraLarge", "large", "medium", "thumbnail", "smallThumbnail")) {
             String url = imageLinks.path(key).asText(null);
             if (url != null && !url.isBlank()) {
-                return url.replace("http://", "https://");
+                return url.replace("http://", "https://")
+                        .replace("zoom=1", "zoom=0")
+                        .replace("&edge=curl", "");
             }
         }
         return "";

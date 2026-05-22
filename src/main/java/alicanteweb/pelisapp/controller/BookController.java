@@ -1,5 +1,6 @@
 package alicanteweb.pelisapp.controller;
 
+import alicanteweb.pelisapp.dto.BookHighlightDTO;
 import alicanteweb.pelisapp.dto.BookDetailDTO;
 import alicanteweb.pelisapp.dto.BookListDTO;
 import alicanteweb.pelisapp.service.BookService;
@@ -38,6 +39,13 @@ public class BookController {
         return bookService.getBookById(EndpointSanitizer.id(id, "bookId"))
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/top-rated-this-month")
+    public ResponseEntity<BookHighlightDTO> getTopRatedThisMonth() {
+        return bookService.getTopRatedThisMonth()
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build());
     }
 
     @GetMapping("/search")

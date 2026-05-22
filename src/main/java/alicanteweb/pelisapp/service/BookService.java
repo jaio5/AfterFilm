@@ -1,5 +1,6 @@
 package alicanteweb.pelisapp.service;
 
+import alicanteweb.pelisapp.dto.BookHighlightDTO;
 import alicanteweb.pelisapp.dto.BookDetailDTO;
 import alicanteweb.pelisapp.dto.BookListDTO;
 import alicanteweb.pelisapp.entity.Book;
@@ -9,9 +10,13 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -64,6 +69,19 @@ public class BookService {
 
     public Optional<BookDetailDTO> getBookById(Long id) {
         return bookRepository.findById(id).map(this::toDetailDTO);
+    }
+
+    public Optional<BookHighlightDTO> getTopRatedThisMonth() {
+        Instant startOfMonth = LocalDate.now().withDayOfMonth(1)
+                .atStartOfDay(ZoneOffset.UTC).toInstant();
+        List<Book> top = bookRepository.findTopRatedThisMonth(startOfMonth, PageRequest.of(0, 1));
+        if (!top.isEmpty()) {
+            return Optional.of(toHighlightDTO(top.get(0)));
+        }
+        Page<Book> fallback = bookRepository.findAll(PageRequest.of(0, 1));
+        return fallback.getContent().isEmpty()
+                ? Optional.empty()
+                : Optional.of(toHighlightDTO(fallback.getContent().get(0)));
     }
 
     public List<BookListDTO> searchBooks(String query) {
@@ -145,6 +163,25 @@ public class BookService {
         dto.setCoverUrl(displayCoverUrl(book.getCoverUrl()));
         return dto;
     }
+
+    private BookHighlightDTO toHighlightDTO(Book book) {
+        double[] stats = RatingStatsHelper.buildRatingMap(bookRepository.findRatingStatsByIds(List.of(book.getId()))).get(book.getId());
+        int reviewCount = stats != null ? (int) stats[1] : 0;
+        double avgRating = stats != null ? stats[0] : 0.0;
+        return new BookHighlightDTO(
+                book.getId(),
+                book.getTitle(),
+                book.getAuthors(),
+                book.getPublisher(),
+                book.getPublishedDate(),
+                book.getDescription(),
+                book.getCategories(),
+                displayCoverUrl(book.getCoverUrl()),
+                reviewCount > 0 ? avgRating : null,
+                reviewCount
+        );
+    }
+
     public String displayCoverUrl(String coverUrl) {
         if (coverUrl == null || coverUrl.isBlank()) {
             return null;
@@ -156,6 +193,12 @@ public class BookService {
         if (supabaseImageStorage.wantsSupabase()) {
             return null;
         }
-        return coverUrl;
+        return normalizeRemoteCoverUrl(coverUrl);
+    }
+
+    private String normalizeRemoteCoverUrl(String url) {
+        return url.replace("http://", "https://")
+                .replace("zoom=1", "zoom=0")
+                .replace("&edge=curl", "");
     }
 }
