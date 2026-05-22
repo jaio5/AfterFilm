@@ -117,6 +117,16 @@
             }[ch]));
         }
 
+        function jsString(value) {
+            return JSON.stringify(String(value ?? ''));
+        }
+
+        function coverHtml(url) {
+            return url
+                ? `<img src="${escapeHtml(url)}" alt="" style="width:42px;height:62px;object-fit:cover;border-radius:4px;background:var(--border)">`
+                : `<div style="width:42px;height:62px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fas fa-book"></i></div>`;
+        }
+
         function updateSelectedBooksButton() {
             const btn = document.getElementById('importSelectedBooksBtn');
             btn.disabled = selectedBookIds.size === 0;
@@ -130,10 +140,17 @@
         }
 
         async function loadBooks(page = 0) {
-            currentQuery = document.getElementById('booksLocalSearch').value.trim();
-            const queryParam = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
-            const res = await fetch(`/api/admin/books?page=${page}&size=20${queryParam}`);
-            const data = await readResponse(res);
+            let data;
+            try {
+                currentQuery = document.getElementById('booksLocalSearch').value.trim();
+                const queryParam = currentQuery ? `&q=${encodeURIComponent(currentQuery)}` : '';
+                const res = await fetch(`/api/admin/books?page=${page}&size=20${queryParam}`);
+                data = await readResponse(res);
+            } catch (err) {
+                document.getElementById('booksStats').textContent = 'Error cargando libros';
+                document.getElementById('booksTableBody').innerHTML = `<tr><td colspan="6" style="text-align:center;color:#fca5a5">${escapeHtml(err.message)}</td></tr>`;
+                return;
+            }
             document.getElementById('booksStats').textContent = currentQuery
                 ? `Encontrados: ${data.totalElements} libros`
                 : `Total: ${data.totalElements} libros`;
@@ -144,12 +161,12 @@
                 tbody.innerHTML = data.content.map(b => `
                     <tr>
                         <td>${b.id}</td>
-                        <td><a href="/libro/${b.id}" style="color:var(--accent)">${b.title}</a></td>
-                        <td style="font-size:0.8rem">${b.authors || '—'}</td>
-                        <td style="font-size:0.8rem">${b.publisher || '—'}</td>
-                        <td>${b.publishedDate ? b.publishedDate.substring(0,4) : '—'}</td>
+                        <td><a href="/libro/${b.id}" style="color:var(--accent)">${escapeHtml(b.title)}</a></td>
+                        <td style="font-size:0.8rem">${escapeHtml(b.authors || '—')}</td>
+                        <td style="font-size:0.8rem">${escapeHtml(b.publisher || '—')}</td>
+                        <td>${escapeHtml(b.publishedDate ? b.publishedDate.substring(0,4) : '—')}</td>
                         <td>
-                            <button onclick="deleteBook(${b.id}, '${(b.title || '').replace(/'/g, "\\'")}')"
+                            <button onclick="deleteBook(${b.id}, ${jsString(b.title)})"
                                     style="background:none;border:none;color:#fca5a5;cursor:pointer;font-size:0.78rem;padding:0.2rem 0.4rem"
                                     title="Eliminar libro">
                                 <i class="fas fa-trash"></i>
@@ -189,20 +206,28 @@
 
         async function doSearchImport(q, maxResults) {
             showLog(`Buscando e importando "${q}" (máx ${maxResults})...`);
-            const res = await fetch(`/api/admin/books/search-import?q=${encodeURIComponent(q)}&maxResults=${maxResults}`, { method: 'POST' });
-            const data = await readResponse(res);
-            showLog(data.success ? `✅ Importados ${data.imported} libros.` : `❌ Error: ${data.error}`, !data.success);
-            if (data.success) loadBooks(0);
+            try {
+                const res = await fetch(`/api/admin/books/search-import?q=${encodeURIComponent(q)}&maxResults=${maxResults}`, { method: 'POST' });
+                const data = await readResponse(res);
+                showLog(data.success ? `Importados ${data.imported} libros nuevos.` : `Error: ${data.error}`, !data.success);
+                if (data.success) loadBooks(0);
+            } catch (err) {
+                showLog(`Error importando libros: ${err.message}`, true);
+            }
         }
 
         async function importByGoogleId() {
             const id = document.getElementById('googleIdInput').value.trim();
             if (!id) { alert('Introduce un Google Books ID'); return; }
             showLog(`Importando libro con ID "${id}"...`);
-            const res = await fetch(`/api/admin/books/import/${encodeURIComponent(id)}`, { method: 'POST' });
-            const data = await readResponse(res);
-            showLog(data.success ? `✅ Libro "${data.title}" importado (ID: ${data.id})` : `❌ Error: ${data.error || data.message}`, !data.success);
-            if (data.success) loadBooks(0);
+            try {
+                const res = await fetch(`/api/admin/books/import/${encodeURIComponent(id)}`, { method: 'POST' });
+                const data = await readResponse(res);
+                showLog(data.success ? `Libro "${data.title}" importado (ID: ${data.id})` : `Error: ${data.error || data.message}`, !data.success);
+                if (data.success) loadBooks(0);
+            } catch (err) {
+                showLog(`Error importando libro: ${err.message}`, true);
+            }
         }
 
         async function searchGoogleBooks() {
@@ -212,8 +237,14 @@
             updateSelectedBooksButton();
             const resultsBox = document.getElementById('googleSearchResults');
             resultsBox.innerHTML = '<div style="color:var(--text-muted);font-size:0.85rem">Buscando en Google Books...</div>';
-            const res = await fetch(`/api/admin/books/search-google?q=${encodeURIComponent(q)}`);
-            const data = await readResponse(res);
+            let data;
+            try {
+                const res = await fetch(`/api/admin/books/search-google?q=${encodeURIComponent(q)}&maxResults=20`);
+                data = await readResponse(res);
+            } catch (err) {
+                resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${escapeHtml(err.message)}</div>`;
+                return;
+            }
             if (!data.success) {
                 resultsBox.innerHTML = `<div style="color:#fca5a5;font-size:0.85rem">Error: ${escapeHtml(data.error || 'No se pudo buscar')}</div>`;
                 return;
@@ -225,7 +256,7 @@
             resultsBox.innerHTML = data.results.slice(0, 12).map(b => `
                 <label style="display:flex;gap:0.75rem;align-items:center;background:var(--bg-elevated);border-radius:6px;padding:0.6rem;cursor:${b.alreadyImported ? 'default' : 'pointer'}">
                     <input type="checkbox" value="${escapeHtml(b.googleBooksId)}" ${b.alreadyImported ? 'disabled' : ''} onchange="toggleBookSelection(this.value, this.checked)" style="width:18px;height:18px;accent-color:var(--accent)">
-                    <div style="width:42px;height:62px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)"><i class="fas fa-book"></i></div>
+                    ${coverHtml(b.coverUrl)}
                     <span style="flex:1;min-width:0">
                         <span style="display:block;font-weight:700">${escapeHtml(b.title || 'Sin título')}</span>
                         <span style="display:block;font-size:0.78rem;color:var(--text-muted)">${escapeHtml(b.authors || 'Autor desconocido')} · ${escapeHtml(b.publishedDate || 'sin fecha')}</span>
@@ -237,12 +268,16 @@
 
         async function importSearchedBook(googleId) {
             showLog(`Importando libro con ID "${googleId}"...`);
-            const res = await fetch(`/api/admin/books/import/${encodeURIComponent(googleId)}`, { method: 'POST' });
-            const data = await readResponse(res);
-            showLog(data.success ? `Libro "${data.title}" importado (ID: ${data.id})` : `Error: ${data.error || data.message}`, !data.success);
-            if (data.success) {
-                loadBooks(0);
-                searchGoogleBooks();
+            try {
+                const res = await fetch(`/api/admin/books/import/${encodeURIComponent(googleId)}`, { method: 'POST' });
+                const data = await readResponse(res);
+                showLog(data.success ? `Libro "${data.title}" importado (ID: ${data.id})` : `Error: ${data.error || data.message}`, !data.success);
+                if (data.success) {
+                    loadBooks(0);
+                    searchGoogleBooks();
+                }
+            } catch (err) {
+                showLog(`Error importando libro: ${err.message}`, true);
             }
         }
 

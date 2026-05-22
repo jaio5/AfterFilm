@@ -881,7 +881,7 @@ public class AdminApiController {
             @RequestParam(required = false) String q) {
         var pageable = PageRequest.of(page, size);
         var bookPage = (q != null && !q.isBlank())
-                ? bookRepository.findByTitleContainingIgnoreCase(q.trim(), pageable)
+                ? bookRepository.searchByTitleOrAuthors(q.trim(), pageable)
                 : bookRepository.findAll(pageable);
         var content = bookPage.getContent().stream().map(b -> {
             Map<String, Object> dto = new HashMap<>();
@@ -891,6 +891,7 @@ public class AdminApiController {
             dto.put("authors", b.getAuthors());
             dto.put("publisher", b.getPublisher());
             dto.put("publishedDate", b.getPublishedDate());
+            dto.put("coverUrl", b.getCoverUrl());
             return dto;
         }).toList();
         Map<String, Object> result = new HashMap<>();
@@ -905,9 +906,10 @@ public class AdminApiController {
     @GetMapping("/books/search-google")
     public ResponseEntity<Map<String, Object>> searchBooksOnGoogle(
             @RequestParam String q,
-            @RequestParam(defaultValue = "0") int startIndex) {
+            @RequestParam(defaultValue = "0") int startIndex,
+            @RequestParam(defaultValue = "12") int maxResults) {
         try {
-            JsonNode response = googleBooksClient.searchBooks(q, Math.max(0, startIndex));
+            JsonNode response = googleBooksClient.searchBooks(q, Math.max(0, startIndex), Math.min(Math.max(1, maxResults), 40));
             List<Map<String, Object>> results = response == null || !response.has("items")
                     ? List.of()
                     : iterableToList(response.path("items")).stream()

@@ -16,6 +16,9 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     Optional<Book> findByGoogleBooksId(String googleBooksId);
     List<Book> findByTitleContainingIgnoreCase(String title);
     Page<Book> findByTitleContainingIgnoreCase(String title, Pageable pageable);
+    @Query("SELECT b FROM Book b WHERE LOWER(b.title) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(COALESCE(b.authors, '')) LIKE LOWER(CONCAT('%', :query, '%'))")
+    Page<Book> searchByTitleOrAuthors(@Param("query") String query, Pageable pageable);
     Page<Book> findAll(Pageable pageable);
 
     Page<Book> findByCategoriesContainingIgnoreCase(String category, Pageable pageable);

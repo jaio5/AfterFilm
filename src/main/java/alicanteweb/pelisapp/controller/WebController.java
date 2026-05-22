@@ -663,7 +663,10 @@ Sin carátula: %d (%.1f%%)
                         bulkOmittedMovies.incrementAndGet();
                         continue;
                     }
-                    Book book = googleBooksLoaderService.importOrUpdateByGoogleId(googleId);
+                    Book book = googleBooksLoaderService.importOrUpdateFromSearchItem(item);
+                    if (book == null) {
+                        book = googleBooksLoaderService.importOrUpdateByGoogleId(googleId);
+                    }
                     if (book != null) {
                         imported++;
                         bulkImportedMovies.incrementAndGet();

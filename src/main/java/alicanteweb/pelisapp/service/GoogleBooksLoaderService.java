@@ -48,19 +48,48 @@ public class GoogleBooksLoaderService {
         }
     }
 
+    @Transactional
+    public Book importOrUpdateFromSearchItem(JsonNode item) {
+        if (item == null || item.isNull()) {
+            return null;
+        }
+        String googleId = item.path("id").asText(null);
+        if (googleId == null || googleId.isBlank()) {
+            return null;
+        }
+
+        Optional<Book> existing = bookRepository.findByGoogleBooksId(googleId);
+        Book book = existing.orElseGet(Book::new);
+        book.setGoogleBooksId(googleId);
+        mergeFromGoogleBooks(book, item);
+
+        try {
+            return bookRepository.save(book);
+        } catch (DataIntegrityViolationException ex) {
+            log.info("Concurrent insert for googleId {}", googleId);
+            return bookRepository.findByGoogleBooksId(googleId).orElseThrow(() -> ex);
+        }
+    }
+
     public int searchAndImport(String query, int maxResults) {
         int imported = 0;
         int startIndex = 0;
         log.info("Iniciando importación de libros — query: '{}', máximo: {}", query, maxResults);
-        while (imported < maxResults) {
-            JsonNode resp = googleBooksClient.searchBooks(query, startIndex);
+        while (imported < maxResults && startIndex < 1000) {
+            JsonNode resp = googleBooksClient.searchBooks(query, startIndex, 40);
             if (resp == null || !resp.has("items")) break;
             for (JsonNode item : resp.path("items")) {
                 if (imported >= maxResults) break;
                 String id = item.path("id").asText(null);
-                if (id == null) continue;
+                if (id == null || id.isBlank()) continue;
                 try {
-                    Book book = importOrUpdateByGoogleId(id);
+                    if (bookRepository.findByGoogleBooksId(id).isPresent()) {
+                        continue;
+                    }
+                    Book book = importOrUpdateFromSearchItem(item);
+                    if (book == null) {
+                        book = importOrUpdateByGoogleId(id);
+                    }
                     if (book != null) {
                         imported++;
                         if (imported % 10 == 0) {
@@ -107,47 +136,37 @@ public class GoogleBooksLoaderService {
         if (info.isMissingNode()) return;
 
         if (book.getTitle() == null || book.getTitle().isBlank()) {
-            String t = info.path("title").asText(null);
-            if (t != null) book.setTitle(t);
+            String t = trimToNull(info.path("title").asText(null), 500);
+            book.setTitle(t != null ? t : "Sin titulo");
         }
         if (book.getAuthors() == null || book.getAuthors().isBlank()) {
             if (info.has("authors")) {
-                StringBuilder sb = new StringBuilder();
-                for (JsonNode a : info.path("authors")) {
-                    if (sb.length() > 0) sb.append(", ");
-                    sb.append(a.asText());
-                }
-                if (sb.length() > 0) book.setAuthors(sb.toString());
+                book.setAuthors(joinTextArray(info.path("authors"), 1000));
             }
         }
         if (book.getPublisher() == null) {
-            book.setPublisher(info.path("publisher").asText(null));
+            book.setPublisher(trimToNull(info.path("publisher").asText(null), 500));
         }
         if (book.getPublishedDate() == null) {
-            book.setPublishedDate(info.path("publishedDate").asText(null));
+            book.setPublishedDate(trimToNull(info.path("publishedDate").asText(null), 64));
         }
         if (book.getDescription() == null || book.getDescription().isBlank()) {
-            book.setDescription(info.path("description").asText(null));
+            book.setDescription(trimToNull(info.path("description").asText(null), 3000));
         }
         if (book.getPageCount() == null && info.hasNonNull("pageCount")) {
             book.setPageCount(info.path("pageCount").asInt());
         }
         if (book.getLanguage() == null) {
-            book.setLanguage(info.path("language").asText(null));
+            book.setLanguage(trimToNull(info.path("language").asText(null), 32));
         }
         if (book.getCategories() == null && info.has("categories")) {
-            StringBuilder sb = new StringBuilder();
-            for (JsonNode c : info.path("categories")) {
-                if (sb.length() > 0) sb.append(", ");
-                sb.append(c.asText());
-            }
-            if (sb.length() > 0) book.setCategories(sb.toString());
+            book.setCategories(joinTextArray(info.path("categories"), 1000));
         }
         if (book.getIsbn() == null && info.has("industryIdentifiers")) {
             for (JsonNode ident : info.path("industryIdentifiers")) {
                 String type = ident.path("type").asText("");
                 if ("ISBN_13".equals(type) || "ISBN_10".equals(type)) {
-                    book.setIsbn(ident.path("identifier").asText(null));
+                    book.setIsbn(trimToNull(ident.path("identifier").asText(null), 64));
                     if ("ISBN_13".equals(type)) break;
                 }
             }
@@ -159,11 +178,18 @@ public class GoogleBooksLoaderService {
                 String prefix = book.getGoogleBooksId() == null || book.getGoogleBooksId().isBlank()
                         ? "book"
                         : "book_" + book.getGoogleBooksId();
-                String stored = imageService.downloadAndSave(coverUrl, prefix, "books");
-                if (stored != null) {
-                    book.setCoverUrl(stored);
-                } else if (!supabaseImageStorage.wantsSupabase() && (book.getCoverUrl() == null || book.getCoverUrl().isBlank())) {
-                    book.setCoverUrl(coverUrl);
+                try {
+                    String stored = imageService.downloadAndSave(coverUrl, prefix, "books");
+                    if (stored != null) {
+                        book.setCoverUrl(stored);
+                    } else if (!supabaseImageStorage.wantsSupabase() && (book.getCoverUrl() == null || book.getCoverUrl().isBlank())) {
+                        book.setCoverUrl(coverUrl);
+                    }
+                } catch (Exception e) {
+                    log.warn("No se pudo descargar portada para libro googleId={}: {}", book.getGoogleBooksId(), e.getMessage());
+                    if (!supabaseImageStorage.wantsSupabase() && (book.getCoverUrl() == null || book.getCoverUrl().isBlank())) {
+                        book.setCoverUrl(coverUrl);
+                    }
                 }
             }
         }
@@ -188,5 +214,39 @@ public class GoogleBooksLoaderService {
                         .replace("zoom=1", "zoom=0")
                         .replace("&edge=curl", ""))
                 .orElse(null);
+    }
+
+    private String joinTextArray(JsonNode arrayNode, int maxLength) {
+        if (arrayNode == null || !arrayNode.isArray()) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (JsonNode node : arrayNode) {
+            String value = trimToNull(node.asText(null), maxLength);
+            if (value == null) {
+                continue;
+            }
+            String chunk = sb.length() == 0 ? value : ", " + value;
+            if (sb.length() + chunk.length() > maxLength) {
+                int remaining = maxLength - sb.length();
+                if (remaining > 0) {
+                    sb.append(chunk, 0, Math.min(remaining, chunk.length()));
+                }
+                break;
+            }
+            sb.append(chunk);
+        }
+        return sb.length() == 0 ? null : sb.toString();
+    }
+
+    private String trimToNull(String value, int maxLength) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        return trimmed.length() <= maxLength ? trimmed : trimmed.substring(0, maxLength);
     }
 }
