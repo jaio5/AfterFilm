@@ -34,16 +34,20 @@ public class GoogleBooksClient {
     }
 
     public JsonNode searchBooks(String query, int startIndex, int maxResults) {
-        log.debug("Searching Google Books for: {} (startIndex={})", query, startIndex);
+        return searchBooks(query, startIndex, maxResults, "relevance");
+    }
+
+    public JsonNode searchBooks(String query, int startIndex, int maxResults, String orderBy) {
+        log.debug("Searching Google Books for: {} (startIndex={}, orderBy={})", query, startIndex, orderBy);
         try {
             return webClient.get()
-                    .uri(uriBuilder -> buildSearchUri(uriBuilder, query, startIndex, maxResults, true))
+                    .uri(uriBuilder -> buildSearchUri(uriBuilder, query, startIndex, maxResults, orderBy, true))
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .block(Duration.ofSeconds(15));
         } catch (WebClientResponseException we) {
             log.warn("Google Books searchBooks failed: status={} body={}", we.getStatusCode().value(), we.getResponseBodyAsString());
-            return retrySearchWithoutKey(query, startIndex, maxResults);
+            return retrySearchWithoutKey(query, startIndex, maxResults, orderBy);
         } catch (Exception e) {
             log.warn("Google Books searchBooks failed: {}", e.getMessage());
         }
@@ -67,14 +71,14 @@ public class GoogleBooksClient {
         return null;
     }
 
-    private JsonNode retrySearchWithoutKey(String query, int startIndex, int maxResults) {
+    private JsonNode retrySearchWithoutKey(String query, int startIndex, int maxResults, String orderBy) {
         if (apiKey == null || apiKey.isBlank()) {
             return null;
         }
         try {
             log.info("Reintentando búsqueda de Google Books sin API key");
             return webClient.get()
-                    .uri(uriBuilder -> buildSearchUri(uriBuilder, query, startIndex, maxResults, false))
+                    .uri(uriBuilder -> buildSearchUri(uriBuilder, query, startIndex, maxResults, orderBy, false))
                     .retrieve()
                     .bodyToMono(JsonNode.class)
                     .block(Duration.ofSeconds(15));
@@ -101,11 +105,12 @@ public class GoogleBooksClient {
         }
     }
 
-    private URI buildSearchUri(UriBuilder uriBuilder, String query, int startIndex, int maxResults, boolean includeKey) {
+    private URI buildSearchUri(UriBuilder uriBuilder, String query, int startIndex, int maxResults, String orderBy, boolean includeKey) {
         uriBuilder.path("/volumes")
                 .queryParam("q", query)
                 .queryParam("startIndex", startIndex)
-                .queryParam("maxResults", Math.min(Math.max(1, maxResults), 40));
+                .queryParam("maxResults", Math.min(Math.max(1, maxResults), 40))
+                .queryParam("orderBy", normalizeOrderBy(orderBy));
         if (includeKey) {
             optionalApiKey().ifPresent(key -> uriBuilder.queryParam("key", key));
         }
@@ -125,5 +130,9 @@ public class GoogleBooksClient {
 
     private java.util.Optional<String> optionalApiKey() {
         return apiKey == null || apiKey.isBlank() ? java.util.Optional.empty() : java.util.Optional.of(apiKey);
+    }
+
+    private String normalizeOrderBy(String orderBy) {
+        return "newest".equalsIgnoreCase(orderBy) ? "newest" : "relevance";
     }
 }

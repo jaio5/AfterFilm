@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
+import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
 
@@ -18,6 +19,15 @@ import java.util.stream.Stream;
 @RequiredArgsConstructor
 @Slf4j
 public class GoogleBooksLoaderService {
+
+    private static final List<String> FALLBACK_ANY_STYLE_QUERIES = List.of(
+            "subject:fiction", "subject:science fiction", "subject:fantasy", "subject:history",
+            "subject:biography", "subject:mystery", "subject:romance", "subject:thriller",
+            "subject:philosophy", "subject:technology", "subject:art", "subject:business",
+            "subject:cooking", "subject:travel", "subject:poetry", "subject:comics",
+            "subject:juvenile fiction", "subject:self-help", "novela", "historia",
+            "ciencia", "poesia", "teatro", "ensayo", "aventura", "infantil"
+    );
 
     private final GoogleBooksClient googleBooksClient;
     private final BookRepository bookRepository;
@@ -72,9 +82,27 @@ public class GoogleBooksLoaderService {
     }
 
     public int searchAndImport(String query, int maxResults) {
+        log.info("Iniciando importación de libros — query: '{}', máximo: {}", query, maxResults);
+        int imported = importNewBooksFromQuery(query, maxResults);
+        if (imported < maxResults) {
+            log.info("La búsqueda '{}' no completó el objetivo. Buscando libros nuevos en otros estilos...", query);
+            for (String fallbackQuery : FALLBACK_ANY_STYLE_QUERIES) {
+                if (imported >= maxResults) {
+                    break;
+                }
+                if (fallbackQuery.equalsIgnoreCase(query)) {
+                    continue;
+                }
+                imported += importNewBooksFromQuery(fallbackQuery, maxResults - imported);
+            }
+        }
+        log.info("Importación completada — query: '{}', total importados: {}", query, imported);
+        return imported;
+    }
+
+    private int importNewBooksFromQuery(String query, int maxResults) {
         int imported = 0;
         int startIndex = 0;
-        log.info("Iniciando importación de libros — query: '{}', máximo: {}", query, maxResults);
         while (imported < maxResults && startIndex < 1000) {
             JsonNode resp = googleBooksClient.searchBooks(query, startIndex, 40);
             if (resp == null || !resp.has("items")) break;
@@ -104,7 +132,6 @@ public class GoogleBooksLoaderService {
             startIndex += 40;
             if (startIndex >= totalItems) break;
         }
-        log.info("Importación completada — query: '{}', total importados: {}", query, imported);
         return imported;
     }
 

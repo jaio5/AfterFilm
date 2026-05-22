@@ -611,9 +611,17 @@ Sin carátula: %d (%.1f%%)
 
     private String bulkLoadCombinedBooksUntilTarget(int targetBooks) {
         String[] queries = {
-                "subject:fiction", "subject:science fiction", "subject:fantasy", "subject:history",
-                "subject:biography", "subject:mystery", "subject:romance", "subject:thriller",
-                "subject:philosophy", "subject:technology", "subject:art", "subject:business"
+                "subject:fiction", "subject:literary collections", "subject:science fiction", "subject:fantasy",
+                "subject:history", "subject:biography", "subject:mystery", "subject:romance",
+                "subject:thriller", "subject:horror", "subject:philosophy", "subject:technology",
+                "subject:science", "subject:art", "subject:business", "subject:economics",
+                "subject:cooking", "subject:travel", "subject:poetry", "subject:drama",
+                "subject:comics", "subject:graphic novels", "subject:juvenile fiction", "subject:young adult fiction",
+                "subject:self-help", "subject:health", "subject:education", "subject:music",
+                "subject:religion", "subject:sports", "subject:computers", "subject:psychology",
+                "novela", "novela española", "literatura", "historia", "ciencia", "poesia",
+                "teatro", "ensayo", "aventura", "infantil", "juvenil", "cocina",
+                "arte", "filosofia", "tecnologia", "negocios"
         };
         ContentLoadResult combined = ContentLoadResult.empty("varias búsquedas Google Books", bookRepository.count());
         for (String query : queries) {
@@ -637,15 +645,17 @@ Sin carátula: %d (%.1f%%)
         int startIndex = 0;
         bulkCurrentSource = "libros:" + query;
 
-        while (imported < safeTarget && startIndex < 1000 && !bulkCancelRequested.get()) {
-            JsonNode response = googleBooksClient.searchBooks(query, startIndex);
+        while (imported < safeTarget && startIndex < 2000 && !bulkCancelRequested.get()) {
+            String orderBy = startIndex < 1000 ? "relevance" : "newest";
+            int effectiveStartIndex = startIndex % 1000;
+            JsonNode response = googleBooksClient.searchBooks(query, effectiveStartIndex, 40, orderBy);
             if (response == null || !response.has("items")) {
                 break;
             }
             pagesChecked++;
             bulkPagesChecked.incrementAndGet();
-            updateBulkProgress(String.format("Revisando libros %s desde %d. Nuevos: %d/%d. Omitidos: %d. Errores: %d.",
-                    query, startIndex, bulkImportedMovies.get(), bulkTargetMovies.get(), bulkOmittedMovies.get(), bulkErrorMovies.get()));
+            updateBulkProgress(String.format("Revisando libros %s (%s) desde %d. Nuevos: %d/%d. Omitidos: %d. Errores: %d.",
+                    query, orderBy, effectiveStartIndex, bulkImportedMovies.get(), bulkTargetMovies.get(), bulkOmittedMovies.get(), bulkErrorMovies.get()));
 
             for (JsonNode item : response.path("items")) {
                 if (imported >= safeTarget || bulkCancelRequested.get()) {
@@ -685,7 +695,8 @@ Sin carátula: %d (%.1f%%)
 
             int totalItems = response.path("totalItems").asInt(0);
             startIndex += 40;
-            if (totalItems > 0 && startIndex >= totalItems) {
+            int providerLimit = Math.min(Math.max(totalItems, 0), 2000);
+            if (providerLimit > 0 && startIndex >= providerLimit) {
                 break;
             }
         }
