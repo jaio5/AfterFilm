@@ -7,6 +7,7 @@ import alicanteweb.pelisapp.entity.User;
 import alicanteweb.pelisapp.repository.ReviewRepository;
 import alicanteweb.pelisapp.repository.TvShowRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
+import alicanteweb.pelisapp.service.ImageUrlService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -25,6 +26,7 @@ public class SeriesViewController {
     private final TvShowRepository tvShowRepository;
     private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
+    private final ImageUrlService imageUrlService;
 
     @GetMapping("/serie/{id}")
     public String seriesDetail(@PathVariable Long id, Model model, Authentication auth) {
@@ -45,6 +47,7 @@ public class SeriesViewController {
             boolean isAdmin = isAuthenticated && auth.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
             model.addAttribute("series", series);
+            model.addAttribute("posterUrl", imageUrlService.seriesPosterUrl(series, "w500"));
             model.addAttribute("reviews", reviews);
             model.addAttribute("stats", stats);
             model.addAttribute("userReview", userReview);
