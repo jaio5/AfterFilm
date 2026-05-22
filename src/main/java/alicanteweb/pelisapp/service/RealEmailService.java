@@ -86,6 +86,7 @@ public class RealEmailService implements IEmailService {
      * Crea contenido HTML bonito para el email de confirmación
      */
     private String createConfirmationEmailHTML(String username, String confirmationUrl) {
+        String imageUrl = baseUrl + "/images/logo.png";
         return String.format("""
             <!DOCTYPE html>
             <html>
@@ -101,8 +102,9 @@ public class RealEmailService implements IEmailService {
                             <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="600" style="margin: 0 auto; background-color: white; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
                                 <tr>
                                     <td style="padding: 40px; text-align: center; background: linear-gradient(135deg, #667eea 0%%, #764ba2 100%%); color: white; border-radius: 10px 10px 0 0;">
-                                        <h1 style="margin: 0; font-size: 28px; font-weight: bold;">🎬 %s</h1>
-                                        <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Tu red social de películas</p>
+                                        <img src="%s" alt="%s" style="height:64px; display:block; margin:0 auto 8px;">
+                                        <h1 style="margin: 0; font-size: 22px; font-weight: bold;">%s</h1>
+                                        <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Tu red social de películas</p>
                                     </td>
                                 </tr>
                                 <tr>
@@ -145,6 +147,6 @@ public class RealEmailService implements IEmailService {
                 </table>
             </body>
             </html>
-            """, appName, appName, username, appName, confirmationUrl, confirmationUrl, appName);
+            """, appName, imageUrl, appName, appName, username, appName, confirmationUrl, confirmationUrl, appName);
     }
 }

@@ -88,6 +88,12 @@ img { display: block; max-width: 100%; }
     flex-shrink: 0;
 }
 
+.site-logo {
+    height: 40px;
+    display: inline-block;
+    vertical-align: middle;
+}
+
 .navbar-brand i { color: var(--accent); }
 
 /* Search bar */
