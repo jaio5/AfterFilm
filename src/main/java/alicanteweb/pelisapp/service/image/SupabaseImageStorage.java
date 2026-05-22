@@ -180,12 +180,31 @@ public class SupabaseImageStorage {
         java.util.LinkedHashSet<String> candidates = new java.util.LinkedHashSet<>();
         for (String variant : variants) {
             addPathVariant(candidates, variant);
+            addSeriesFolderFallbacks(candidates, variant);
             if (!prefix.isBlank() && !variant.equals(prefix) && !variant.startsWith(prefix + "/")) {
                 addPathVariant(candidates, prefix + "/" + variant);
+                addSeriesFolderFallbacks(candidates, prefix + "/" + variant);
             }
             addPathVariant(candidates, "afterfilm/images/" + variant);
+            addSeriesFolderFallbacks(candidates, "afterfilm/images/" + variant);
         }
         return new java.util.ArrayList<>(candidates);
+    }
+
+    private void addSeriesFolderFallbacks(java.util.LinkedHashSet<String> paths, String path) {
+        String cleanPath = trimSlashes(path);
+        String seriesSegment = "/series/series_";
+        String postersSegment = "/posters/series_";
+
+        if (cleanPath.startsWith("series/series_")) {
+            addPathVariant(paths, "posters/" + cleanPath.substring("series/".length()));
+        } else if (cleanPath.startsWith("posters/series_")) {
+            addPathVariant(paths, "series/" + cleanPath.substring("posters/".length()));
+        } else if (cleanPath.contains(seriesSegment)) {
+            addPathVariant(paths, cleanPath.replace(seriesSegment, postersSegment));
+        } else if (cleanPath.contains(postersSegment)) {
+            addPathVariant(paths, cleanPath.replace(postersSegment, seriesSegment));
+        }
     }
 
     private void addPathVariant(java.util.LinkedHashSet<String> paths, String path) {

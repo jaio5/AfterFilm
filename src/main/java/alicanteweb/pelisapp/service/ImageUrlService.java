@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 
 @Service
 public class ImageUrlService {
@@ -52,13 +53,47 @@ public class ImageUrlService {
             return legacySupabaseUrl;
         }
         if (supabaseImageStorage.wantsSupabase()) {
-            return null;
+            return supabasePosterUrlFromTmdbId(tmdbId, filenamePrefix);
         }
         String remoteUrl = tmdbImageUrl(remotePath, tmdbSize);
         if (remoteUrl != null) {
             return remoteUrl;
         }
         return null;
+    }
+
+    private String supabasePosterUrlFromTmdbId(Long tmdbId, String filenamePrefix) {
+        if (!supabaseImageStorage.isConfigured() || tmdbId == null || filenamePrefix == null || filenamePrefix.isBlank()) {
+            return null;
+        }
+
+        String subfolder = "series".equals(filenamePrefix) ? "series" : "posters";
+        String localMatch = localPosterMatch(subfolder, filenamePrefix + "_" + tmdbId);
+        if (localMatch != null) {
+            return supabaseImageStorage.displayUrlForStoredPath(localMatch);
+        }
+
+        return supabaseImageStorage.displayUrlForStoredPath(subfolder + "/" + filenamePrefix + "_" + tmdbId + ".jpg");
+    }
+
+    private String localPosterMatch(String subfolder, String filenameStart) {
+        Path folder = storagePath.resolve(subfolder).normalize();
+        if (!folder.startsWith(storagePath) || !Files.isDirectory(folder)) {
+            return null;
+        }
+
+        try (Stream<Path> files = Files.list(folder)) {
+            return files
+                    .filter(Files::isRegularFile)
+                    .map(path -> path.getFileName().toString())
+                    .filter(name -> name.equals(filenameStart + ".jpg") || name.startsWith(filenameStart + "_"))
+                    .sorted()
+                    .findFirst()
+                    .map(name -> subfolder + "/" + name)
+                    .orElse(null);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     public String tmdbImageUrl(String path, String tmdbSize) {
