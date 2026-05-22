@@ -82,6 +82,9 @@ img { display: block; max-width: 100%; }
 .navbar-brand {
     font-size: 1.1rem !important;
     font-weight: 600 !important;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.5rem;
     letter-spacing: -0.02em;
     color: var(--text-primary) !important;
     white-space: nowrap;
@@ -198,7 +201,17 @@ img { display: block; max-width: 100%; }
         min-height: 60px;
     }
 
-    .navbar:has(.navbar-search) .navbar-brand { display: none; }
+    .navbar:has(.navbar-search) .container {
+        flex-wrap: wrap;
+        row-gap: 0.65rem;
+        padding-top: 0.55rem;
+        padding-bottom: 0.55rem;
+    }
+
+    .navbar:has(.navbar-search) .navbar-search {
+        order: 3;
+        flex-basis: 100%;
+    }
 
     .navbar-search {
         flex: 1 1 auto;

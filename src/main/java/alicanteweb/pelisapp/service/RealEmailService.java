@@ -86,7 +86,7 @@ public class RealEmailService implements IEmailService {
      * Crea contenido HTML bonito para el email de confirmación
      */
     private String createConfirmationEmailHTML(String username, String confirmationUrl) {
-        String imageUrl = baseUrl + "/images/logo.png";
+        String imageUrl = baseUrl + "/logo.png";
         return String.format("""
             <!DOCTYPE html>
             <html>
