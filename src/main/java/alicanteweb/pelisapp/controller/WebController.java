@@ -40,6 +40,8 @@ import org.springframework.ui.Model;
 import org.springframework.security.core.Authentication;
 
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -610,19 +612,7 @@ Sin carátula: %d (%.1f%%)
     }
 
     private String bulkLoadCombinedBooksUntilTarget(int targetBooks) {
-        String[] queries = {
-                "subject:fiction", "subject:literary collections", "subject:science fiction", "subject:fantasy",
-                "subject:history", "subject:biography", "subject:mystery", "subject:romance",
-                "subject:thriller", "subject:horror", "subject:philosophy", "subject:technology",
-                "subject:science", "subject:art", "subject:business", "subject:economics",
-                "subject:cooking", "subject:travel", "subject:poetry", "subject:drama",
-                "subject:comics", "subject:graphic novels", "subject:juvenile fiction", "subject:young adult fiction",
-                "subject:self-help", "subject:health", "subject:education", "subject:music",
-                "subject:religion", "subject:sports", "subject:computers", "subject:psychology",
-                "novela", "novela española", "literatura", "historia", "ciencia", "poesia",
-                "teatro", "ensayo", "aventura", "infantil", "juvenil", "cocina",
-                "arte", "filosofia", "tecnologia", "negocios"
-        };
+        List<String> queries = buildBookBulkQueries();
         ContentLoadResult combined = ContentLoadResult.empty("varias búsquedas Google Books", bookRepository.count());
         for (String query : queries) {
             if (bulkCancelRequested.get() || combined.imported() >= targetBooks) {
@@ -635,6 +625,36 @@ Sin carátula: %d (%.1f%%)
         return formatContentLoadResult(combined, "libros");
     }
 
+    private List<String> buildBookBulkQueries() {
+        LinkedHashSet<String> queries = new LinkedHashSet<>();
+        List.of(
+                "fiction", "literary collections", "science fiction", "fantasy", "history", "biography",
+                "mystery", "romance", "thriller", "horror", "philosophy", "technology", "science",
+                "art", "business", "economics", "cooking", "travel", "poetry", "drama", "comics",
+                "graphic novels", "juvenile fiction", "young adult fiction", "self-help", "health",
+                "education", "music", "religion", "sports", "computers", "psychology", "nature",
+                "law", "medical", "political science", "social science", "performing arts", "humor"
+        ).forEach(subject -> queries.add("subject:" + subject));
+
+        List.of(
+                "novela", "novela española", "literatura", "historia", "ciencia", "poesia", "poesía",
+                "teatro", "ensayo", "aventura", "infantil", "juvenil", "cocina", "arte", "filosofia",
+                "filosofía", "tecnologia", "tecnología", "negocios", "amor", "vida", "mundo", "viaje",
+                "familia", "guerra", "memorias", "cuentos", "relatos", "misterio", "terror", "fantasia",
+                "fantasía", "aprendizaje", "salud", "educacion", "educación", "musica", "música",
+                "a", "the", "of", "life", "world", "love", "story", "new", "guide", "history",
+                "science", "art", "business", "children", "adventure", "essays", "poems"
+        ).forEach(queries::add);
+
+        for (char ch = 'a'; ch <= 'z'; ch++) {
+            queries.add("intitle:" + ch);
+        }
+        for (char ch = 'a'; ch <= 'z'; ch++) {
+            queries.add("inauthor:" + ch);
+        }
+        return new ArrayList<>(queries);
+    }
+
     private ContentLoadResult loadBooksUntilTarget(int targetBooks, String query) {
         int safeTarget = Math.max(1, targetBooks);
         long totalBefore = bookRepository.count();
@@ -643,6 +663,7 @@ Sin carátula: %d (%.1f%%)
         int errors = 0;
         int pagesChecked = 0;
         int startIndex = 0;
+        int pagesWithoutNewBooks = 0;
         bulkCurrentSource = "libros:" + query;
 
         while (imported < safeTarget && startIndex < 2000 && !bulkCancelRequested.get()) {
@@ -657,6 +678,7 @@ Sin carátula: %d (%.1f%%)
             updateBulkProgress(String.format("Revisando libros %s (%s) desde %d. Nuevos: %d/%d. Omitidos: %d. Errores: %d.",
                     query, orderBy, effectiveStartIndex, bulkImportedMovies.get(), bulkTargetMovies.get(), bulkOmittedMovies.get(), bulkErrorMovies.get()));
 
+            int importedBeforePage = imported;
             for (JsonNode item : response.path("items")) {
                 if (imported >= safeTarget || bulkCancelRequested.get()) {
                     break;
@@ -691,6 +713,16 @@ Sin carátula: %d (%.1f%%)
                     bulkErrorMovies.incrementAndGet();
                     log.warn("Error importando libro googleId={}: {}", googleId, e.getMessage());
                 }
+            }
+
+            if (imported == importedBeforePage) {
+                pagesWithoutNewBooks++;
+                if (pagesWithoutNewBooks >= 5) {
+                    updateBulkProgress(String.format("Sin libros nuevos en %s tras %d páginas; saltando a otra fuente.", query, pagesWithoutNewBooks));
+                    break;
+                }
+            } else {
+                pagesWithoutNewBooks = 0;
             }
 
             int totalItems = response.path("totalItems").asInt(0);

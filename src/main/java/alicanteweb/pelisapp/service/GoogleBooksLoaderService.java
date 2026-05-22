@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Objects;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -26,7 +28,8 @@ public class GoogleBooksLoaderService {
             "subject:philosophy", "subject:technology", "subject:art", "subject:business",
             "subject:cooking", "subject:travel", "subject:poetry", "subject:comics",
             "subject:juvenile fiction", "subject:self-help", "novela", "historia",
-            "ciencia", "poesia", "teatro", "ensayo", "aventura", "infantil"
+            "ciencia", "poesia", "teatro", "ensayo", "aventura", "infantil",
+            "a", "the", "of", "life", "world", "love", "story", "intitle:a", "intitle:e", "inauthor:a"
     );
 
     private final GoogleBooksClient googleBooksClient;
@@ -86,7 +89,7 @@ public class GoogleBooksLoaderService {
         int imported = importNewBooksFromQuery(query, maxResults);
         if (imported < maxResults) {
             log.info("La búsqueda '{}' no completó el objetivo. Buscando libros nuevos en otros estilos...", query);
-            for (String fallbackQuery : FALLBACK_ANY_STYLE_QUERIES) {
+            for (String fallbackQuery : buildFallbackQueries(query)) {
                 if (imported >= maxResults) {
                     break;
                 }
@@ -103,9 +106,11 @@ public class GoogleBooksLoaderService {
     private int importNewBooksFromQuery(String query, int maxResults) {
         int imported = 0;
         int startIndex = 0;
+        int pagesWithoutNewBooks = 0;
         while (imported < maxResults && startIndex < 1000) {
             JsonNode resp = googleBooksClient.searchBooks(query, startIndex, 40);
             if (resp == null || !resp.has("items")) break;
+            int importedBeforePage = imported;
             for (JsonNode item : resp.path("items")) {
                 if (imported >= maxResults) break;
                 String id = item.path("id").asText(null);
@@ -128,11 +133,31 @@ public class GoogleBooksLoaderService {
                     log.warn("Error importing book googleId={}: {}", id, e.getMessage());
                 }
             }
+            if (imported == importedBeforePage) {
+                pagesWithoutNewBooks++;
+                if (pagesWithoutNewBooks >= 5) {
+                    break;
+                }
+            } else {
+                pagesWithoutNewBooks = 0;
+            }
             int totalItems = resp.path("totalItems").asInt(0);
             startIndex += 40;
             if (startIndex >= totalItems) break;
         }
         return imported;
+    }
+
+    private List<String> buildFallbackQueries(String originalQuery) {
+        LinkedHashSet<String> queries = new LinkedHashSet<>(FALLBACK_ANY_STYLE_QUERIES);
+        for (char ch = 'a'; ch <= 'z'; ch++) {
+            queries.add("intitle:" + ch);
+        }
+        for (char ch = 'a'; ch <= 'z'; ch++) {
+            queries.add("inauthor:" + ch);
+        }
+        queries.remove(originalQuery);
+        return new ArrayList<>(queries);
     }
 
     @Transactional
