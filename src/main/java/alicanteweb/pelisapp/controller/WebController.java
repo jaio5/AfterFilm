@@ -82,14 +82,14 @@ public class WebController {
     @Value("${app.email.enabled:false}")
     private boolean emailEnabled;
 
-    @Value("${spring.mail.host:smtp.gmail.com}")
-    private String mailHost;
+    @Value("${app.email.provider:resend}")
+    private String emailProvider;
 
-    @Value("${spring.mail.port:587}")
-    private String mailPort;
+    @Value("${spring.mail.from:}")
+    private String emailFrom;
 
-    @Value("${spring.mail.username:}")
-    private String mailUser;
+    @Value("${resend.api.key:}")
+    private String resendApiKey;
 
     private final ExecutorService bulkLoaderExecutor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean bulkLoading = new AtomicBoolean(false);
@@ -203,9 +203,9 @@ public class WebController {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return redirect;
         model.addAttribute("emailEnabled", emailEnabled);
-        model.addAttribute("emailHost", mailHost);
-        model.addAttribute("emailPort", mailPort);
-        model.addAttribute("emailUser", mailUser);
+        model.addAttribute("emailProvider", emailProvider);
+        model.addAttribute("emailFrom", emailFrom);
+        model.addAttribute("resendConfigured", resendApiKey != null && !resendApiKey.isBlank());
         return "admin/email-config";
     }
 

@@ -38,56 +38,46 @@
                 </div>
             </div>
             <div>
-                <div class="stat-label">Servidor SMTP</div>
-                <div style="font-size:0.9rem;color:var(--text-primary);margin-top:0.25rem" th:text="${emailHost + ':' + emailPort}">smtp.gmail.com:587</div>
+                <div class="stat-label">Proveedor</div>
+                <div style="font-size:0.9rem;color:var(--text-primary);margin-top:0.25rem" th:text="${emailProvider}">resend</div>
             </div>
             <div>
-                <div class="stat-label">Usuario</div>
-                <div style="font-size:0.9rem;color:var(--text-primary);margin-top:0.25rem" th:text="${emailUser ?: '(no configurado)'}">–</div>
+                <div class="stat-label">Remitente</div>
+                <div style="font-size:0.9rem;color:var(--text-primary);margin-top:0.25rem" th:text="${emailFrom ?: '(no configurado)'}">no-reply@tudominio.com</div>
+            </div>
+            <div>
+                <div class="stat-label">API Key</div>
+                <div style="font-size:0.9rem;color:var(--text-primary);margin-top:0.25rem" th:text="${resendConfigured ? 'Configurada' : 'No configurada'}">Configurada</div>
             </div>
         </div>
 
         <div class="admin-grid-2">
-            <!-- SMTP config (readonly) -->
+            <!-- Resend config (readonly) -->
             <div class="admin-section">
-                <div class="admin-section-title"><i class="fas fa-cog"></i>Configuración SMTP (solo lectura)</div>
+                <div class="admin-section-title"><i class="fas fa-cog"></i>Configuración Resend (solo lectura)</div>
 
                 <div style="margin-bottom:1rem">
-                    <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:0.3rem">Servidor SMTP</label>
-                    <input type="text" th:value="${emailHost}" readonly
+                    <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:0.3rem">Proveedor</label>
+                    <input type="text" th:value="${emailProvider}" readonly
                            style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;color:var(--text-secondary);font-size:0.85rem"
-                           aria-label="Servidor SMTP">
-                </div>
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
-                    <div>
-                        <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:0.3rem">Puerto</label>
-                        <input type="text" th:value="${emailPort}" readonly
-                               style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;color:var(--text-secondary);font-size:0.85rem"
-                               aria-label="Puerto SMTP">
-                    </div>
-                    <div>
-                        <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:0.3rem">Seguridad</label>
-                        <input type="text" value="StartTLS" readonly
-                               style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;color:var(--text-secondary);font-size:0.85rem"
-                               aria-label="Seguridad">
-                    </div>
-                </div>
-                <div style="margin-bottom:1.25rem">
-                    <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:0.3rem">Usuario</label>
-                    <input type="text" th:value="${emailUser}" readonly
-                           style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;color:var(--text-secondary);font-size:0.85rem"
-                           aria-label="Usuario SMTP">
+                           aria-label="Proveedor de email">
                 </div>
                 <div style="margin-bottom:1rem">
-                    <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:0.3rem">Contraseña</label>
-                    <input type="password" value="••••••••••••••••" readonly
+                    <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:0.3rem">Remitente verificado</label>
+                    <input type="text" th:value="${emailFrom}" readonly
                            style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;color:var(--text-secondary);font-size:0.85rem"
-                           aria-label="Contraseña SMTP">
+                           aria-label="Remitente Resend">
+                </div>
+                <div style="margin-bottom:1.25rem">
+                    <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:0.3rem">RESEND_API_KEY</label>
+                    <input type="text" th:value="${resendConfigured ? 'Configurada' : 'No configurada'}" readonly
+                           style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;color:var(--text-secondary);font-size:0.85rem"
+                           aria-label="Estado API Key Resend">
                 </div>
 
                 <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:0.75rem 1rem;font-size:0.8rem;color:var(--text-muted)">
                     <i class="fas fa-info-circle" style="color:var(--accent);margin-right:0.4rem"></i>
-                    La configuración está definida en <code style="color:var(--text-secondary)">application.properties</code> o variables de entorno.
+                    Resend usa las variables <code style="color:var(--text-secondary)">RESEND_API_KEY</code> y <code style="color:var(--text-secondary)">MAIL_FROM</code> / <code style="color:var(--text-secondary)">RESEND_FROM</code>.
                 </div>
             </div>
 
@@ -97,7 +87,7 @@
 
                 <div style="margin-bottom:1rem">
                     <label style="font-size:0.78rem;color:var(--text-muted);display:block;margin-bottom:0.3rem">Email de destino</label>
-                    <input type="email" id="testEmail" th:value="${emailUser}" placeholder="test@example.com"
+                    <input type="email" id="testEmail" th:value="${emailFrom}" placeholder="test@example.com"
                            style="width:100%;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:0.5rem 0.75rem;color:var(--text-primary);font-size:0.85rem"
                            aria-label="Email de prueba">
                 </div>
@@ -111,7 +101,7 @@
                 <script th:inline="javascript">
                     document.getElementById('testResults').textContent =
                         '[Sistema] Listo para ejecutar pruebas…\n[Info] Configuración: '
-                        + /*[[${emailHost}]]*/ 'smtp.gmail.com' + ':' + /*[[${emailPort}]]*/ '587';
+                        + /*[[${emailProvider}]]*/ 'resend' + ' / ' + (/*[[${resendConfigured}]]*/ true ? 'API key configurada' : 'API key no configurada');
                 </script>
             </div>
         </div>

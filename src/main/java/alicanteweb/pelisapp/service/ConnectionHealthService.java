@@ -43,8 +43,14 @@ public class ConnectionHealthService {
     @Value("${app.email.enabled:false}")
     private boolean emailEnabled;
 
-    @Value("${spring.mail.host:}")
-    private String emailHost;
+    @Value("${app.email.provider:resend}")
+    private String emailProvider;
+
+    @Value("${resend.api.key:}")
+    private String resendApiKey;
+
+    @Value("${spring.mail.from:}")
+    private String mailFrom;
 
     /**
      * Verifica la conexión a la base de datos
@@ -153,13 +159,23 @@ public class ConnectionHealthService {
             return createWarningStatus("Email deshabilitado", responseTime.toMillis());
         }
 
-        if (emailHost == null || emailHost.trim().isEmpty()) {
-            log.warn("⚠️ Host de email no configurado");
-            return createErrorStatus("Host no configurado", responseTime.toMillis(), "HOST_MISSING");
+        if (!"resend".equalsIgnoreCase(emailProvider)) {
+            log.warn("Provider de email no soportado: {}", emailProvider);
+            return createErrorStatus("Provider no soportado: " + emailProvider, responseTime.toMillis(), "PROVIDER_UNSUPPORTED");
         }
 
-        log.debug("✅ Configuración de email presente");
-        return createSuccessStatus("Configurado correctamente", responseTime.toMillis());
+        if (resendApiKey == null || resendApiKey.trim().isEmpty()) {
+            log.warn("RESEND_API_KEY no configurada");
+            return createErrorStatus("RESEND_API_KEY no configurada", responseTime.toMillis(), "RESEND_KEY_MISSING");
+        }
+
+        if (mailFrom == null || mailFrom.trim().isEmpty()) {
+            log.warn("MAIL_FROM o RESEND_FROM no configurado");
+            return createErrorStatus("Remitente no configurado", responseTime.toMillis(), "FROM_MISSING");
+        }
+
+        log.debug("Configuración de Resend presente");
+        return createSuccessStatus("Resend configurado correctamente", responseTime.toMillis());
     }
 
     /**

@@ -2,7 +2,7 @@ package alicanteweb.pelisapp.service;
 
 /**
  * Interfaz para servicios de email
- * Permite usar tanto MockEmailService como RealEmailService según configuración
+ * Permite usar ResendEmailService o MockEmailService según configuración
  */
 public interface IEmailService {
 
