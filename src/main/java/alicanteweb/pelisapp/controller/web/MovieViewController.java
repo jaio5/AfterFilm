@@ -67,7 +67,7 @@ public class MovieViewController {
             model.addAttribute("currentUser", currentUser);
             return "movie-detail";
         } catch (Exception e) {
-            log.error("Error cargando detalles de película {}: {}", id, e.getMessage());
+            log.error("Error cargando detalles de película {}", id, e);
             model.addAttribute("error", "No se pudo cargar la película");
             return "error";
         }

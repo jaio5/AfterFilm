@@ -38,6 +38,7 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
     List<Review> findByMovieIdOrderByCreatedAtDesc(Long movieId);
 
+    @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
     Optional<Review> findByUserIdAndMovieId(Long userId, Long movieId);
 
     @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
@@ -46,7 +47,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
     List<Review> findByBookIdOrderByCreatedAtDesc(Long bookId);
 
+    @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
     Optional<Review> findByUserIdAndSeriesId(Long userId, Long seriesId);
+
+    @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
     Optional<Review> findByUserIdAndBookId(Long userId, Long bookId);
 
     @Modifying
