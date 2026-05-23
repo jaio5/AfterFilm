@@ -206,12 +206,18 @@
             <div th:each="review : ${reviews}" class="review-item">
                 <div class="review-item-header">
                     <div class="review-item-user">
-                        <a th:href="@{/usuario/{u}(u=${review.user.username})}"
+                        <a th:if="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                           th:href="@{/usuario/{u}(u=${review.user.username})}"
                            class="review-avatar review-avatar-link"
                            th:text="${#strings.substring(review.user.username, 0, 1).toUpperCase()}">U</a>
-                        <a th:href="@{/usuario/{u}(u=${review.user.username})}"
+                        <span th:unless="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                              class="review-avatar">U</span>
+                        <a th:if="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                           th:href="@{/usuario/{u}(u=${review.user.username})}"
                            class="review-username review-username-link"
                            th:text="${review.user.username}">Usuario</a>
+                        <span th:unless="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                              class="review-username">Usuario eliminado</span>
                     </div>
                     <div class="review-stars-display">
                         <span th:if="${review.stars != null and review.stars > 0}"
@@ -236,7 +242,7 @@
                     </button>
                     <button class="btn-text" style="color:#fca5a5;font-size:0.78rem;"
                             th:if="${isAdmin}"
-                            th:onclick="'deleteReview(' + ${review.id} + ', \'' + ${review.user.username} + '\')'">
+                            th:onclick="'deleteReview(' + ${review.id} + ', \'' + ${review.user != null and review.user.username != null ? review.user.username : 'Usuario eliminado'} + '\')'">
                         <i class="fas fa-trash"></i>
                     </button>
                     <span class="review-date-text"

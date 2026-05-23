@@ -161,7 +161,8 @@
                     <i class="fas fa-check-circle"></i>
                     <div>
                         <strong>Tu valoración:</strong>
-                        <span th:each="i : ${#numbers.sequence(1, userReview.stars)}" style="color:#f59e0b;">★</span>
+                        <span th:if="${userReview.stars != null and userReview.stars > 0}"
+                              th:each="i : ${#numbers.sequence(1, userReview.stars)}" style="color:#f59e0b;">★</span>
                         <br>
                         <em th:if="${userReview.text != null and !userReview.text.trim().isEmpty()}"
                             th:text="${userReview.text}"></em>
@@ -191,16 +192,24 @@
             <div th:each="review : ${reviews}" class="review-item">
                 <div class="review-item-header">
                     <div class="review-item-user">
-                        <a th:href="@{/usuario/{u}(u=${review.user.username})}"
+                        <a th:if="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                           th:href="@{/usuario/{u}(u=${review.user.username})}"
                            class="review-avatar review-avatar-link"
                            th:text="${#strings.substring(review.user.username, 0, 1).toUpperCase()}">U</a>
-                        <a th:href="@{/usuario/{u}(u=${review.user.username})}"
+                        <span th:unless="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                              class="review-avatar">U</span>
+                        <a th:if="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                           th:href="@{/usuario/{u}(u=${review.user.username})}"
                            class="review-username review-username-link"
                            th:text="${review.user.username}">Usuario</a>
+                        <span th:unless="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                              class="review-username">Usuario eliminado</span>
                     </div>
                     <div class="review-stars-display">
-                        <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
-                        <span th:if="${review.stars < 5}" th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
+                        <span th:if="${review.stars != null and review.stars > 0}"
+                              th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
+                        <span th:if="${review.stars != null and review.stars < 5}"
+                              th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
                     </div>
                 </div>
                 <div class="review-body">
@@ -218,7 +227,7 @@
                     </button>
                     <button class="btn-text" style="color:#fca5a5;font-size:0.78rem;"
                             th:if="${isAdmin}"
-                            th:onclick="'deleteReview(' + ${review.id} + ', \'' + ${review.user.username} + '\')'">
+                            th:onclick="'deleteReview(' + ${review.id} + ', \'' + ${review.user != null and review.user.username != null ? review.user.username : 'Usuario eliminado'} + '\')'">
                         <i class="fas fa-trash"></i>
                     </button>
                     <span class="review-date-text"
@@ -274,6 +283,32 @@
                     </div>
                 </div>
             </div>
+
+            <p class="section-title" style="margin-top:1.5rem;">Dirección</p>
+            <div th:if="${seriesDetails != null and seriesDetails.directors != null and not #lists.isEmpty(seriesDetails.directors)}">
+                <div th:each="director : ${seriesDetails.directors}" class="cast-person">
+                    <img th:if="${director.profileUrl != null}" th:src="${director.profileUrl}" th:alt="${director.name}" class="cast-photo">
+                    <div th:unless="${director.profileUrl != null}" class="cast-no-photo"><i class="fas fa-user"></i></div>
+                    <div class="cast-info">
+                        <div class="cast-name" th:text="${director.name}">Nombre</div>
+                        <div class="cast-role" th:text="${director.job}">Dirección</div>
+                    </div>
+                </div>
+            </div>
+            <div th:unless="${seriesDetails != null and seriesDetails.directors != null and not #lists.isEmpty(seriesDetails.directors)}" style="padding:0.5rem 0;font-size:0.8rem;color:var(--text-muted);">Sin datos</div>
+
+            <p class="section-title" style="margin-top:1.5rem;">Reparto</p>
+            <div th:if="${seriesDetails != null and seriesDetails.castMembers != null and not #lists.isEmpty(seriesDetails.castMembers)}">
+                <div th:each="actor, iterStat : ${seriesDetails.castMembers}" th:if="${iterStat.index < 8}" class="cast-person">
+                    <img th:if="${actor.profileUrl != null}" th:src="${actor.profileUrl}" th:alt="${actor.name}" class="cast-photo">
+                    <div th:unless="${actor.profileUrl != null}" class="cast-no-photo"><i class="fas fa-user"></i></div>
+                    <div class="cast-info">
+                        <div class="cast-name" th:text="${actor.name}">Nombre</div>
+                        <div class="cast-role" th:text="${actor.character}">Reparto</div>
+                    </div>
+                </div>
+            </div>
+            <div th:unless="${seriesDetails != null and seriesDetails.castMembers != null and not #lists.isEmpty(seriesDetails.castMembers)}" style="padding:0.5rem 0;font-size:0.8rem;color:var(--text-muted);">Sin datos</div>
         </div>
     </div>
 
