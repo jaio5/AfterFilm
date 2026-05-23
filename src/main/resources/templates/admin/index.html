@@ -9,6 +9,7 @@
     <link rel="icon" type="image/png" sizes="32x32" th:href="@{/favicon-32.png}">
     <link rel="icon" type="image/png" sizes="16x16" th:href="@{/favicon-16.png}">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <script th:src="@{/js/security.js}" src="/js/security.js"></script>
 </head>
 <body>
     <nav class="navbar">
@@ -20,7 +21,7 @@
 
             <div class="navbar-nav-links">
                 <a th:href="@{/}"><i class="fas fa-home"></i> App</a>
-                <a th:href="@{/logout}"><i class="fas fa-sign-out-alt"></i> Salir</a>
+                <form th:action="@{/logout}" method="post" style="margin:0"><button type="submit"><i class="fas fa-sign-out-alt"></i> Salir</button></form>
             </div>
         </div>
     </nav>

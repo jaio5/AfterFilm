@@ -29,7 +29,7 @@ public class DataInitializer implements CommandLineRunner {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${app.admin.initial-password:admin123}")
+    @Value("${app.admin.initial-password:}")
     private String adminInitialPassword;
 
     @Override
@@ -65,8 +65,10 @@ public class DataInitializer implements CommandLineRunner {
     private void updateAdminUser(User admin) {
         log.info("Actualizando usuario administrador...");
 
-        // Asegurar que la contraseña esté correctamente encriptada
-        admin.setPassword(passwordEncoder.encode(adminInitialPassword));
+        if (adminInitialPassword != null && !adminInitialPassword.isBlank()) {
+            admin.setPassword(passwordEncoder.encode(adminInitialPassword));
+            log.warn("Contraseña del admin actualizada desde app.admin.initial-password");
+        }
         admin.setEmailConfirmed(true); // Admin siempre confirmado
         admin.setDisplayName("Administrador");
         admin.setEmail("admin@pelisapp.com");
@@ -85,6 +87,11 @@ public class DataInitializer implements CommandLineRunner {
 
     private void createAdminUser() {
         log.info("Creando usuario administrador...");
+
+        if (adminInitialPassword == null || adminInitialPassword.isBlank()) {
+            log.warn("No se crea usuario admin inicial porque APP_ADMIN_PASSWORD/app.admin.initial-password no esta definido");
+            return;
+        }
 
         // Crear usuario admin
         User admin = new User();
@@ -106,4 +113,5 @@ public class DataInitializer implements CommandLineRunner {
 
         log.info("Usuario admin creado exitosamente (username: admin, email: admin@pelisapp.com, roles: ADMIN, MODERATOR, SUPERADMIN)");
     }
+
 }
