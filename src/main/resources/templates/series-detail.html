@@ -228,7 +228,9 @@
                     </button>
                     <button class="btn-text" style="color:#fca5a5;font-size:0.78rem;"
                             th:if="${isAdmin}"
-                            th:onclick="'deleteReview(' + ${review.id} + ', \'' + ${review.user != null and review.user.username != null ? review.user.username : 'Usuario eliminado'} + '\')'">
+                            th:data-review-id="${review.id}"
+                            th:data-review-username="${review.user != null and review.user.username != null ? review.user.username : 'Usuario eliminado'}"
+                            onclick="deleteReviewFromButton(this)">
                         <i class="fas fa-trash"></i>
                     </button>
                     <span class="review-date-text"
@@ -348,6 +350,11 @@
         window.likeReview = function(reviewId) {
             fetch(`/api/reviews/${reviewId}/like`, { method: 'POST' })
                 .then(res => { if (res.ok) location.reload(); });
+        };
+
+        window.deleteReviewFromButton = function(button) {
+            if (!button) return;
+            deleteReview(button.dataset.reviewId, button.dataset.reviewUsername || 'Usuario eliminado');
         };
 
         window.deleteReview = function(reviewId, username) {

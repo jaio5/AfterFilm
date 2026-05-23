@@ -40,6 +40,7 @@ public class MovieViewController {
             }
             List<Review> reviews = reviewRepository.findByMovieIdOrderByCreatedAtDesc(movie.getId());
             MovieStats stats = calculateMovieStats(reviews);
+            List<ReviewView> reviewViews = reviews.stream().map(this::toReviewView).toList();
             Review userReview = null;
             User currentUser = null;
             boolean isAuthenticated = auth != null && auth.isAuthenticated();
@@ -53,9 +54,13 @@ public class MovieViewController {
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
             model.addAttribute("movie", movie);
             model.addAttribute("movieDetails", movieDetails);
-            model.addAttribute("reviews", reviews);
+            model.addAttribute("reviews", reviewViews);
             model.addAttribute("movieStats", stats);
-            model.addAttribute("userReview", userReview);
+            ReviewView userReviewView = userReview != null ? toReviewView(userReview) : null;
+            model.addAttribute("userReview", userReviewView);
+            model.addAttribute("userReviewStars", userReviewView != null ? starsText(userReviewView.stars()) : "");
+            model.addAttribute("userReviewText", userReviewView != null ? userReviewView.text() : "");
+            model.addAttribute("userReviewHasText", userReviewView != null && userReviewView.hasText());
             model.addAttribute("canReview", isAuthenticated && userReview == null);
             model.addAttribute("isAuthenticated", isAuthenticated);
             model.addAttribute("isAdmin", isAdmin);
@@ -65,6 +70,45 @@ public class MovieViewController {
             log.error("Error cargando detalles de película {}: {}", id, e.getMessage());
             model.addAttribute("error", "No se pudo cargar la película");
             return "error";
+        }
+    }
+
+
+    private String starsText(Integer stars) {
+        if (stars == null || stars < 1) {
+            return "";
+        }
+        int safeStars = Math.min(stars, 5);
+        return "★".repeat(safeStars);
+    }
+
+    private ReviewView toReviewView(Review review) {
+        String username = "Usuario eliminado";
+        boolean hasUser = false;
+        if (review.getUser() != null
+                && review.getUser().getUsername() != null
+                && !review.getUser().getUsername().isBlank()) {
+            username = review.getUser().getUsername();
+            hasUser = true;
+        }
+        String initial = username.isBlank() ? "U" : username.substring(0, 1).toUpperCase();
+        String text = review.getText() == null ? "" : review.getText();
+        Long likesCount = review.getLikesCount() == null ? 0L : review.getLikesCount();
+        String createdDate = review.getCreatedAt() == null ? "" : review.getCreatedAt().toString().substring(0, 10);
+        return new ReviewView(review.getId(), username, initial, hasUser, text, review.getStars(), likesCount, createdDate);
+    }
+
+    public record ReviewView(
+            Long id,
+            String username,
+            String userInitial,
+            boolean hasUser,
+            String text,
+            Integer stars,
+            Long likesCount,
+            String createdDate) {
+        public boolean hasText() {
+            return text != null && !text.trim().isEmpty();
         }
     }
 

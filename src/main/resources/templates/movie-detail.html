@@ -175,13 +175,10 @@
                     <i class="fas fa-check-circle"></i>
                     <div>
                         <strong>Tu valoración:</strong>
-                        <span th:if="${userReview.stars != null and userReview.stars > 0}"
-                              th:each="i : ${#numbers.sequence(1, userReview.stars)}" style="color:#f59e0b;">★</span>
+                        <span th:text="${userReviewStars}" style="color:#f59e0b;">★</span>
                         <br>
-                        <em th:if="${userReview.text != null and !userReview.text.trim().isEmpty()}"
-                            th:text="${userReview.text}"></em>
-                        <em th:unless="${userReview.text != null and !userReview.text.trim().isEmpty()}"
-                            style="color:var(--text-muted)">Sin comentario</em>
+                        <em th:if="${userReviewHasText}" th:text="${userReviewText}"></em>
+                        <em th:unless="${userReviewHasText}" style="color:var(--text-muted)">Sin comentario</em>
                     </div>
                 </div>
             </div>
@@ -207,18 +204,16 @@
             <div th:each="review : ${reviews}" class="review-item">
                 <div class="review-item-header">
                     <div class="review-item-user">
-                        <a th:if="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
-                           th:href="@{/usuario/{u}(u=${review.user.username})}"
+                        <a th:if="${review.hasUser}"
+                           th:href="@{/usuario/{u}(u=${review.username})}"
                            class="review-avatar review-avatar-link"
-                           th:text="${#strings.substring(review.user.username, 0, 1).toUpperCase()}">U</a>
-                        <span th:unless="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
-                              class="review-avatar">U</span>
-                        <a th:if="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
-                           th:href="@{/usuario/{u}(u=${review.user.username})}"
+                           th:text="${review.userInitial}">U</a>
+                        <span th:unless="${review.hasUser}" class="review-avatar" th:text="${review.userInitial}">U</span>
+                        <a th:if="${review.hasUser}"
+                           th:href="@{/usuario/{u}(u=${review.username})}"
                            class="review-username review-username-link"
-                           th:text="${review.user.username}">Usuario</a>
-                        <span th:unless="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
-                              class="review-username">Usuario eliminado</span>
+                           th:text="${review.username}">Usuario</a>
+                        <span th:unless="${review.hasUser}" class="review-username" th:text="${review.username}">Usuario eliminado</span>
                     </div>
                     <div class="review-stars-display">
                         <span th:if="${review.stars != null and review.stars > 0}"
@@ -228,10 +223,8 @@
                     </div>
                 </div>
                 <div class="review-body">
-                    <span th:if="${review.text != null and !review.text.trim().isEmpty()}"
-                          th:text="${review.text}"></span>
-                    <em th:unless="${review.text != null and !review.text.trim().isEmpty()}"
-                        style="color:var(--text-muted)">Sin comentario</em>
+                    <span th:if="${review.hasText()}" th:text="${review.text}"></span>
+                    <em th:unless="${review.hasText()}" style="color:var(--text-muted)">Sin comentario</em>
                 </div>
                 <div class="review-item-footer">
                     <button class="btn-like"
@@ -239,15 +232,16 @@
                             th:id="${'like-btn-' + review.id}"
                             th:onclick="'likeReview(' + ${review.id} + ')'">
                         <i class="fas fa-thumbs-up"></i>
-                        <span th:text="${review.likesCount ?: 0}">0</span>
+                        <span th:text="${review.likesCount}">0</span>
                     </button>
                     <button class="btn-text" style="color:#fca5a5;font-size:0.78rem;"
                             th:if="${isAdmin}"
-                            th:onclick="'deleteReview(' + ${review.id} + ', \'' + ${review.user != null and review.user.username != null ? review.user.username : 'Usuario eliminado'} + '\')'">
+                            th:data-review-id="${review.id}"
+                            th:data-review-username="${review.username}"
+                            onclick="deleteReviewFromButton(this)">
                         <i class="fas fa-trash"></i>
                     </button>
-                    <span class="review-date-text"
-                          th:text="${review.createdAt != null ? review.createdAt.toString().substring(0, 10) : ''}">01/01/2023</span>
+                    <span class="review-date-text" th:text="${review.createdDate}">01/01/2023</span>
                 </div>
             </div>
         </div>
@@ -360,6 +354,11 @@
         window.likeReview = function(reviewId) {
             fetch(`/api/reviews/${reviewId}/like`, { method: 'POST' })
                 .then(res => { if (res.ok) location.reload(); });
+        };
+
+        window.deleteReviewFromButton = function(button) {
+            if (!button) return;
+            deleteReview(button.dataset.reviewId, button.dataset.reviewUsername || 'Usuario eliminado');
         };
 
         window.deleteReview = function(reviewId, username) {
