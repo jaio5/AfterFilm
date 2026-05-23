@@ -3,6 +3,7 @@ package alicanteweb.pelisapp.service;
 import alicanteweb.pelisapp.entity.CommentModeration;
 import alicanteweb.pelisapp.entity.Review;
 import alicanteweb.pelisapp.repository.CommentModerationRepository;
+import alicanteweb.pelisapp.repository.ReviewRepository;
 import alicanteweb.pelisapp.service.moderation.ContentAnalyzer;
 import alicanteweb.pelisapp.service.moderation.OllamaClient;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ import java.util.concurrent.CompletableFuture;
 public class ModerationService {
 
     private final CommentModerationRepository commentModerationRepository;
+    private final ReviewRepository reviewRepository;
     private final ContentAnalyzer contentAnalyzer;
     private final OllamaClient ollamaClient;
     private final ModeratingAI moderatingAI;
@@ -54,11 +56,32 @@ public class ModerationService {
     }
 
     /**
-     * Moderar una reseña de manera asíncrona.
+     * Moderar una reseña de manera asíncrona después de que su transacción creadora haya confirmado.
+     */
+    @Async
+    @Transactional
+    public CompletableFuture<CommentModeration> moderateReviewAsync(Long reviewId) {
+        return reviewRepository.findById(reviewId)
+                .map(this::moderatePersistedReview)
+                .orElseGet(() -> {
+                    log.warn("No se modera la reseña {} porque no existe en BD", reviewId);
+                    return CompletableFuture.completedFuture(null);
+                });
+    }
+
+    /**
+     * Compatibilidad para llamadas existentes: solo usar con reseñas ya persistidas y confirmadas.
      */
     @Async
     @Transactional
     public CompletableFuture<CommentModeration> moderateReviewAsync(Review review) {
+        if (review == null || review.getId() == null) {
+            return CompletableFuture.completedFuture(null);
+        }
+        return moderateReviewAsync(review.getId());
+    }
+
+    private CompletableFuture<CommentModeration> moderatePersistedReview(Review review) {
         if (!moderationEnabled) {
             log.debug("Moderación deshabilitada, aprobando reseña ID: {}", review.getId());
             return CompletableFuture.completedFuture(createApprovedModeration(review));
@@ -67,7 +90,8 @@ public class ModerationService {
         log.info("🛡️ Iniciando moderación para reseña ID: {} - Usuario: {}",
                 review.getId(), review.getUser().getUsername());
 
-        CommentModeration moderation = createPendingModeration(review);
+        CommentModeration moderation = commentModerationRepository.findByReview_Id(review.getId())
+                .orElseGet(() -> createPendingModeration(review));
 
         try {
             // Intentar moderación con Ollama

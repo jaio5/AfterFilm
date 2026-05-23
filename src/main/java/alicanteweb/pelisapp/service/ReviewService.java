@@ -19,6 +19,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -287,13 +289,28 @@ public class ReviewService {
             log.debug("📝 Reseña solo con estrellas - se omite moderación asíncrona, ID: {}", saved.getId());
             return;
         }
-        moderationService.moderateReviewAsync(saved)
-            .thenAccept(moderation -> log.debug("📊 Moderación asíncrona completada - ID: {}, Estado: {}",
-                    saved.getId(), moderation.getStatus()))
-            .exceptionally(ex -> {
-                log.warn("⚠️ Error en moderación asíncrona: {}", ex.getMessage());
-                return null;
+        Runnable moderationTask = () -> moderationService.moderateReviewAsync(saved.getId())
+                .thenAccept(moderation -> {
+                    if (moderation != null) {
+                        log.debug("📊 Moderación asíncrona completada - ID: {}, Estado: {}",
+                                saved.getId(), moderation.getStatus());
+                    }
+                })
+                .exceptionally(ex -> {
+                    log.warn("⚠️ Error en moderación asíncrona: {}", ex.getMessage());
+                    return null;
+                });
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    moderationTask.run();
+                }
             });
+        } else {
+            moderationTask.run();
+        }
     }
 
     /**
