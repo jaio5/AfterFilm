@@ -56,6 +56,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                     .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                     .ignoringRequestMatchers("/api/auth/**")
+                    .ignoringRequestMatchers("/admin/**", "/api/admin/**")
                     .ignoringRequestMatchers(request -> {
                         String authorization = request.getHeader("Authorization");
                         return authorization != null && authorization.startsWith("Bearer ");
