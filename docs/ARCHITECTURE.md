@@ -54,7 +54,7 @@ src/main/java/alicanteweb/pelisapp/
 │   ├── ReviewService.java              # Sistema de reseñas
 │   ├── UserService.java                # Gestión de usuarios
 │   ├── TMDBMovieLoaderService.java     # Importación desde TMDB
-│   ├── TMDBBulkLoaderService.java      # Carga masiva TMDB
+│   ├── TMDBSeriesLoaderService.java    # Importación de series desde TMDB
 │   ├── ModerationService.java          # Moderación de contenido
 │   ├── ModeratingAI.java               # Integración IA (Ollama)
 │   ├── ImageStorageService.java        # Gestión de imágenes

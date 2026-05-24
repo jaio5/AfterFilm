@@ -80,7 +80,6 @@ public class SecurityConfig {
                 // Endpoints de diagnóstico (solo en desarrollo)
                 if (devMode) {
                     auth.requestMatchers("/tmdb/setup", "/test-tmdb-simple", "/diagnostico/**").permitAll();
-                    auth.requestMatchers("/admin/users-management/**").permitAll(); // TEMPORAL para gestión de usuarios
                 }
 
                 // Rutas administrativas

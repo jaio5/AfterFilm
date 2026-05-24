@@ -49,7 +49,6 @@ public final class AppConstants {
 
     // Constantes de URLs y rutas
     public static final String LOGIN_REDIRECT_PATH = "redirect:/login";
-    public static final String PROFILE_TEMPLATE_PATH = "usuario/profile";
     public static final String INDEX_TEMPLATE_PATH = "index";
     public static final String ERROR_TEMPLATE_PATH = "error";
 

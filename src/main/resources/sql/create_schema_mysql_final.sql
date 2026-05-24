@@ -166,32 +166,6 @@ CREATE TABLE IF NOT EXISTS `comment_moderation` (
   CONSTRAINT `fk_comment_moderation_reviewer` FOREIGN KEY (`reviewed_by`) REFERENCES `usuario`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Score (valoraciones numéricas por usuario/película)
-CREATE TABLE IF NOT EXISTS `score` (
-  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-  `user_id` BIGINT NOT NULL,
-  `movie_id` BIGINT NOT NULL,
-  `value` INT NOT NULL,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE KEY `uk_score_user_movie` (`user_id`,`movie_id`),
-  INDEX (`user_id`),
-  INDEX (`movie_id`),
-  CONSTRAINT `fk_score_user` FOREIGN KEY (`user_id`) REFERENCES `usuario`(`id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_score_movie` FOREIGN KEY (`movie_id`) REFERENCES `movie`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Comments (entidad Comment mapped to table `comments`)
-CREATE TABLE IF NOT EXISTS `comments` (
-  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-  `movie_id` BIGINT NOT NULL,
-  `author` VARCHAR(255),
-  `text` TEXT,
-  `rating` TINYINT,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  INDEX (`movie_id`),
-  CONSTRAINT `fk_comments_movie` FOREIGN KEY (`movie_id`) REFERENCES `movie`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 -- Archivement (logros)
 CREATE TABLE IF NOT EXISTS `archivement` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -223,30 +197,6 @@ CREATE TABLE IF NOT EXISTS `following` (
   UNIQUE KEY `uk_following` (`follower_id`,`followed_id`),
   CONSTRAINT `fk_following_follower` FOREIGN KEY (`follower_id`) REFERENCES `usuario`(`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_following_followed` FOREIGN KEY (`followed_id`) REFERENCES `usuario`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Comentary moderation (ComentaryModeration entity)
-CREATE TABLE IF NOT EXISTS `comentary_moderation` (
-  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-  `review_id` BIGINT NOT NULL UNIQUE,
-  `ai_score` DOUBLE,
-  `ai_decision` VARCHAR(50),
-  `ai_reason` TEXT,
-  `human_reviewed` TINYINT(1) DEFAULT 0,
-  `human_decision` VARCHAR(50),
-  `human_notes` TEXT,
-  `reviewed_at` DATETIME,
-  CONSTRAINT `fk_cm_review` FOREIGN KEY (`review_id`) REFERENCES `review`(`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Refresh tokens
-CREATE TABLE IF NOT EXISTS `refresh_token` (
-  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-  `usuario_id` BIGINT NOT NULL,
-  `token` VARCHAR(512) NOT NULL UNIQUE,
-  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `expiry_date` DATETIME,
-  CONSTRAINT `fk_refresh_token_usuario` FOREIGN KEY (`usuario_id`) REFERENCES `usuario`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- Agregar índices adicionales si faltan (procedimiento temporal, compatible con MySQL que no soporta CREATE INDEX IF NOT EXISTS)
@@ -281,27 +231,3 @@ INSERT IGNORE INTO `archivement` (`code`, `name`, `description`, `created_at`) V
 ('VIRAL_REVIEW', 'Review Viral', 'Una de sus reseñas recibió 20+ likes', NOW()),
 ('POPULAR_10_FOLLOWERS', 'Seguido', 'Tiene 10 seguidores', NOW()),
 ('CELEBRITY_50_FOLLOWERS', 'Celebridad', 'Tiene 50 seguidores', NOW());
-
-/*
-MIGRACIÓN DESDE EL SCRIPT LEGADO (resumen):
-- Si tu BD actual fue creada con el script antiguo (tabla `pelicula`, `resena`, `etiqueta`, etc.) hay dos rutas:
-  1) RENOMBRAR tablas y columnas (rápido, requiere ventana de mantenimiento):
-     ALTER TABLE `pelicula` RENAME TO `movie`;
-     ALTER TABLE `resena` RENAME TO `review`;
-     ALTER TABLE `valoracion_resena` RENAME TO `review_like`;
-     ALTER TABLE `etiqueta` RENAME TO `tag`;
-     -- y renombrar columnas (ej: `overview` -> `description`) con ALTER TABLE ... RENAME COLUMN ... TO ...;
-  2) COPIAR datos a tablas nuevas (sin parar la app):
-     INSERT INTO movie (id, tmdb_id, title, description, release_date, runtime_minutes, poster_path, created_at)
-       SELECT id, tmdb_id, title, overview, release_date, runtime, poster_url, created_at FROM pelicula;
-     -- Ajustar AUTO_INCREMENT: SET @max = (SELECT MAX(id) FROM movie); ALTER TABLE movie AUTO_INCREMENT = @max + 1;
-- Etiquetas: generar `code` a partir de `name` si procede:
-     INSERT INTO tag (id, code, name, description, created_at)
-       SELECT id, UPPER(REPLACE(name,' ','_')), name, description, NOW() FROM etiqueta;
-- Validaciones recomendadas tras migración:
-     -- verificar filas huérfanas
-     SELECT COUNT(*) FROM review r LEFT JOIN usuario u ON r.user_id = u.id WHERE u.id IS NULL;
-     -- comparar conteos
-     SELECT (SELECT COUNT(*) FROM pelicula) AS old_peliculas, (SELECT COUNT(*) FROM movie) AS new_movies;
-- Backup obligatorio antes de cualquier cambio.
-*/
