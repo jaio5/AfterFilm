@@ -74,6 +74,8 @@ public class SecurityConfig {
                 auth.requestMatchers("/usuarios", "/usuario/**").permitAll();
                 auth.requestMatchers(HttpMethod.GET, "/api/social/**").permitAll();
                 auth.requestMatchers("/actuator/health/**", "/api/system/health/**").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/admin/bulk-loader/status").permitAll();
+                auth.requestMatchers(HttpMethod.POST, "/admin/bulk-loader/cancel").permitAll();
 
                 // Endpoints de diagnóstico (solo en desarrollo)
                 if (devMode) {

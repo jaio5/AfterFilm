@@ -1173,9 +1173,7 @@ Sin carátula: %d (%.1f%%)
 
     @GetMapping("/admin/bulk-loader/status")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> getBulkLoaderStatus(Authentication auth) {
-        String redirect = requireAdminOrRedirect(auth, null);
-        if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
+    public ResponseEntity<Map<String, Object>> getBulkLoaderStatus() {
         try {
             Map<String, Object> status = new HashMap<>();
             long movieCount = movieRepository.count();
@@ -1255,10 +1253,7 @@ Sin carátula: %d (%.1f%%)
 
     @PostMapping("/admin/bulk-loader/cancel")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> cancelBulkLoad(Authentication auth) {
-        String redirect = requireAdminOrRedirect(auth, null);
-        if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
-
+    public ResponseEntity<Map<String, Object>> cancelBulkLoad() {
         Map<String, Object> response = new HashMap<>();
         try {
             log.info("🛑 Solicitud de cancelación de carga masiva");
