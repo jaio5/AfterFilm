@@ -118,14 +118,7 @@ public class SecurityConfig {
             .exceptionHandling(exceptions -> exceptions
                     .defaultAuthenticationEntryPointFor(
                             new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
-                            new AntPathRequestMatcher("/api/**"))
-                    .accessDeniedHandler((request, response, accessDeniedException) -> {
-                        if (request.getRequestURI().startsWith("/api/")) {
-                            response.sendError(HttpStatus.FORBIDDEN.value());
-                        } else {
-                            response.sendError(HttpStatus.FORBIDDEN.value());
-                        }
-                    })
+                            new AntPathRequestMatcher("/api/chat/**"))
             )
 
             // Configuración de login por formulario
