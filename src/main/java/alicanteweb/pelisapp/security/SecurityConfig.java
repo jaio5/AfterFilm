@@ -8,14 +8,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfFilter;
-import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -26,7 +24,6 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
-import jakarta.servlet.Filter;
 
 import java.util.Arrays;
 
@@ -53,15 +50,7 @@ public class SecurityConfig {
         JwtAuthenticationFilter jwtFilter = new JwtAuthenticationFilter(tokenProvider, userDetailsService);
 
         http
-            .csrf(csrf -> csrf
-                    .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-                    .ignoringRequestMatchers("/api/auth/**")
-                    .ignoringRequestMatchers("/admin/**", "/api/admin/**")
-                    .ignoringRequestMatchers(request -> {
-                        String authorization = request.getHeader("Authorization");
-                        return authorization != null && authorization.startsWith("Bearer ");
-                    })
-            )
+            .csrf(AbstractHttpConfigurer::disable)
 
             // Configuración de CORS
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -150,23 +139,10 @@ public class SecurityConfig {
                     .userDetailsService(userDetailsService)
             )
 
-            // Exponer siempre la cookie XSRF-TOKEN para fetchs same-origin.
-            .addFilterAfter(csrfCookieFilter(), CsrfFilter.class)
-
             // Solo añadir JWT filter para rutas de API
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
-    }
-
-    private Filter csrfCookieFilter() {
-        return (request, response, chain) -> {
-            CsrfToken csrfToken = (CsrfToken) request.getAttribute(CsrfToken.class.getName());
-            if (csrfToken != null) {
-                csrfToken.getToken();
-            }
-            chain.doFilter(request, response);
-        };
     }
 
     @Bean
