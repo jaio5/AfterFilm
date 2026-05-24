@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -18,7 +19,9 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -53,6 +56,10 @@ public class SecurityConfig {
             .csrf(csrf -> csrf
                     .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                     .ignoringRequestMatchers("/api/auth/**")
+                    .ignoringRequestMatchers(request -> {
+                        String authorization = request.getHeader("Authorization");
+                        return authorization != null && authorization.startsWith("Bearer ");
+                    })
             )
 
             // Configuración de CORS
@@ -107,6 +114,19 @@ public class SecurityConfig {
                 // Cualquier ruta nueva debe declararse explícitamente arriba.
                 auth.anyRequest().authenticated();
             })
+
+            .exceptionHandling(exceptions -> exceptions
+                    .defaultAuthenticationEntryPointFor(
+                            new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+                            new AntPathRequestMatcher("/api/**"))
+                    .accessDeniedHandler((request, response, accessDeniedException) -> {
+                        if (request.getRequestURI().startsWith("/api/")) {
+                            response.sendError(HttpStatus.FORBIDDEN.value());
+                        } else {
+                            response.sendError(HttpStatus.FORBIDDEN.value());
+                        }
+                    })
+            )
 
             // Configuración de login por formulario
             .formLogin(form -> form
