@@ -578,7 +578,7 @@ public class AdminApiController {
     @PostMapping("/reviews/{reviewId}/delete")
     public ResponseEntity<String> deleteReviewAsAdmin(@PathVariable Long reviewId) {
         try {
-            Review review = reviewRepository.findById(reviewId).orElse(null);
+            Review review = reviewRepository.findByIdWithContent(reviewId).orElse(null);
             if (review == null) return ResponseEntity.notFound().build();
             String username = review.getUser() != null ? review.getUser().getUsername() : "?";
             String movieTitle = review.getMovie() != null ? review.getMovie().getTitle() : "?";

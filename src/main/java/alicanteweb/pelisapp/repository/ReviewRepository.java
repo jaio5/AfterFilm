@@ -19,6 +19,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
     Page<Review> findAll(Pageable pageable);
 
+    @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
+    @Query("SELECT r FROM Review r WHERE r.id = :id")
+    Optional<Review> findByIdWithContent(@Param("id") Long id);
+
     long countByUser_Id(Long userId);
 
     @EntityGraph(attributePaths = {"user", "movie", "series", "book"})

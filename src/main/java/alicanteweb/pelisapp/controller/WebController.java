@@ -372,7 +372,7 @@ Sin carátula: %d (%.1f%%)
         if (redirect != null) return "❌ Sin permisos de administrador";
 
         try {
-            Optional<Review> reviewOpt = reviewRepository.findById(reviewId);
+            Optional<Review> reviewOpt = reviewRepository.findByIdWithContent(reviewId);
             if (reviewOpt.isEmpty()) {
                 return "❌ Reseña no encontrada";
             }
