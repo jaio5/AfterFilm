@@ -156,38 +156,6 @@
                 </form>
             </div>
 
-            <!-- Already reviewed -->
-            <div class="review-form-box" th:if="${userReview != null}">
-                <h4>Editar tu reseña</h4>
-                <form id="reviewEditForm">
-                    <div class="star-rating" id="editStarRating">
-                        <input type="radio" name="stars" value="5" id="editStar5" th:checked="${userReview.stars == 5}" required>
-                        <label for="editStar5" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="4" id="editStar4" th:checked="${userReview.stars == 4}">
-                        <label for="editStar4" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="3" id="editStar3" th:checked="${userReview.stars == 3}">
-                        <label for="editStar3" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="2" id="editStar2" th:checked="${userReview.stars == 2}">
-                        <label for="editStar2" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="1" id="editStar1" th:checked="${userReview.stars == 1}">
-                        <label for="editStar1" class="fas fa-star"></label>
-                    </div>
-                    <div class="form-field">
-                        <label class="form-label" for="reviewEditText">
-                            Comentario
-                            <span style="color:var(--text-muted);font-size:0.75rem;text-transform:none;letter-spacing:0;font-weight:400;">(opcional)</span>
-                        </label>
-                        <textarea class="form-input" id="reviewEditText" name="text"
-                                  maxlength="1000" th:text="${userReview.text}"></textarea>
-                    </div>
-                    <input type="hidden" name="reviewId" th:value="${userReview.id}">
-                    <button type="submit" class="btn-accent btn-sm">
-                        <i class="fas fa-save"></i> Guardar cambios
-                    </button>
-                    <div id="reviewEditMessage" class="form-hint" style="display:none;margin-top:0.5rem;"></div>
-                </form>
-            </div>
-
             <!-- Login prompt -->
             <div class="login-prompt-box" th:unless="${isAuthenticated}">
                 <span>Inicia sesión para valorar y opinar sobre esta serie</span>
@@ -241,6 +209,11 @@
                         <i class="fas fa-thumbs-up"></i>
                         <span th:text="${review.likesCount ?: 0}">0</span>
                     </button>
+                    <button class="btn-text" style="font-size:0.78rem;"
+                            th:if="${currentUser != null and review.user != null and review.user.id == currentUser.id}"
+                            th:onclick="'toggleReviewEdit(' + ${review.id} + ')'">
+                        <i class="fas fa-pen"></i> Editar
+                    </button>
                     <button class="btn-text" style="color:#fca5a5;font-size:0.78rem;"
                             th:if="${isAdmin}"
                             th:data-review-id="${review.id}"
@@ -251,6 +224,30 @@
                     <span class="review-date-text"
                           th:text="${review.createdAt != null ? review.createdAt.toString().substring(0, 10) : ''}"></span>
                 </div>
+                <form class="reviewEditForm review-inline-edit"
+                      th:id="${'reviewEditForm-' + review.id}"
+                      th:if="${currentUser != null and review.user != null and review.user.id == currentUser.id}"
+                      style="display:none;margin-top:0.75rem;">
+                    <div class="star-rating">
+                        <input type="radio" name="stars" value="5" th:id="${'editStar5-' + review.id}" th:checked="${review.stars == 5}" required>
+                        <label th:for="${'editStar5-' + review.id}" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="4" th:id="${'editStar4-' + review.id}" th:checked="${review.stars == 4}">
+                        <label th:for="${'editStar4-' + review.id}" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="3" th:id="${'editStar3-' + review.id}" th:checked="${review.stars == 3}">
+                        <label th:for="${'editStar3-' + review.id}" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="2" th:id="${'editStar2-' + review.id}" th:checked="${review.stars == 2}">
+                        <label th:for="${'editStar2-' + review.id}" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="1" th:id="${'editStar1-' + review.id}" th:checked="${review.stars == 1}">
+                        <label th:for="${'editStar1-' + review.id}" class="fas fa-star"></label>
+                    </div>
+                    <textarea class="form-input" name="text" maxlength="1000" th:text="${review.text}"></textarea>
+                    <input type="hidden" name="reviewId" th:value="${review.id}">
+                    <div style="display:flex;gap:0.5rem;margin-top:0.5rem;align-items:center;flex-wrap:wrap;">
+                        <button type="submit" class="btn-accent btn-sm"><i class="fas fa-save"></i> Guardar</button>
+                        <button type="button" class="btn-ghost btn-sm" th:onclick="'toggleReviewEdit(' + ${review.id} + ')'">Cancelar</button>
+                    </div>
+                    <div class="reviewEditMessage form-hint" style="display:none;margin-top:0.5rem;"></div>
+                </form>
             </div>
         </div>
 
@@ -422,8 +419,8 @@
                 }
             });
 
-            const editForm = document.getElementById('reviewEditForm');
-            if (editForm) editForm.addEventListener('submit', async function(e) {
+            document.querySelectorAll('.reviewEditForm').forEach(function(editForm) {
+                editForm.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const data = new FormData(editForm);
                 const raw = Object.fromEntries(data.entries());
@@ -431,7 +428,7 @@
                     text: raw.text && raw.text.trim() ? raw.text.trim() : "",
                     stars: parseInt(raw.stars)
                 };
-                const msg = document.getElementById('reviewEditMessage');
+                const msg = editForm.querySelector('.reviewEditMessage');
                 if (!payload.stars || payload.stars < 1 || payload.stars > 5) {
                     msg.style.display = 'block';
                     msg.textContent = 'Por favor selecciona una valoración de 1 a 5 estrellas.';
@@ -456,7 +453,16 @@
                     console.error(err);
                 }
             });
+            });
         });
+
+        window.toggleReviewEdit = function(reviewId) {
+            const form = document.getElementById(`reviewEditForm-${reviewId}`);
+            if (!form) return;
+            form.style.display = form.style.display === 'none' || !form.style.display ? 'block' : 'none';
+            const msg = form.querySelector('.reviewEditMessage');
+            if (msg) msg.style.display = 'none';
+        };
     </script>
 <script>
 (function() {
