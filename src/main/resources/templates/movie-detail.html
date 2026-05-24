@@ -171,16 +171,34 @@
 
             <!-- Already reviewed -->
             <div class="review-form-box" th:if="${userReview != null}">
-                <div class="alert-msg alert-msg-info">
-                    <i class="fas fa-check-circle"></i>
-                    <div>
-                        <strong>Tu valoración:</strong>
-                        <span th:text="${userReviewStars}" style="color:#f59e0b;">★</span>
-                        <br>
-                        <em th:if="${userReviewHasText}" th:text="${userReviewText}"></em>
-                        <em th:unless="${userReviewHasText}" style="color:var(--text-muted)">Sin comentario</em>
+                <h4>Editar tu reseña</h4>
+                <form id="reviewEditForm">
+                    <div class="star-rating" id="editStarRating">
+                        <input type="radio" name="stars" value="5" id="editStar5" th:checked="${userReview.stars == 5}" required>
+                        <label for="editStar5" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="4" id="editStar4" th:checked="${userReview.stars == 4}">
+                        <label for="editStar4" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="3" id="editStar3" th:checked="${userReview.stars == 3}">
+                        <label for="editStar3" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="2" id="editStar2" th:checked="${userReview.stars == 2}">
+                        <label for="editStar2" class="fas fa-star"></label>
+                        <input type="radio" name="stars" value="1" id="editStar1" th:checked="${userReview.stars == 1}">
+                        <label for="editStar1" class="fas fa-star"></label>
                     </div>
-                </div>
+                    <div class="form-field">
+                        <label class="form-label" for="reviewEditText">
+                            Comentario
+                            <span style="color:var(--text-muted);font-size:0.75rem;text-transform:none;letter-spacing:0;font-weight:400;">(opcional)</span>
+                        </label>
+                        <textarea class="form-input" id="reviewEditText" name="text"
+                                  maxlength="1000" th:text="${userReviewText}"></textarea>
+                    </div>
+                    <input type="hidden" name="reviewId" th:value="${userReview.id}">
+                    <button type="submit" class="btn-accent btn-sm">
+                        <i class="fas fa-save"></i> Guardar cambios
+                    </button>
+                    <div id="reviewEditMessage" class="form-hint" style="display:none;margin-top:0.5rem;"></div>
+                </form>
             </div>
 
             <!-- Login prompt -->
@@ -377,8 +395,7 @@
 
         document.addEventListener('DOMContentLoaded', function() {
             const form = document.getElementById('resenaForm');
-            if (!form) return;
-            form.addEventListener('submit', async function(e) {
+            if (form) form.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const data = new FormData(form);
                 const raw = Object.fromEntries(data.entries());
@@ -405,6 +422,41 @@
                         setTimeout(() => location.reload(), 1200);
                     } else if (res.status === 401) {
                         msg.textContent = 'Debes iniciar sesión para escribir una reseña.';
+                    } else {
+                        msg.textContent = 'Error: ' + await res.text();
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            });
+
+            const editForm = document.getElementById('reviewEditForm');
+            if (editForm) editForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const data = new FormData(editForm);
+                const raw = Object.fromEntries(data.entries());
+                const payload = {
+                    text: raw.text && raw.text.trim() ? raw.text.trim() : "",
+                    stars: parseInt(raw.stars)
+                };
+                const msg = document.getElementById('reviewEditMessage');
+                if (!payload.stars || payload.stars < 1 || payload.stars > 5) {
+                    msg.style.display = 'block';
+                    msg.textContent = 'Por favor selecciona una valoración de 1 a 5 estrellas.';
+                    return;
+                }
+                try {
+                    const res = await fetch(`/api/reviews/${raw.reviewId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    msg.style.display = 'block';
+                    if (res.ok) {
+                        msg.textContent = 'Reseña actualizada. Recargando...';
+                        setTimeout(() => location.reload(), 900);
+                    } else if (res.status === 401) {
+                        msg.textContent = 'Debes iniciar sesión para editar tu reseña.';
                     } else {
                         msg.textContent = 'Error: ' + await res.text();
                     }

@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,6 +55,22 @@ public class ReviewApiController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         reviewService.likeReview(user.getId(), EndpointSanitizer.id(reviewId, "reviewId"));
         return ResponseEntity.ok().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<ReviewDTO> updateReview(
+            @PathVariable("id") Long reviewId,
+            @Valid @RequestBody ContentReviewRequest req,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        Review review = reviewService.updateReview(
+                user.getId(),
+                EndpointSanitizer.id(reviewId, "reviewId"),
+                EndpointSanitizer.optionalText(req.getText(), 1000),
+                req.getStars());
+        return ResponseEntity.ok(toDto(review));
     }
 
     @PostMapping("/series/{seriesId}")
@@ -103,6 +120,11 @@ public class ReviewApiController {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleIllegalArgument(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(e.getMessage());
+    }
+
+    @ExceptionHandler(SecurityException.class)
+    public ResponseEntity<String> handleSecurity(SecurityException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(e.getMessage());
     }
 
     @GetMapping("/movie/{movieId}")

@@ -96,6 +96,34 @@ public class ReviewService {
                 liker.getUsername(), reviewId, review.getLikesCount() + 1);
     }
 
+    @Transactional
+    public Review updateReview(Long userId, Long reviewId, String text, int stars) {
+        String reviewText = normalizeReviewText(text);
+        validateReviewInput(stars, reviewText);
+
+        User user = findUserById(userId);
+        Review review = findReviewById(reviewId);
+        checkUserBanStatus(user);
+
+        if (review.getUser() == null || !review.getUser().getId().equals(userId)) {
+            log.warn("Usuario {} intentó editar una reseña ajena {}", userId, reviewId);
+            throw new SecurityException("Solo puedes editar tus propias reseñas");
+        }
+
+        String contentTitle = resolveContentTitle(review);
+        runModerationSync(user, reviewText, contentTitle);
+
+        review.setText(reviewText);
+        review.setStars(stars);
+        review.setUpdatedAt(Instant.now());
+        Review saved = reviewRepository.save(review);
+        runModerationAsync(saved);
+
+        log.info("✅ Reseña editada - Usuario: {}, Reseña: {}, Estrellas: {}",
+                user.getUsername(), reviewId, stars);
+        return saved;
+    }
+
     public Page<Review> getReviewsByUsername(String username, Pageable pageable) {
         User user = userRepository.findByUsername(username).orElse(null);
         if (user == null) return Page.empty();
@@ -339,6 +367,13 @@ public class ReviewService {
      */
     private void incrementLikesCount(Review review) {
         reviewRepository.incrementLikesCount(review.getId());
+    }
+
+    private String resolveContentTitle(Review review) {
+        if (review.getMovie() != null) return review.getMovie().getTitle();
+        if (review.getSeries() != null) return review.getSeries().getTitle();
+        if (review.getBook() != null) return review.getBook().getTitle();
+        return "contenido";
     }
 
     /**
