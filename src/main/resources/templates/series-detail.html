@@ -127,12 +127,11 @@
             <div class="review-form-box" th:if="${canReview}">
                 <h4>¿Qué te pareció?</h4>
                 <form id="resenaForm">
-                    <select class="form-input" name="stars" required style="max-width:180px">
-                        <option value="">Valorar</option>
-                        <option th:each="rating : ${#numbers.sequence(2, 10)}"
-                                th:value="${rating / 2.0}"
-                                th:text="${#numbers.formatDecimal(rating / 2.0, 1, 1)} + ' estrellas'">5.0 estrellas</option>
-                    </select>
+                    <div class="half-star-rating" data-rating-widget>
+                        <input type="hidden" name="stars" value="" required>
+                        <button th:each="star : ${#numbers.sequence(1, 5)}" type="button" class="rating-star"
+                                th:data-star="${star}" th:attr="aria-label=${star + ' estrellas'}"><i class="far fa-star"></i></button>
+                    </div>
                     <div class="form-field">
                         <label class="form-label" for="reviewText">
                             Comentario
@@ -222,12 +221,11 @@
                       th:id="${'reviewEditForm-' + review.id}"
                       th:if="${currentUser != null and review.user != null and review.user.id == currentUser.id}"
                       style="display:none;margin-top:0.75rem;">
-                    <select class="form-input" name="stars" required style="max-width:180px">
-                        <option th:each="rating : ${#numbers.sequence(2, 10)}"
-                                th:value="${rating / 2.0}"
-                                th:selected="${review.stars == rating / 2.0}"
-                                th:text="${#numbers.formatDecimal(rating / 2.0, 1, 1)} + ' estrellas'">5.0 estrellas</option>
-                    </select>
+                    <div class="half-star-rating" data-rating-widget>
+                        <input type="hidden" name="stars" th:value="${review.stars}" required>
+                        <button th:each="star : ${#numbers.sequence(1, 5)}" type="button" class="rating-star"
+                                th:data-star="${star}" th:attr="aria-label=${star + ' estrellas'}"><i class="far fa-star"></i></button>
+                    </div>
                     <textarea class="form-input" name="text" maxlength="1000" th:text="${review.text}"></textarea>
                     <input type="hidden" name="reviewId" th:value="${review.id}">
                     <div style="display:flex;gap:0.5rem;margin-top:0.5rem;align-items:center;flex-wrap:wrap;">
@@ -370,7 +368,35 @@
             });
         };
 
+        function initHalfStarRatings(root) {
+            (root || document).querySelectorAll('[data-rating-widget]').forEach(function(widget) {
+                var input = widget.querySelector('input[name="stars"]');
+                var buttons = Array.from(widget.querySelectorAll('.rating-star'));
+                function paint(value) {
+                    value = Number(value || 0);
+                    buttons.forEach(function(button) {
+                        var star = Number(button.dataset.star);
+                        var icon = button.querySelector('i');
+                        button.classList.toggle('is-active', star <= value);
+                        button.classList.toggle('is-half', star - 0.5 === value);
+                        icon.className = star <= value ? 'fas fa-star' : (star - 0.5 === value ? 'fas fa-star-half-alt' : 'far fa-star');
+                    });
+                }
+                buttons.forEach(function(button) {
+                    button.addEventListener('click', function(event) {
+                        var rect = button.getBoundingClientRect();
+                        var star = Number(button.dataset.star);
+                        var value = (event.clientX - rect.left) < rect.width / 2 ? star - 0.5 : star;
+                        input.value = String(value);
+                        paint(value);
+                    });
+                });
+                paint(input.value);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            initHalfStarRatings(document);
             const form = document.getElementById('resenaForm');
             if (form) form.addEventListener('submit', async function(e) {
                 e.preventDefault();
@@ -384,7 +410,7 @@
                 const msg = document.getElementById('resenaMessage');
                 if (!payload.stars || payload.stars < 1 || payload.stars > 5) {
                     msg.style.display = 'block';
-                    msg.textContent = 'Por favor selecciona una valoración de 1 a 5 estrellas.';
+                    msg.textContent = 'Por favor selecciona una valoración de 0.5 a 5 estrellas.';
                     return;
                 }
                 try {
@@ -419,7 +445,7 @@
                 const msg = editForm.querySelector('.reviewEditMessage');
                 if (!payload.stars || payload.stars < 1 || payload.stars > 5) {
                     msg.style.display = 'block';
-                    msg.textContent = 'Por favor selecciona una valoración de 1 a 5 estrellas.';
+                    msg.textContent = 'Por favor selecciona una valoración de 0.5 a 5 estrellas.';
                     return;
                 }
                 try {
