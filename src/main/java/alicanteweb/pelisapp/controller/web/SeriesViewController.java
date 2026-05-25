@@ -74,7 +74,7 @@ public class SeriesViewController {
         int[] dist = new int[5];
         for (Review r : reviews) {
             Double stars = r.getStars();
-            if (stars == null || stars < 1 || stars > 5) {
+            if (stars == null || stars < 0.5 || stars > 5) {
                 log.warn("Reseña {} con puntuacion invalida: {}", r.getId(), stars);
                 continue;
             }
