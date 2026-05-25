@@ -1,10 +1,7 @@
 package alicanteweb.pelisapp.service;
 
 import alicanteweb.pelisapp.dto.UserReviewDTO;
-import alicanteweb.pelisapp.entity.Book;
-import alicanteweb.pelisapp.entity.Movie;
 import alicanteweb.pelisapp.entity.Review;
-import alicanteweb.pelisapp.entity.TvShow;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -30,19 +27,19 @@ public class UserProfileDtoMapper {
     }
 
     private ContentInfo contentInfo(Review review) {
-        Movie movie = review.getMovie();
-        if (movie != null) {
-            return new ContentInfo("movie", movie.getId(), movie.getTitle(), imageUrlService.moviePosterUrl(movie, "w500"));
+        if (review.getMovie() != null) {
+            return new ContentInfo("movie", review.getMovie().getId(), review.getMovie().getTitle(),
+                    imageUrlService.reviewContentPosterUrl(review, "w500"));
         }
 
-        TvShow series = review.getSeries();
-        if (series != null) {
-            return new ContentInfo("series", series.getId(), series.getTitle(), imageUrlService.seriesPosterUrl(series, "w500"));
+        if (review.getSeries() != null) {
+            return new ContentInfo("series", review.getSeries().getId(), review.getSeries().getTitle(),
+                    imageUrlService.reviewContentPosterUrl(review, "w500"));
         }
 
-        Book book = review.getBook();
-        if (book != null) {
-            return new ContentInfo("book", book.getId(), book.getTitle(), book.getCoverUrl());
+        if (review.getBook() != null) {
+            return new ContentInfo("book", review.getBook().getId(), review.getBook().getTitle(),
+                    imageUrlService.reviewContentPosterUrl(review, "w500"));
         }
 
         return new ContentInfo(null, null, null, null);

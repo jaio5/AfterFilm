@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -71,6 +72,17 @@ public class ReviewApiController {
                 EndpointSanitizer.optionalText(req.getText(), 1000),
                 req.getStars());
         return ResponseEntity.ok(toDto(review));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteReview(
+            @PathVariable("id") Long reviewId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        reviewService.deleteOwnReview(user.getId(), EndpointSanitizer.id(reviewId, "reviewId"));
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/series/{seriesId}")

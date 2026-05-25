@@ -65,6 +65,13 @@ public class UserListService {
     }
 
     @Transactional(readOnly = true)
+    public long countList(String username, String listType) {
+        User user = userRepository.findByUsername(username).orElse(null);
+        if (user == null) return 0L;
+        return repo.countByUser_IdAndListType(user.getId(), listType);
+    }
+
+    @Transactional(readOnly = true)
     public List<UserContentList> getList(String username, String listType) {
         User user = userRepository.findByUsername(username).orElseThrow();
         List<UserContentList> items = repo.findByUser_IdAndListTypeOrderByAddedAtDesc(user.getId(), listType);

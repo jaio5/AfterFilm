@@ -1,9 +1,15 @@
 package alicanteweb.pelisapp.service;
 
+import alicanteweb.pelisapp.dto.ProfileBadgeDTO;
 import alicanteweb.pelisapp.dto.UserPublicDTO;
+import alicanteweb.pelisapp.dto.UserProfileSummaryDTO;
+import alicanteweb.pelisapp.entity.Archivement;
 import alicanteweb.pelisapp.entity.Following;
 import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.entity.Role;
+import alicanteweb.pelisapp.entity.Tag;
 import alicanteweb.pelisapp.entity.User;
+import alicanteweb.pelisapp.entity.UsuarioArchivement;
 import alicanteweb.pelisapp.repository.FollowingRepository;
 import alicanteweb.pelisapp.repository.ReviewRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
@@ -25,12 +31,48 @@ public class SocialService {
     private final UserRepository userRepository;
     private final FollowingRepository followingRepository;
     private final ReviewRepository reviewRepository;
+    private final UserListService userListService;
+    private final UserProfileImageService userProfileImageService;
 
     @Transactional(readOnly = true)
     public UserPublicDTO getPublicProfile(String username, String currentUsername) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + username));
         return toPublicDTO(user, resolveCurrentUser(currentUsername));
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileSummaryDTO getProfileSummary(String username, String currentUsername) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + username));
+        User currentUser = resolveCurrentUser(currentUsername);
+        List<Review> reviews = reviewRepository.findAllByUser_IdOrderByCreatedAtDesc(user.getId());
+        double averageRating = reviews.stream()
+                .mapToInt(Review::getStars)
+                .average()
+                .orElse(0.0);
+        long followersCount = followingRepository.countByFollowed(user);
+        long followingCount = followingRepository.countByFollower(user);
+        boolean isFollowing = currentUser != null && followingRepository.existsByFollowerAndFollowed(currentUser, user);
+        String displayName = user.getDisplayName() != null && !user.getDisplayName().isBlank()
+                ? user.getDisplayName()
+                : user.getUsername();
+        return new UserProfileSummaryDTO(
+                user.getId(),
+                user.getUsername(),
+                displayName,
+                userProfileImageService.profileImageUrl(user),
+                user.getCriticLevel(),
+                followersCount,
+                followingCount,
+                reviews.size(),
+                averageRating,
+                userListService.countList(username, UserListService.FAVORITE),
+                userListService.countList(username, UserListService.WATCHLIST),
+                isFollowing,
+                user.getRoles().stream().map(Role::getName).sorted().toList(),
+                user.getTags().stream().map(this::toTagBadge).toList(),
+                user.getUsuarioArchievements().stream().map(this::toAchievementBadge).toList());
     }
 
     @Transactional
@@ -136,6 +178,7 @@ public class SocialService {
                 ? user.getDisplayName()
                 : user.getUsername();
         return new UserPublicDTO(user.getId(), user.getUsername(), displayName,
+                userProfileImageService.profileImageUrl(user),
                 followersCount, followingCount, reviewCount, isFollowing);
     }
 
@@ -144,5 +187,28 @@ public class SocialService {
             return null;
         }
         return userRepository.findByUsername(currentUsername).orElse(null);
+    }
+
+    private ProfileBadgeDTO toTagBadge(Tag tag) {
+        return new ProfileBadgeDTO(
+                tag.getId(),
+                tag.getCode(),
+                tag.getName(),
+                tag.getDescription(),
+                tag.getIconUrl(),
+                tag.getCreatedAt(),
+                null);
+    }
+
+    private ProfileBadgeDTO toAchievementBadge(UsuarioArchivement userAchievement) {
+        Archivement achievement = userAchievement.getArchivement();
+        return new ProfileBadgeDTO(
+                achievement.getId(),
+                achievement.getCode(),
+                achievement.getName(),
+                achievement.getDescription(),
+                achievement.getIconUrl(),
+                userAchievement.getAwardedAt(),
+                userAchievement.isPinnedToProfile());
     }
 }

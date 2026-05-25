@@ -124,10 +124,24 @@ public class ReviewService {
         return saved;
     }
 
+    @Transactional(readOnly = true)
     public Page<Review> getReviewsByUsername(String username, Pageable pageable) {
         User user = userRepository.findByUsername(username).orElse(null);
         if (user == null) return Page.empty();
         return reviewRepository.findAllByUser_Id(user.getId(), pageable);
+    }
+
+    @Transactional
+    public void deleteOwnReview(Long userId, Long reviewId) {
+        User user = findUserById(userId);
+        Review review = findReviewById(reviewId);
+        if (review.getUser() == null || !review.getUser().getId().equals(userId)) {
+            log.warn("Usuario {} intentó borrar una reseña ajena {}", userId, reviewId);
+            throw new SecurityException("Solo puedes borrar tus propias reseñas");
+        }
+        checkUserBanStatus(user);
+        reviewRepository.delete(review);
+        log.info("Reseña borrada por su autor - Usuario: {}, Reseña: {}", user.getUsername(), reviewId);
     }
 
     public List<Review> getReviewsByMovieId(Long movieId) {

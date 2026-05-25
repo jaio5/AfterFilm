@@ -5,6 +5,7 @@ import alicanteweb.pelisapp.dto.UserPublicDTO;
 import alicanteweb.pelisapp.entity.Review;
 import alicanteweb.pelisapp.controller.EndpointSanitizer;
 import alicanteweb.pelisapp.service.ChatService;
+import alicanteweb.pelisapp.service.ImageUrlService;
 import alicanteweb.pelisapp.service.SocialService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +17,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequiredArgsConstructor
@@ -25,6 +28,7 @@ public class SocialViewController {
 
     private final SocialService socialService;
     private final ChatService chatService;
+    private final ImageUrlService imageUrlService;
 
     // ── User discovery ────────────────────────────────────────────────────────
 
@@ -61,6 +65,7 @@ public class SocialViewController {
             model.addAttribute("followers", followers);
             model.addAttribute("following", following);
             model.addAttribute("reviews", reviews);
+            model.addAttribute("reviewPosterUrls", reviewPosterUrls(reviews));
             model.addAttribute("currentUsername", currentUsername);
             model.addAttribute("isOwnProfile", safeUsername.equals(currentUsername));
             return "social/perfil-usuario";
@@ -116,5 +121,19 @@ public class SocialViewController {
             model.addAttribute("error", "Usuario no encontrado");
             return "error";
         }
+    }
+
+    private Map<Long, String> reviewPosterUrls(List<Review> reviews) {
+        Map<Long, String> urls = new HashMap<>();
+        for (Review review : reviews) {
+            if (review.getId() == null) {
+                continue;
+            }
+            String posterUrl = imageUrlService.reviewContentPosterUrl(review, "w500");
+            if (posterUrl != null && !posterUrl.isBlank()) {
+                urls.put(review.getId(), posterUrl);
+            }
+        }
+        return urls;
     }
 }
