@@ -150,6 +150,21 @@ CREATE TABLE IF NOT EXISTS `review_like` (
   CONSTRAINT `fk_review_like_review` FOREIGN KEY (`review_id`) REFERENCES `review`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Review replies (hilos de respuestas a reseñas)
+CREATE TABLE IF NOT EXISTS `review_reply` (
+  `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `review_id` BIGINT NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `text` VARCHAR(1000) NOT NULL,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME,
+  INDEX `idx_review_reply_review` (`review_id`),
+  INDEX `idx_review_reply_user` (`user_id`),
+  INDEX `idx_review_reply_created` (`created_at`),
+  CONSTRAINT `fk_review_reply_review` FOREIGN KEY (`review_id`) REFERENCES `review`(`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_review_reply_user` FOREIGN KEY (`user_id`) REFERENCES `usuario`(`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Comment moderation (nueva tabla para sistema de moderación con IA)
 CREATE TABLE IF NOT EXISTS `comment_moderation` (
   `id` BIGINT AUTO_INCREMENT PRIMARY KEY,

@@ -3,8 +3,10 @@ package alicanteweb.pelisapp.controller.web;
 import alicanteweb.pelisapp.dto.ContentStats;
 import alicanteweb.pelisapp.dto.TvShowDetailDTO;
 import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.entity.ReviewReply;
 import alicanteweb.pelisapp.entity.TvShow;
 import alicanteweb.pelisapp.entity.User;
+import alicanteweb.pelisapp.repository.ReviewReplyRepository;
 import alicanteweb.pelisapp.repository.ReviewRepository;
 import alicanteweb.pelisapp.repository.TvShowRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
@@ -20,6 +22,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -28,6 +33,7 @@ public class SeriesViewController {
 
     private final TvShowRepository tvShowRepository;
     private final ReviewRepository reviewRepository;
+    private final ReviewReplyRepository reviewReplyRepository;
     private final UserRepository userRepository;
     private final ImageUrlService imageUrlService;
     private final TvShowService tvShowService;
@@ -59,6 +65,7 @@ public class SeriesViewController {
             model.addAttribute("seriesDetails", seriesDetails);
             model.addAttribute("posterUrl", imageUrlService.seriesPosterUrl(series, "w500"));
             model.addAttribute("reviews", reviews);
+            model.addAttribute("reviewReplies", repliesByReviewId(reviews));
             model.addAttribute("stats", stats);
             model.addAttribute("userReview", userReview);
             model.addAttribute("canReview", currentUser != null && userReview == null);
@@ -88,6 +95,21 @@ public class SeriesViewController {
         }
         int validReviews = java.util.Arrays.stream(dist).sum();
         return new ContentStats(validReviews, validReviews > 0 ? total / validReviews : 0.0, dist);
+    }
+
+    private Map<Long, List<ReviewReply>> repliesByReviewId(List<Review> reviews) {
+        List<Long> reviewIds = reviews.stream()
+                .map(Review::getId)
+                .filter(id -> id != null)
+                .toList();
+        Map<Long, List<ReviewReply>> replies = reviewIds.stream()
+                .collect(Collectors.toMap(id -> id, id -> List.<ReviewReply>of(), (a, b) -> a, HashMap::new));
+        if (reviewIds.isEmpty()) {
+            return replies;
+        }
+        replies.putAll(reviewReplyRepository.findByReview_IdInOrderByCreatedAtAsc(reviewIds).stream()
+                .collect(Collectors.groupingBy(reply -> reply.getReview().getId()));
+        return replies;
     }
 
 }

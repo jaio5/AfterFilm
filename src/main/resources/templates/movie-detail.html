@@ -242,6 +242,47 @@
                     </div>
                     <div class="reviewEditMessage form-hint" style="display:none;margin-top:0.5rem;"></div>
                 </form>
+                <div class="review-replies-block">
+                    <button type="button" class="btn-text review-thread-toggle"
+                            th:onclick="'toggleReviewReplies(' + ${review.id} + ')'">
+                        <i class="fas fa-comments"></i>
+                        <span th:text="${review.replyCount == 0 ? 'Responder' : (review.replyCount == 1 ? '1 respuesta' : review.replyCount + ' respuestas')}">Responder</span>
+                    </button>
+                    <div class="review-replies-thread" th:id="${'reviewReplies-' + review.id}" style="display:none;">
+                        <div th:if="${#lists.isEmpty(review.replies)}" class="review-replies-empty">Sin respuestas todavía</div>
+                        <div th:each="reply : ${review.replies}" class="review-reply">
+                            <a th:if="${reply.hasUser}"
+                               th:href="@{/usuario/{u}(u=${reply.username})}"
+                               class="review-reply-avatar"
+                               th:text="${reply.userInitial}">U</a>
+                            <span th:unless="${reply.hasUser}" class="review-reply-avatar" th:text="${reply.userInitial}">U</span>
+                            <div class="review-reply-body">
+                                <div class="review-reply-meta">
+                                    <a th:if="${reply.hasUser}"
+                                       th:href="@{/usuario/{u}(u=${reply.username})}"
+                                       class="review-username review-username-link"
+                                       th:text="${reply.username}">Usuario</a>
+                                    <span th:unless="${reply.hasUser}" class="review-username" th:text="${reply.username}">Usuario eliminado</span>
+                                    <span class="review-date-text" th:text="${reply.createdDate}">2026-05-25</span>
+                                    <button type="button" class="btn-text review-reply-delete"
+                                            th:if="${reply.ownedByCurrentUser}"
+                                            th:onclick="'deleteReviewReply(' + ${reply.id} + ')'">
+                                        Borrar
+                                    </button>
+                                </div>
+                                <div class="review-reply-text" th:text="${reply.text}">Respuesta</div>
+                            </div>
+                        </div>
+                        <form th:if="${isAuthenticated}" class="reviewReplyForm" th:data-review-id="${review.id}">
+                            <textarea class="form-input" name="text" maxlength="1000" placeholder="Responder a esta reseña..."></textarea>
+                            <div class="review-reply-actions">
+                                <button type="submit" class="btn-accent btn-sm"><i class="fas fa-reply"></i> Responder</button>
+                                <span class="reviewReplyMessage form-hint" style="display:none;"></span>
+                            </div>
+                        </form>
+                        <div th:unless="${isAuthenticated}" class="review-replies-login">Inicia sesión para responder.</div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -474,6 +515,39 @@
                 }
             });
             });
+
+            document.querySelectorAll('.reviewReplyForm').forEach(function(replyForm) {
+                replyForm.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    const reviewId = replyForm.dataset.reviewId;
+                    const data = new FormData(replyForm);
+                    const text = (data.get('text') || '').trim();
+                    const msg = replyForm.querySelector('.reviewReplyMessage');
+                    if (!text) {
+                        msg.style.display = 'inline';
+                        msg.textContent = 'Escribe una respuesta.';
+                        return;
+                    }
+                    try {
+                        const res = await fetch(`/api/reviews/${reviewId}/replies`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ text })
+                        });
+                        msg.style.display = 'inline';
+                        if (res.ok) {
+                            msg.textContent = 'Respuesta publicada. Recargando...';
+                            setTimeout(() => location.reload(), 700);
+                        } else if (res.status === 401) {
+                            msg.textContent = 'Debes iniciar sesión para responder.';
+                        } else {
+                            msg.textContent = 'Error: ' + await res.text();
+                        }
+                    } catch (err) {
+                        console.error(err);
+                    }
+                });
+            });
         });
 
         window.toggleReviewEdit = function(reviewId) {
@@ -482,6 +556,22 @@
             form.style.display = form.style.display === 'none' || !form.style.display ? 'block' : 'none';
             const msg = form.querySelector('.reviewEditMessage');
             if (msg) msg.style.display = 'none';
+        };
+
+        window.toggleReviewReplies = function(reviewId) {
+            const thread = document.getElementById(`reviewReplies-${reviewId}`);
+            if (!thread) return;
+            thread.style.display = thread.style.display === 'none' || !thread.style.display ? 'block' : 'none';
+        };
+
+        window.deleteReviewReply = function(replyId) {
+            if (!confirm('¿Borrar esta respuesta?')) return;
+            fetch(`/api/reviews/replies/${replyId}`, { method: 'DELETE' })
+                .then(function(res) {
+                    if (res.ok) location.reload();
+                    else res.text().then(function(text) { alert('Error: ' + text); });
+                })
+                .catch(function(err) { alert('Error borrando la respuesta: ' + err.message); });
         };
     </script>
 <script>

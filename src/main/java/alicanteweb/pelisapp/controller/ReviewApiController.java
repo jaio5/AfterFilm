@@ -3,9 +3,13 @@ package alicanteweb.pelisapp.controller;
 import alicanteweb.pelisapp.dto.ContentReviewRequest;
 import alicanteweb.pelisapp.dto.ReviewCreateRequest;
 import alicanteweb.pelisapp.dto.ReviewDTO;
+import alicanteweb.pelisapp.dto.ReviewReplyDTO;
+import alicanteweb.pelisapp.dto.ReviewReplyRequest;
 import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.entity.ReviewReply;
 import alicanteweb.pelisapp.entity.User;
 import alicanteweb.pelisapp.repository.UserRepository;
+import alicanteweb.pelisapp.service.ReviewReplyService;
 import alicanteweb.pelisapp.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +36,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ReviewApiController {
     private final ReviewService reviewService;
+    private final ReviewReplyService reviewReplyService;
     private final UserRepository userRepository;
 
     @PostMapping("")
@@ -56,6 +61,42 @@ public class ReviewApiController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         reviewService.likeReview(user.getId(), EndpointSanitizer.id(reviewId, "reviewId"));
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/{id}/replies")
+    public ResponseEntity<List<ReviewReplyDTO>> getReplies(@PathVariable("id") Long reviewId) {
+        List<ReviewReplyDTO> replies = reviewReplyService
+                .getReplies(EndpointSanitizer.id(reviewId, "reviewId"))
+                .stream()
+                .map(ReviewApiController::toReplyDto)
+                .toList();
+        return ResponseEntity.ok(replies);
+    }
+
+    @PostMapping("/{id}/replies")
+    public ResponseEntity<ReviewReplyDTO> createReply(
+            @PathVariable("id") Long reviewId,
+            @Valid @RequestBody ReviewReplyRequest req,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        ReviewReply reply = reviewReplyService.createReply(
+                EndpointSanitizer.id(reviewId, "reviewId"),
+                user.getId(),
+                EndpointSanitizer.optionalText(req.getText(), 1000));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toReplyDto(reply));
+    }
+
+    @DeleteMapping("/replies/{replyId}")
+    public ResponseEntity<Void> deleteReply(
+            @PathVariable Long replyId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Debes iniciar sesión");
+        User user = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        reviewReplyService.deleteOwnReply(EndpointSanitizer.id(replyId, "replyId"), user.getId());
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{id}")
@@ -163,6 +204,22 @@ public class ReviewApiController {
         dto.setStars(review.getStars());
         dto.setCreatedAt(review.getCreatedAt());
         dto.setLikesCount(review.getLikesCount());
+        return dto;
+    }
+
+    private static ReviewReplyDTO toReplyDto(ReviewReply reply) {
+        ReviewReplyDTO dto = new ReviewReplyDTO();
+        dto.setId(reply.getId());
+        dto.setReviewId(reply.getReview() != null ? reply.getReview().getId() : null);
+        ReviewReplyDTO.SimpleUserDTO userDto = new ReviewReplyDTO.SimpleUserDTO();
+        if (reply.getUser() != null) {
+            userDto.setId(reply.getUser().getId());
+            userDto.setUsername(reply.getUser().getUsername());
+        }
+        dto.setUser(userDto);
+        dto.setText(reply.getText());
+        dto.setCreatedAt(reply.getCreatedAt());
+        dto.setUpdatedAt(reply.getUpdatedAt());
         return dto;
     }
 

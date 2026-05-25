@@ -1186,6 +1186,98 @@ textarea.form-input {
     margin-left: auto;
 }
 
+.review-replies-block {
+    margin-top: 0.85rem;
+}
+
+.review-thread-toggle {
+    font-size: 0.78rem;
+}
+
+.review-replies-thread {
+    margin-top: 0.75rem;
+    margin-left: 1.25rem;
+    padding-left: 1rem;
+    border-left: 1px solid var(--border);
+}
+
+.review-replies-empty,
+.review-replies-login {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-bottom: 0.75rem;
+}
+
+.review-reply {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem 0;
+}
+
+.review-reply + .review-reply {
+    border-top: 1px solid rgba(255,255,255,0.06);
+}
+
+.review-reply-avatar {
+    width: 1.85rem;
+    height: 1.85rem;
+    flex: 0 0 1.85rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 0.72rem;
+    text-decoration: none;
+}
+
+.review-reply-body {
+    flex: 1;
+    min-width: 0;
+}
+
+.review-reply-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.25rem;
+}
+
+.review-reply-meta .review-date-text {
+    margin-left: 0;
+}
+
+.review-reply-delete {
+    color: #fca5a5;
+    font-size: 0.74rem;
+}
+
+.review-reply-text {
+    color: var(--text-secondary);
+    font-size: 0.84rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+}
+
+.reviewReplyForm {
+    margin-top: 0.75rem;
+}
+
+.reviewReplyForm textarea.form-input {
+    min-height: 4.25rem;
+}
+
+.review-reply-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
 /* Like button */
 .btn-like {
     display: inline-flex;

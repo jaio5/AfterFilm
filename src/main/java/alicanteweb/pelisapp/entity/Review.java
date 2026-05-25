@@ -55,6 +55,9 @@ public class Review {
     @OneToMany(mappedBy = "review", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
     private Set<ReviewLike> likes = new HashSet<>();
 
+    @OneToMany(mappedBy = "review", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<ReviewReply> replies = new HashSet<>();
+
     @OneToOne(mappedBy = "review", cascade = CascadeType.ALL)
     private CommentModeration moderation;
 

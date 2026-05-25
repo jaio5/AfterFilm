@@ -3,8 +3,10 @@ package alicanteweb.pelisapp.controller.web;
 import alicanteweb.pelisapp.dto.MovieDetailsDTO;
 import alicanteweb.pelisapp.entity.Movie;
 import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.entity.ReviewReply;
 import alicanteweb.pelisapp.entity.User;
 import alicanteweb.pelisapp.repository.MovieRepository;
+import alicanteweb.pelisapp.repository.ReviewReplyRepository;
 import alicanteweb.pelisapp.repository.ReviewRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
 import alicanteweb.pelisapp.service.MovieService;
@@ -18,6 +20,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequiredArgsConstructor
@@ -25,6 +29,7 @@ import java.util.List;
 public class MovieViewController {
     private final MovieRepository movieRepository;
     private final ReviewRepository reviewRepository;
+    private final ReviewReplyRepository reviewReplyRepository;
     private final UserRepository userRepository;
     private final MovieService movieService;
 
@@ -55,8 +60,9 @@ public class MovieViewController {
             List<Review> reviews = reviewRepository.findByMovieIdOrderByCreatedAtDesc(movie.getId());
             MovieStats stats = calculateMovieStats(reviews);
             String currentUsername = currentUser != null ? currentUser.getUsername() : null;
+            Map<Long, List<ReplyView>> repliesByReviewId = repliesByReviewId(reviews, currentUsername);
             List<ReviewView> reviewViews = reviews.stream()
-                    .map(review -> toReviewView(review, currentUsername))
+                    .map(review -> toReviewView(review, currentUsername, repliesByReviewId.getOrDefault(review.getId(), List.of())))
                     .toList();
             boolean isAdmin = isAuthenticated && auth.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
@@ -64,7 +70,9 @@ public class MovieViewController {
             model.addAttribute("movieDetails", movieDetails);
             model.addAttribute("reviews", reviewViews);
             model.addAttribute("movieStats", stats);
-            ReviewView userReviewView = userReview != null ? toReviewView(userReview, currentUsername) : null;
+            ReviewView userReviewView = userReview != null
+                    ? toReviewView(userReview, currentUsername, repliesByReviewId.getOrDefault(userReview.getId(), List.of()))
+                    : null;
             model.addAttribute("userReview", userReviewView);
             model.addAttribute("userReviewStars", userReviewView != null ? starsText(userReviewView.stars()) : "");
             model.addAttribute("userReviewText", userReviewView != null ? userReviewView.text() : "");
@@ -90,7 +98,20 @@ public class MovieViewController {
         return "★".repeat(fullStars) + (Math.abs(stars - Math.floor(stars) - 0.5) < 0.001 ? "½" : "");
     }
 
-    private ReviewView toReviewView(Review review, String currentUsername) {
+    private Map<Long, List<ReplyView>> repliesByReviewId(List<Review> reviews, String currentUsername) {
+        List<Long> reviewIds = reviews.stream()
+                .map(Review::getId)
+                .filter(id -> id != null)
+                .toList();
+        if (reviewIds.isEmpty()) {
+            return Map.of();
+        }
+        return reviewReplyRepository.findByReview_IdInOrderByCreatedAtAsc(reviewIds).stream()
+                .collect(Collectors.groupingBy(reply -> reply.getReview().getId(),
+                        Collectors.mapping(reply -> toReplyView(reply, currentUsername), Collectors.toList())));
+    }
+
+    private ReviewView toReviewView(Review review, String currentUsername, List<ReplyView> replies) {
         String username = "Usuario eliminado";
         boolean hasUser = false;
         if (review.getUser() != null
@@ -104,7 +125,23 @@ public class MovieViewController {
         Long likesCount = review.getLikesCount() == null ? 0L : review.getLikesCount();
         String createdDate = review.getCreatedAt() == null ? "" : review.getCreatedAt().toString().substring(0, 10);
         boolean ownedByCurrentUser = hasUser && currentUsername != null && username.equals(currentUsername);
-        return new ReviewView(review.getId(), username, initial, hasUser, ownedByCurrentUser, text, review.getStars(), likesCount, createdDate);
+        return new ReviewView(review.getId(), username, initial, hasUser, ownedByCurrentUser, text, review.getStars(), likesCount, createdDate, replies);
+    }
+
+    private ReplyView toReplyView(ReviewReply reply, String currentUsername) {
+        String username = "Usuario eliminado";
+        boolean hasUser = false;
+        if (reply.getUser() != null
+                && reply.getUser().getUsername() != null
+                && !reply.getUser().getUsername().isBlank()) {
+            username = reply.getUser().getUsername();
+            hasUser = true;
+        }
+        String initial = username.isBlank() ? "U" : username.substring(0, 1).toUpperCase();
+        String createdDate = reply.getCreatedAt() == null ? "" : reply.getCreatedAt().toString().substring(0, 10);
+        boolean ownedByCurrentUser = hasUser && currentUsername != null && username.equals(currentUsername);
+        return new ReplyView(reply.getId(), username, initial, hasUser, ownedByCurrentUser,
+                reply.getText() == null ? "" : reply.getText(), createdDate);
     }
 
     public record ReviewView(
@@ -116,9 +153,14 @@ public class MovieViewController {
             String text,
             Double stars,
             Long likesCount,
-            String createdDate) {
+            String createdDate,
+            List<ReplyView> replies) {
         public boolean hasText() {
             return text != null && !text.trim().isEmpty();
+        }
+
+        public int getReplyCount() {
+            return replies == null ? 0 : replies.size();
         }
 
         public int getFullStars() {
@@ -143,6 +185,16 @@ public class MovieViewController {
             }
             return stars % 1 == 0 ? String.valueOf(stars.intValue()) : String.format("%.1f", stars);
         }
+    }
+
+    public record ReplyView(
+            Long id,
+            String username,
+            String userInitial,
+            boolean hasUser,
+            boolean ownedByCurrentUser,
+            String text,
+            String createdDate) {
     }
 
     private MovieStats calculateMovieStats(List<Review> reviews) {

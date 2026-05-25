@@ -38,6 +38,19 @@ public class DatabaseStartupCheck {
             if (database.contains("postgres")) {
                 statement.executeUpdate("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS profile_image_path VARCHAR(1000)");
                 statement.executeUpdate("ALTER TABLE review ALTER COLUMN stars TYPE NUMERIC(2,1) USING stars::numeric");
+                statement.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS review_reply (
+                            id BIGSERIAL PRIMARY KEY,
+                            review_id BIGINT NOT NULL REFERENCES review(id) ON DELETE CASCADE,
+                            user_id BIGINT NOT NULL REFERENCES usuario(id) ON DELETE CASCADE,
+                            text VARCHAR(1000) NOT NULL,
+                            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            updated_at TIMESTAMP NULL
+                        )
+                        """);
+                statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_review_reply_review ON review_reply(review_id)");
+                statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_review_reply_user ON review_reply(user_id)");
+                statement.executeUpdate("CREATE INDEX IF NOT EXISTS idx_review_reply_created ON review_reply(created_at)");
             } else {
                 try {
                     statement.executeUpdate("ALTER TABLE usuario ADD COLUMN profile_image_path VARCHAR(1000) NULL");
@@ -49,6 +62,21 @@ public class DatabaseStartupCheck {
                 } catch (Exception ignored) {
                     // Column is already decimal, or this schema is managed externally.
                 }
+                statement.executeUpdate("""
+                        CREATE TABLE IF NOT EXISTS review_reply (
+                            id BIGINT AUTO_INCREMENT PRIMARY KEY,
+                            review_id BIGINT NOT NULL,
+                            user_id BIGINT NOT NULL,
+                            text VARCHAR(1000) NOT NULL,
+                            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                            updated_at DATETIME NULL,
+                            INDEX idx_review_reply_review (review_id),
+                            INDEX idx_review_reply_user (user_id),
+                            INDEX idx_review_reply_created (created_at),
+                            CONSTRAINT fk_review_reply_review FOREIGN KEY (review_id) REFERENCES review(id) ON DELETE CASCADE,
+                            CONSTRAINT fk_review_reply_user FOREIGN KEY (user_id) REFERENCES usuario(id) ON DELETE CASCADE
+                        )
+                        """);
             }
             log.info("Database lightweight migrations applied");
         } catch (Exception e) {
