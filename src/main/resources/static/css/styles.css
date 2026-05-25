@@ -1071,6 +1071,30 @@ textarea.form-input {
     color: #f59e0b;
 }
 
+.half-star-rating {
+    display: inline-flex;
+    gap: 0.12rem;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.half-star-rating .rating-star {
+    width: 1.65rem;
+    height: 1.65rem;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--bg-elevated);
+    cursor: pointer;
+    font-size: 1.45rem;
+    line-height: 1;
+}
+
+.half-star-rating .rating-star.is-active,
+.half-star-rating .rating-star.is-half {
+    color: #f59e0b;
+}
+
 /* Reviews list */
 .review-item {
     padding: 1.25rem 0;

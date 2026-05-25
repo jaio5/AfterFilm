@@ -44,7 +44,7 @@ public class Review {
     private String text;
 
     @Column(nullable = false)
-    private Double stars; // 1..5, supports half stars
+    private Double stars; // 0.5..5, supports half stars
 
     private Instant createdAt;
     private Instant updatedAt;
