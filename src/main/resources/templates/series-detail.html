@@ -7,13 +7,14 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <script th:src="@{/js/security.js}" src="/js/security.js"></script>
 </head>
 <body>
 
     <!-- Navbar -->
     <nav class="navbar">
         <div class="container">
-            <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> AfterFilm</a>
+            <a class="navbar-brand" th:href="@{/}"><img th:src="@{/logo.png}" src="/logo.png" alt="Afterfilms" class="site-logo"></a>
             <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
 
             <div class="navbar-nav-links">
@@ -126,17 +127,10 @@
             <div class="review-form-box" th:if="${canReview}">
                 <h4>¿Qué te pareció?</h4>
                 <form id="resenaForm">
-                    <div class="star-rating" id="starRating">
-                        <input type="radio" name="stars" value="5" id="star5" required>
-                        <label for="star5" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="4" id="star4">
-                        <label for="star4" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="3" id="star3">
-                        <label for="star3" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="2" id="star2">
-                        <label for="star2" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="1" id="star1">
-                        <label for="star1" class="fas fa-star"></label>
+                    <div class="half-star-rating" data-rating-widget>
+                        <input type="hidden" name="stars" value="" required>
+                        <button th:each="star : ${#numbers.sequence(1, 5)}" type="button" class="rating-star"
+                                th:data-star="${star}" th:attr="aria-label=${star + ' estrellas'}"><i class="far fa-star"></i></button>
                     </div>
                     <div class="form-field">
                         <label class="form-label" for="reviewText">
@@ -153,22 +147,6 @@
                     </button>
                     <div id="resenaMessage" class="form-hint" style="display:none;margin-top:0.5rem;"></div>
                 </form>
-            </div>
-
-            <!-- Already reviewed -->
-            <div class="review-form-box" th:if="${userReview != null}">
-                <div class="alert-msg alert-msg-info">
-                    <i class="fas fa-check-circle"></i>
-                    <div>
-                        <strong>Tu valoración:</strong>
-                        <span th:each="i : ${#numbers.sequence(1, userReview.stars)}" style="color:#f59e0b;">★</span>
-                        <br>
-                        <em th:if="${userReview.text != null and !userReview.text.trim().isEmpty()}"
-                            th:text="${userReview.text}"></em>
-                        <em th:unless="${userReview.text != null and !userReview.text.trim().isEmpty()}"
-                            style="color:var(--text-muted)">Sin comentario</em>
-                    </div>
-                </div>
             </div>
 
             <!-- Login prompt -->
@@ -191,16 +169,23 @@
             <div th:each="review : ${reviews}" class="review-item">
                 <div class="review-item-header">
                     <div class="review-item-user">
-                        <a th:href="@{/usuario/{u}(u=${review.user.username})}"
+                        <a th:if="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                           th:href="@{/usuario/{u}(u=${review.user.username})}"
                            class="review-avatar review-avatar-link"
                            th:text="${#strings.substring(review.user.username, 0, 1).toUpperCase()}">U</a>
-                        <a th:href="@{/usuario/{u}(u=${review.user.username})}"
+                        <span th:unless="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                              class="review-avatar">U</span>
+                        <a th:if="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                           th:href="@{/usuario/{u}(u=${review.user.username})}"
                            class="review-username review-username-link"
                            th:text="${review.user.username}">Usuario</a>
+                        <span th:unless="${review.user != null and review.user.username != null and !review.user.username.isBlank()}"
+                              class="review-username">Usuario eliminado</span>
                     </div>
                     <div class="review-stars-display">
-                        <span th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
-                        <span th:if="${review.stars < 5}" th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
+                        <span th:each="i : ${#numbers.sequence(1, 5)}"
+                              th:class="${review.stars != null and i <= review.stars ? 'fas fa-star' : (review.stars != null and i - 0.5 <= review.stars ? 'fas fa-star-half-alt' : 'far fa-star')}"></span>
+                        <span class="review-rating-number" th:text="${review.starsFormatted}">4.5</span>
                     </div>
                 </div>
                 <div class="review-body">
@@ -216,14 +201,38 @@
                         <i class="fas fa-thumbs-up"></i>
                         <span th:text="${review.likesCount ?: 0}">0</span>
                     </button>
+                    <button class="btn-text" style="font-size:0.78rem;"
+                            th:if="${currentUser != null and review.user != null and review.user.id == currentUser.id}"
+                            th:onclick="'toggleReviewEdit(' + ${review.id} + ')'">
+                        <i class="fas fa-pen"></i> Editar
+                    </button>
                     <button class="btn-text" style="color:#fca5a5;font-size:0.78rem;"
                             th:if="${isAdmin}"
-                            th:onclick="'deleteReview(' + ${review.id} + ', \'' + ${review.user.username} + '\')'">
+                            th:data-review-id="${review.id}"
+                            th:data-review-username="${review.user != null and review.user.username != null ? review.user.username : 'Usuario eliminado'}"
+                            onclick="deleteReviewFromButton(this)">
                         <i class="fas fa-trash"></i>
                     </button>
                     <span class="review-date-text"
                           th:text="${review.createdAt != null ? review.createdAt.toString().substring(0, 10) : ''}"></span>
                 </div>
+                <form class="reviewEditForm review-inline-edit"
+                      th:id="${'reviewEditForm-' + review.id}"
+                      th:if="${currentUser != null and review.user != null and review.user.id == currentUser.id}"
+                      style="display:none;margin-top:0.75rem;">
+                    <div class="half-star-rating" data-rating-widget>
+                        <input type="hidden" name="stars" th:value="${review.stars}" required>
+                        <button th:each="star : ${#numbers.sequence(1, 5)}" type="button" class="rating-star"
+                                th:data-star="${star}" th:attr="aria-label=${star + ' estrellas'}"><i class="far fa-star"></i></button>
+                    </div>
+                    <textarea class="form-input" name="text" maxlength="1000" th:text="${review.text}"></textarea>
+                    <input type="hidden" name="reviewId" th:value="${review.id}">
+                    <div style="display:flex;gap:0.5rem;margin-top:0.5rem;align-items:center;flex-wrap:wrap;">
+                        <button type="submit" class="btn-accent btn-sm"><i class="fas fa-save"></i> Guardar</button>
+                        <button type="button" class="btn-ghost btn-sm" th:onclick="'toggleReviewEdit(' + ${review.id} + ')'">Cancelar</button>
+                    </div>
+                    <div class="reviewEditMessage form-hint" style="display:none;margin-top:0.5rem;"></div>
+                </form>
             </div>
         </div>
 
@@ -274,6 +283,32 @@
                     </div>
                 </div>
             </div>
+
+            <p class="section-title" style="margin-top:1.5rem;">Dirección</p>
+            <div th:if="${seriesDetails != null and seriesDetails.directors != null and not #lists.isEmpty(seriesDetails.directors)}">
+                <div th:each="director : ${seriesDetails.directors}" class="cast-person">
+                    <img th:if="${director.profileUrl != null}" th:src="${director.profileUrl}" th:alt="${director.name}" class="cast-photo">
+                    <div th:unless="${director.profileUrl != null}" class="cast-no-photo"><i class="fas fa-user"></i></div>
+                    <div class="cast-info">
+                        <div class="cast-name" th:text="${director.name}">Nombre</div>
+                        <div class="cast-role" th:text="${director.job}">Dirección</div>
+                    </div>
+                </div>
+            </div>
+            <div th:unless="${seriesDetails != null and seriesDetails.directors != null and not #lists.isEmpty(seriesDetails.directors)}" style="padding:0.5rem 0;font-size:0.8rem;color:var(--text-muted);">Sin datos</div>
+
+            <p class="section-title" style="margin-top:1.5rem;">Reparto</p>
+            <div th:if="${seriesDetails != null and seriesDetails.castMembers != null and not #lists.isEmpty(seriesDetails.castMembers)}">
+                <div th:each="actor, iterStat : ${seriesDetails.castMembers}" th:if="${iterStat.index < 8}" class="cast-person">
+                    <img th:if="${actor.profileUrl != null}" th:src="${actor.profileUrl}" th:alt="${actor.name}" class="cast-photo">
+                    <div th:unless="${actor.profileUrl != null}" class="cast-no-photo"><i class="fas fa-user"></i></div>
+                    <div class="cast-info">
+                        <div class="cast-name" th:text="${actor.name}">Nombre</div>
+                        <div class="cast-role" th:text="${actor.character}">Reparto</div>
+                    </div>
+                </div>
+            </div>
+            <div th:unless="${seriesDetails != null and seriesDetails.castMembers != null and not #lists.isEmpty(seriesDetails.castMembers)}" style="padding:0.5rem 0;font-size:0.8rem;color:var(--text-muted);">Sin datos</div>
         </div>
     </div>
 
@@ -314,6 +349,11 @@
                 .then(res => { if (res.ok) location.reload(); });
         };
 
+        window.deleteReviewFromButton = function(button) {
+            if (!button) return;
+            deleteReview(button.dataset.reviewId, button.dataset.reviewUsername || 'Usuario eliminado');
+        };
+
         window.deleteReview = function(reviewId, username) {
             if (!confirm(`¿Eliminar la reseña de ${username}?`)) return;
             fetch(`/admin/review/${reviewId}/delete`, {
@@ -327,22 +367,49 @@
             });
         };
 
+        function initHalfStarRatings(root) {
+            (root || document).querySelectorAll('[data-rating-widget]').forEach(function(widget) {
+                var input = widget.querySelector('input[name="stars"]');
+                var buttons = Array.from(widget.querySelectorAll('.rating-star'));
+                function paint(value) {
+                    value = Number(value || 0);
+                    buttons.forEach(function(button) {
+                        var star = Number(button.dataset.star);
+                        var icon = button.querySelector('i');
+                        button.classList.toggle('is-active', star <= value);
+                        button.classList.toggle('is-half', star - 0.5 === value);
+                        icon.className = star <= value ? 'fas fa-star' : (star - 0.5 === value ? 'fas fa-star-half-alt' : 'far fa-star');
+                    });
+                }
+                buttons.forEach(function(button) {
+                    button.addEventListener('click', function(event) {
+                        var rect = button.getBoundingClientRect();
+                        var star = Number(button.dataset.star);
+                        var value = (event.clientX - rect.left) < rect.width / 2 ? star - 0.5 : star;
+                        input.value = String(value);
+                        paint(value);
+                    });
+                });
+                paint(input.value);
+            });
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
+            initHalfStarRatings(document);
             const form = document.getElementById('resenaForm');
-            if (!form) return;
-            form.addEventListener('submit', async function(e) {
+            if (form) form.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 const data = new FormData(form);
                 const raw = Object.fromEntries(data.entries());
                 const payload = {
                     text: raw.text && raw.text.trim() ? raw.text.trim() : "",
-                    stars: parseInt(raw.stars)
+                    stars: parseFloat(raw.stars)
                 };
                 const seriesId = raw.seriesId;
                 const msg = document.getElementById('resenaMessage');
-                if (!payload.stars || payload.stars < 1 || payload.stars > 5) {
+                if (!payload.stars || payload.stars < 0.5 || payload.stars > 5) {
                     msg.style.display = 'block';
-                    msg.textContent = 'Por favor selecciona una valoración de 1 a 5 estrellas.';
+                    msg.textContent = 'Por favor selecciona una valoración de 0.5 a 5 estrellas.';
                     return;
                 }
                 try {
@@ -364,7 +431,51 @@
                     console.error(err);
                 }
             });
+
+            document.querySelectorAll('.reviewEditForm').forEach(function(editForm) {
+                editForm.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                const data = new FormData(editForm);
+                const raw = Object.fromEntries(data.entries());
+                const payload = {
+                    text: raw.text && raw.text.trim() ? raw.text.trim() : "",
+                    stars: parseFloat(raw.stars)
+                };
+                const msg = editForm.querySelector('.reviewEditMessage');
+                if (!payload.stars || payload.stars < 0.5 || payload.stars > 5) {
+                    msg.style.display = 'block';
+                    msg.textContent = 'Por favor selecciona una valoración de 0.5 a 5 estrellas.';
+                    return;
+                }
+                try {
+                    const res = await fetch(`/api/reviews/${raw.reviewId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                    msg.style.display = 'block';
+                    if (res.ok) {
+                        msg.textContent = 'Reseña actualizada. Recargando...';
+                        setTimeout(() => location.reload(), 900);
+                    } else if (res.status === 401) {
+                        msg.textContent = 'Debes iniciar sesión para editar tu reseña.';
+                    } else {
+                        msg.textContent = 'Error: ' + await res.text();
+                    }
+                } catch (err) {
+                    console.error(err);
+                }
+            });
+            });
         });
+
+        window.toggleReviewEdit = function(reviewId) {
+            const form = document.getElementById(`reviewEditForm-${reviewId}`);
+            if (!form) return;
+            form.style.display = form.style.display === 'none' || !form.style.display ? 'block' : 'none';
+            const msg = form.querySelector('.reviewEditMessage');
+            if (msg) msg.style.display = 'none';
+        };
     </script>
 <script>
 (function() {

@@ -19,6 +19,15 @@ public interface TvShowRepository extends JpaRepository<TvShow, Long> {
     Page<TvShow> findByTitleContainingIgnoreCase(String title, Pageable pageable);
     Page<TvShow> findAll(Pageable pageable);
 
+    /**
+     * Encuentra una serie por ID cargando explicitamente actores y directores.
+     */
+    @Query("SELECT DISTINCT ts FROM TvShow ts " +
+           "LEFT JOIN FETCH ts.actors " +
+           "LEFT JOIN FETCH ts.directors " +
+           "WHERE ts.id = :id")
+    Optional<TvShow> findByIdWithCastAndDirectors(@Param("id") Long id);
+
     @Query("SELECT ts FROM TvShow ts JOIN ts.reviews r " +
            "WHERE r.createdAt >= :startOfMonth " +
            "GROUP BY ts.id " +

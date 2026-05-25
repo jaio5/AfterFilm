@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AfterFilm — Libros</title>
+    <title>Afterfilms — Libros</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" th:href="@{/favicon.ico}">
+    <link rel="icon" type="image/png" sizes="32x32" th:href="@{/favicon-32.png}">
+    <link rel="icon" type="image/png" sizes="16x16" th:href="@{/favicon-16.png}">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <script th:src="@{/js/security.js}" src="/js/security.js"></script>
 </head>
 <body>
 
@@ -14,7 +18,7 @@
     <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-film"></i> AfterFilm
+                <img th:src="@{/logo.png}" src="/logo.png" alt="Afterfilms" class="site-logo">
             </a>
             <div class="navbar-search">
                 <form id="searchForm">
@@ -56,6 +60,27 @@
         </div>
     </nav>
 
+    <!-- Hero -->
+    <section class="books-hero" id="booksHeroSection" style="display:none">
+        <div class="books-hero-backdrop" id="booksHeroBackdrop"></div>
+        <div class="books-hero-gradient"></div>
+        <div class="books-hero-content">
+            <div class="books-hero-copy">
+                <div class="hero-eyebrow" id="booksHeroEyebrow"></div>
+                <h2 class="hero-title" id="booksHeroTitle"></h2>
+                <p class="hero-synopsis" id="booksHeroSynopsis"></p>
+                <div class="books-hero-meta" id="booksHeroMeta"></div>
+                <div class="hero-actions">
+                    <a class="btn-accent" id="booksHeroWatchLink" href="#"><i class="fas fa-star"></i> Leer reseñas</a>
+                    <a class="btn-ghost" id="booksHeroInfoLink" href="#">+ Más info</a>
+                </div>
+            </div>
+            <div class="books-hero-cover">
+                <img id="booksHeroCover" alt="Portada destacada del mes" loading="eager">
+            </div>
+        </div>
+    </section>
+
     <!-- Main -->
     <div class="container-main">
         <div class="catalog-layout">
@@ -79,7 +104,7 @@
     </div>
 
     <footer class="site-footer">
-        © 2026 AfterFilm — Hecho con <i class="fas fa-heart text-accent"></i> por los libros
+        © 2026 Afterfilms — Hecho con <i class="fas fa-heart text-accent"></i> por los libros
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -88,17 +113,62 @@ const booksContainer = document.getElementById('books-container');
 const paginationContainer = document.getElementById('pagination-container');
 const catalogTitle = document.getElementById('catalog-title');
 const catalogInfo = document.getElementById('catalog-info');
+const booksHeroSection = document.getElementById('booksHeroSection');
 const PAGE_SIZE = 24;
 
 let currentPage = 0;
 let currentCategory = null;
+let currentSearchQuery = null;
 let searchTimeout = null;
+
+function normalizeBookCoverUrl(url) {
+    if (!url) return null;
+    return url.replace('http://', 'https://').replace('zoom=1', 'zoom=0').replace('&edge=curl', '');
+}
+
+function resolveBookPoster(book) {
+    return book ? normalizeBookCoverUrl(book.coverUrl) : null;
+}
+
+function toggleBooksHero(show) {
+    if (!booksHeroSection) return;
+    booksHeroSection.style.display = show ? '' : 'none';
+}
+
+function populateHero(book) {
+    const poster = resolveBookPoster(book);
+    if (!booksHeroSection) return;
+    document.getElementById('booksHeroBackdrop').style.backgroundImage = poster
+        ? `url('${poster}')`
+        : 'radial-gradient(circle at top, rgba(255,107,53,0.25), transparent 45%), linear-gradient(135deg, #1a1010, #0f1115)';
+    document.getElementById('booksHeroEyebrow').textContent = '★ Libro destacado del mes';
+    document.getElementById('booksHeroTitle').textContent = book.title || '';
+    document.getElementById('booksHeroSynopsis').textContent = book.description || book.publisher || '';
+    document.getElementById('booksHeroMeta').innerHTML = `
+        ${book.authors ? `<span class="hero-meta-pill"><i class="fas fa-feather-alt"></i> ${book.authors}</span>` : ''}
+        ${book.avgRating ? `<span class="hero-meta-pill"><i class="fas fa-star"></i> ${Number(book.avgRating).toFixed(1)} · ${book.reviewCount || 0} reseñas</span>` : `<span class="hero-meta-pill"><i class="fas fa-book"></i> ${book.reviewCount || 0} reseñas</span>`}
+        ${book.publishedDate ? `<span class="hero-meta-pill"><i class="fas fa-calendar-alt"></i> ${book.publishedDate}</span>` : ''}
+    `;
+    const heroCover = document.getElementById('booksHeroCover');
+    if (poster) {
+        heroCover.src = poster;
+        heroCover.style.display = '';
+    } else {
+        heroCover.removeAttribute('src');
+        heroCover.style.display = 'none';
+    }
+    const url = `/libro/${book.id}`;
+    document.getElementById('booksHeroWatchLink').href = url;
+    document.getElementById('booksHeroInfoLink').href = url;
+    toggleBooksHero(true);
+}
 
 function loadBooks(page = 0, category = currentCategory) {
     currentCategory = category;
     const url = category
         ? `/api/books/by-category?category=${encodeURIComponent(category)}&page=${page}&size=${PAGE_SIZE}`
         : `/api/books?page=${page}&size=${PAGE_SIZE}`;
+    toggleBooksHero(!category && !currentSearchQuery);
     fetch(url)
         .then(res => res.json())
         .then(data => {
@@ -120,9 +190,7 @@ function renderBooks(items) {
         return;
     }
     items.forEach(b => {
-        const coverSrc = b.coverUrl
-            ? b.coverUrl.replace('zoom=1', 'zoom=0').replace('&edge=curl', '')
-            : null;
+        const coverSrc = resolveBookPoster(b);
         booksContainer.innerHTML += `
         <div class="movie-card">
             <a href="/libro/${b.id}" class="movie-card-link">
@@ -163,10 +231,16 @@ function renderPagination(data) {
 function selectCategory(category) {
     document.querySelectorAll('#sidebarCategories .sidebar-pill').forEach(b => b.classList.toggle('active', b.dataset.category === category));
     catalogTitle.textContent = category || 'Libros';
+    currentSearchQuery = null;
+    toggleBooksHero(!category);
     loadBooks(0, category || null);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
+    fetch('/api/books/top-rated-this-month')
+        .then(res => res.ok ? res.json() : null)
+        .then(book => { if (book) populateHero(book); });
+
     // Cargar categorías en el sidebar
     fetch('/api/books/categories')
         .then(res => res.json())
@@ -192,7 +266,9 @@ document.addEventListener('DOMContentLoaded', function() {
         searchForm.addEventListener('submit', function(e) {
             e.preventDefault();
             const query = searchInput.value.trim();
+            currentSearchQuery = query || null;
             if (!query) { loadBooks(0, null); return; }
+            toggleBooksHero(false);
             fetch(`/api/books/search?query=${encodeURIComponent(query)}`)
                 .then(res => res.json())
                 .then(data => {
@@ -210,7 +286,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         searchInput.addEventListener('search', function() {
-            if (!this.value) loadBooks(0, null);
+            if (!this.value) {
+                currentSearchQuery = null;
+                loadBooks(0, currentCategory);
+            }
         });
     }
     loadBooks(0);

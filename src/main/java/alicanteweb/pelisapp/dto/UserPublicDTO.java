@@ -4,6 +4,7 @@ public record UserPublicDTO(
         Long id,
         String username,
         String displayName,
+        String profileImageUrl,
         long followersCount,
         long followingCount,
         long reviewCount,

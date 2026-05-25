@@ -42,6 +42,9 @@ public class User {
 
     private String displayName;
 
+    @Column(name = "profile_image_path", length = 1000)
+    private String profileImagePath;
+
     private Instant registeredAt;
 
     @Column(name = "email_confirmed", nullable = false)

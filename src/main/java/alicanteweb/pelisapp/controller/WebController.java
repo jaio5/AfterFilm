@@ -82,14 +82,14 @@ public class WebController {
     @Value("${app.email.enabled:false}")
     private boolean emailEnabled;
 
-    @Value("${spring.mail.host:smtp.gmail.com}")
-    private String mailHost;
+    @Value("${app.email.provider:resend}")
+    private String emailProvider;
 
-    @Value("${spring.mail.port:587}")
-    private String mailPort;
+    @Value("${spring.mail.from:}")
+    private String emailFrom;
 
-    @Value("${spring.mail.username:}")
-    private String mailUser;
+    @Value("${resend.api.key:}")
+    private String resendApiKey;
 
     private final ExecutorService bulkLoaderExecutor = Executors.newSingleThreadExecutor();
     private final AtomicBoolean bulkLoading = new AtomicBoolean(false);
@@ -203,9 +203,9 @@ public class WebController {
         String redirect = requireAdminOrRedirect(auth, null);
         if (redirect != null) return redirect;
         model.addAttribute("emailEnabled", emailEnabled);
-        model.addAttribute("emailHost", mailHost);
-        model.addAttribute("emailPort", mailPort);
-        model.addAttribute("emailUser", mailUser);
+        model.addAttribute("emailProvider", emailProvider);
+        model.addAttribute("emailFrom", emailFrom);
+        model.addAttribute("resendConfigured", resendApiKey != null && !resendApiKey.isBlank());
         return "admin/email-config";
     }
 
@@ -372,7 +372,7 @@ Sin carátula: %d (%.1f%%)
         if (redirect != null) return "❌ Sin permisos de administrador";
 
         try {
-            Optional<Review> reviewOpt = reviewRepository.findById(reviewId);
+            Optional<Review> reviewOpt = reviewRepository.findByIdWithContent(reviewId);
             if (reviewOpt.isEmpty()) {
                 return "❌ Reseña no encontrada";
             }
@@ -1173,9 +1173,7 @@ Sin carátula: %d (%.1f%%)
 
     @GetMapping("/admin/bulk-loader/status")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> getBulkLoaderStatus(Authentication auth) {
-        String redirect = requireAdminOrRedirect(auth, null);
-        if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
+    public ResponseEntity<Map<String, Object>> getBulkLoaderStatus() {
         try {
             Map<String, Object> status = new HashMap<>();
             long movieCount = movieRepository.count();
@@ -1255,10 +1253,7 @@ Sin carátula: %d (%.1f%%)
 
     @PostMapping("/admin/bulk-loader/cancel")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> cancelBulkLoad(Authentication auth) {
-        String redirect = requireAdminOrRedirect(auth, null);
-        if (redirect != null) return ResponseEntity.status(403).body(Map.of("success", false, "message", "Sin permisos de administrador"));
-
+    public ResponseEntity<Map<String, Object>> cancelBulkLoad() {
         Map<String, Object> response = new HashMap<>();
         try {
             log.info("🛑 Solicitud de cancelación de carga masiva");

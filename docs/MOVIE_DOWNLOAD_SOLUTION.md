@@ -147,16 +147,16 @@ spring.servlet.multipart.max-request-size=10GB
 
 ## 📱 Interfaz de Prueba
 
-Creada página de prueba en: `src/main/resources/static/test-download.html`
+La antigua página de prueba independiente fue retirada durante la limpieza de legacy.
 
 **Características:**
-- ✅ Interfaz web para probar funcionalidad
+- ✅ Validación desde los endpoints REST
 - ✅ Listado automático de archivos disponibles
-- ✅ Botones de descarga y streaming
-- ✅ Reproductor de video integrado
-- ✅ Verificación de estado del sistema
+- ✅ Botones de descarga y streaming desde el cliente que consuma la API
+- ✅ Reproductor de video integrado en la aplicación principal
+- ✅ Verificación de estado del sistema desde el panel de administración
 
-**Acceso:** http://localhost:8080/test-download.html
+**Acceso:** panel de administración y APIs de descarga
 
 ## 🚀 Estado Final
 

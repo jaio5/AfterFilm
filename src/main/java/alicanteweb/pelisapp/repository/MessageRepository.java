@@ -67,4 +67,8 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
     long countVisibleUnreadFromPartner(@Param("receiverId") Long receiverId,
                                        @Param("senderId") Long senderId,
                                        @Param("deletedAt") Instant deletedAt);
+
+    @Modifying
+    @Query("DELETE FROM Message m WHERE m.sender.id = :userId OR m.receiver.id = :userId")
+    void deleteAllByUserId(@Param("userId") Long userId);
 }

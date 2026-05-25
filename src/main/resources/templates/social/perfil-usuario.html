@@ -6,11 +6,12 @@
     <title th:text="${profile.displayName} + ' - AfterFilm'">Perfil - AfterFilm</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <script th:src="@{/js/security.js}" src="/js/security.js"></script>
 </head>
 <body>
 <nav class="navbar">
     <div class="container">
-        <a class="navbar-brand" th:href="@{/}"><i class="fas fa-film"></i> AfterFilm</a>
+        <a class="navbar-brand" th:href="@{/}"><img th:src="@{/logo.png}" src="/logo.png" alt="Afterfilms" class="site-logo"></a>
         <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
 
         <div class="navbar-nav-links">
@@ -97,8 +98,14 @@
             <i class="fas fa-film"></i>
             <p th:text="'@' + ${profile.username} + ' aun no ha publicado resenas.'">Sin resenas.</p>
         </div>
-        <article th:each="review : ${reviews}" class="profile-review-card">
-            <div class="profile-review-poster-placeholder">
+        <article th:each="review : ${reviews}" th:with="posterUrl=${reviewPosterUrls != null ? reviewPosterUrls.get(review.id) : null}" class="profile-review-card">
+            <img th:if="${posterUrl != null and !posterUrl.trim().isEmpty()}"
+                 th:src="${posterUrl}"
+                 class="profile-review-poster"
+                 alt=""
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+            <div class="profile-review-poster-placeholder"
+                 th:style="${posterUrl != null and !posterUrl.trim().isEmpty() ? 'display:none' : ''}">
                 <i th:class="${review.series != null ? 'fas fa-tv' : (review.book != null ? 'fas fa-book' : 'fas fa-film')}"></i>
             </div>
             <div class="profile-review-body">
@@ -109,8 +116,10 @@
                 <a th:if="${review.book != null}" th:href="@{/libro/{id}(id=${review.book.id})}"
                    class="profile-review-title" th:text="${review.book.title}">Titulo</a>
                 <div class="profile-review-stars">
-                    <span th:if="${review.stars > 0}" th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
-                    <span th:if="${review.stars < 5}" th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
+                    <span th:each="i : ${#numbers.sequence(1, 5)}"
+                          th:class="${review.stars != null and i <= review.stars ? 'fas fa-star' : (review.stars != null and i - 0.5 <= review.stars ? 'fas fa-star-half-alt' : 'far fa-star')}"
+                          th:style="${review.stars == null or i - 0.5 > review.stars ? 'color:var(--bg-elevated)' : ''}"></span>
+                    <span th:text="${review.starsFormatted}">4.5</span>
                 </div>
                 <div class="profile-review-text"
                      th:if="${review.text != null and !review.text.trim().isEmpty()}"

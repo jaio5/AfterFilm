@@ -92,5 +92,5 @@ La documentacion tecnica esta en `docs/`.
 
 La memoria del TFG generada esta en:
 
-- `docs/MEMORIA_TFG_AfterFilm.md`
-- `docs/MEMORIA_TFG_AfterFilm.docx`
+- `docs/MEMORIA_TFG_PelisApp.md`
+- `docs/MEMORIA_TFG_PelisApp.docx`

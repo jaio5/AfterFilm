@@ -17,30 +17,22 @@ DELETE cm FROM comment_moderation cm
 JOIN review r ON cm.review_id = r.id
 WHERE r.user_id IS NOT NULL;
 
--- 2. Borrar moderaciones de comentarios relacionadas con comentarios legacy
-DELETE cm FROM comentary_moderation cm
-JOIN review r ON cm.review_id = r.id
-WHERE r.user_id IS NOT NULL;
-
--- 3. Borrar likes de reseñas
+-- 2. Borrar likes de reseñas
 DELETE FROM review_like WHERE user_id IS NOT NULL;
 
--- 4. Borrar reseñas
+-- 3. Borrar reseñas
 DELETE FROM review WHERE user_id IS NOT NULL;
 
--- 5. Borrar comentarios legacy (si existen)
-DELETE FROM comments WHERE author IS NOT NULL;
+-- 4. Borrar logros/achievements de usuarios
+DELETE FROM usuario_archivement WHERE usuario_id IS NOT NULL;
 
--- 6. Borrar logros/achievements de usuarios
-DELETE FROM usuario_archivement WHERE user_id IS NOT NULL;
+-- 5. Borrar relaciones usuario-rol
+DELETE FROM usuario_roles WHERE usuario_id IS NOT NULL;
 
--- 7. Borrar relaciones usuario-rol
-DELETE FROM user_roles WHERE user_id IS NOT NULL;
+-- 6. Borrar relaciones usuario-tag
+DELETE FROM usuario_etiquetas WHERE usuario_id IS NOT NULL;
 
--- 8. Borrar relaciones usuario-tag
-DELETE FROM user_tags WHERE user_id IS NOT NULL;
-
--- 9. Finalmente, borrar todos los usuarios
+-- 7. Finalmente, borrar todos los usuarios
 DELETE FROM usuario;
 
 -- Mostrar resultado

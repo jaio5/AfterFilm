@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -16,10 +17,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 
 import java.util.Arrays;
 
@@ -32,6 +36,9 @@ public class SecurityConfig {
 
     @Value("${app.dev-mode:false}")
     private boolean devMode;
+
+    @Value("${app.remember-me.key:pelisapp-dev-remember-me-key-change-me}")
+    private String rememberMeKey;
 
     public SecurityConfig(JwtTokenProvider tokenProvider, CustomUserDetailsService userDetailsService) {
         this.tokenProvider = tokenProvider;
@@ -58,40 +65,52 @@ public class SecurityConfig {
 
             .authorizeHttpRequests(auth -> {
                 // Rutas públicas
-                auth.requestMatchers("/", "/login", "/register").permitAll();
-                auth.requestMatchers("/confirm-account/**", "/resend-confirmation", "/request-confirmation").permitAll();
+                auth.requestMatchers("/", "/login", "/register", "/favicon.ico", "/favicon-*.png", "/logo.png").permitAll();
+                auth.requestMatchers("/confirm-email", "/confirm-account/**", "/resend-confirmation", "/request-confirmation").permitAll();
                 auth.requestMatchers("/api/auth/**").permitAll();
                 auth.requestMatchers("/css/**", "/js/**", "/images/**", "/supabase-images/**").permitAll();
-                auth.requestMatchers("/pelicula/**").permitAll();
-                auth.requestMatchers("/peliculas/**").permitAll();
-                auth.requestMatchers("/series", "/serie/**", "/libros", "/libro/**").permitAll();
-                auth.requestMatchers("/api/series/**", "/api/books/**").permitAll();
+                auth.requestMatchers("/pelicula/**", "/peliculas/**", "/series", "/serie/**", "/libros", "/libro/**").permitAll();
+                auth.requestMatchers("/api/movies/**", "/api/series/**", "/api/books/**").permitAll();
                 auth.requestMatchers("/usuarios", "/usuario/**").permitAll();
-                auth.requestMatchers("/api/social/**").permitAll();
-                auth.requestMatchers("/public/**").permitAll(); // Endpoints públicos para pruebas
+                auth.requestMatchers(HttpMethod.GET, "/api/social/**").permitAll();
+                auth.requestMatchers("/actuator/health/**", "/api/system/health/**").permitAll();
+                auth.requestMatchers(HttpMethod.GET, "/admin/bulk-loader/status").permitAll();
+                auth.requestMatchers(HttpMethod.POST, "/admin/bulk-loader/cancel").permitAll();
 
                 // Endpoints de diagnóstico (solo en desarrollo)
                 if (devMode) {
                     auth.requestMatchers("/tmdb/setup", "/test-tmdb-simple", "/diagnostico/**").permitAll();
-                    auth.requestMatchers("/admin/users-management/**").permitAll(); // TEMPORAL para gestión de usuarios
                 }
 
                 // Rutas administrativas
-                auth.requestMatchers("/admin/**").hasRole("ADMIN");
+                auth.requestMatchers("/admin/**", "/api/admin/**").hasRole("ADMIN");
 
                 // Rutas que requieren autenticación
                 auth.requestMatchers("/perfil/**", "/profile/**").authenticated();
                 auth.requestMatchers("/feed", "/chat", "/chat/**").authenticated();
+                auth.requestMatchers("/movies/**").authenticated();
                 auth.requestMatchers("/api/chat/**").authenticated();
                 auth.requestMatchers("/api/lists/**").authenticated();
+                auth.requestMatchers(HttpMethod.POST, "/api/reviews/**").authenticated();
+                auth.requestMatchers(HttpMethod.PUT, "/api/reviews/**").authenticated();
+                auth.requestMatchers(HttpMethod.DELETE, "/api/reviews/**").authenticated();
+                auth.requestMatchers(HttpMethod.POST, "/api/social/**").authenticated();
+                auth.requestMatchers(HttpMethod.PUT, "/api/social/**").authenticated();
+                auth.requestMatchers(HttpMethod.DELETE, "/api/social/**").authenticated();
                 auth.requestMatchers("/review/**").authenticated();
-                auth.requestMatchers("/api/user/**").authenticated();
+                auth.requestMatchers("/api/user/**", "/api/users/me/**").authenticated();
                 auth.requestMatchers(HttpMethod.POST, "/pelicula/*/review").authenticated();
                 auth.requestMatchers(HttpMethod.POST, "/review/*/like").authenticated();
 
-                // Por defecto permitir acceso (para desarrollo)
-                auth.anyRequest().permitAll();
+                // Cualquier ruta nueva debe declararse explícitamente arriba.
+                auth.anyRequest().authenticated();
             })
+
+            .exceptionHandling(exceptions -> exceptions
+                    .defaultAuthenticationEntryPointFor(
+                            new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED),
+                            new AntPathRequestMatcher("/api/chat/**"))
+            )
 
             // Configuración de login por formulario
             .formLogin(form -> form
@@ -116,7 +135,7 @@ public class SecurityConfig {
 
             // Configuración para recordar usuario
             .rememberMe(remember -> remember
-                    .key("pelisapp-remember-me-key")
+                    .key(rememberMeKey)
                     .tokenValiditySeconds(86400 * 7) // 7 días
                     .userDetailsService(userDetailsService)
             )
@@ -140,13 +159,20 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        // Permite localhost y emuladores Android
-        configuration.setAllowedOriginPatterns(Arrays.asList(
-                "http://localhost:*",
-                "https://localhost:*",
-                "http://10.0.2.2:*",
-                "http://192.168.*:*"
-        ));
+        // En produccion solo localhost queda permitido por defecto; rangos LAN/emulador solo en devMode.
+        if (devMode) {
+            configuration.setAllowedOriginPatterns(Arrays.asList(
+                    "http://localhost:*",
+                    "https://localhost:*",
+                    "http://10.0.2.2:*",
+                    "http://192.168.*:*"
+            ));
+        } else {
+            configuration.setAllowedOriginPatterns(Arrays.asList(
+                    "http://localhost:*",
+                    "https://localhost:*"
+            ));
+        }
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);

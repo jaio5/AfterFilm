@@ -6,12 +6,13 @@
     <title>Admin Libros - AfterFilm</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <script th:src="@{/js/security.js}" src="/js/security.js"></script>
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-film"></i> AfterFilm
+                <img th:src="@{/logo.png}" src="/logo.png" alt="Afterfilms" class="site-logo">
                 <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
             </a>
             <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
@@ -19,7 +20,7 @@
             <div class="navbar-nav-links">
                 <a th:href="@{/admin}"><i class="fas fa-home"></i> Panel</a>
                 <a th:href="@{/libros}"><i class="fas fa-book"></i> Ver Libros</a>
-                <a th:href="@{/logout}"><i class="fas fa-sign-out-alt"></i> Salir</a>
+                <form th:action="@{/logout}" method="post" style="margin:0"><button type="submit"><i class="fas fa-sign-out-alt"></i> Salir</button></form>
             </div>
         </div>
     </nav>
@@ -57,6 +58,12 @@
                         <input type="text" id="googleIdInput" placeholder="Google Books ID..." class="form-input" style="flex:1;padding:0.4rem 0.6rem;font-size:0.85rem">
                         <button onclick="importByGoogleId()" class="btn-accent" style="white-space:nowrap"><i class="fas fa-plus"></i> Importar</button>
                     </div>
+                </div>
+                <div class="admin-module-card">
+                    <div class="admin-icon"><i class="fas fa-wrench"></i></div>
+                    <h4>Reparar Portadas</h4>
+                    <p>Vuelve a descargar las portadas de Google Books y elimina las rotas del catálogo</p>
+                    <button onclick="repairBookCovers()" class="btn-ghost"><i class="fas fa-sync-alt"></i> Reparar portadas</button>
                 </div>
             </div>
             <div class="admin-module-card" style="margin-top:1rem">
@@ -227,6 +234,19 @@
                 if (data.success) loadBooks(0);
             } catch (err) {
                 showLog(`Error importando libro: ${err.message}`, true);
+            }
+        }
+
+        async function repairBookCovers() {
+            if (!confirm('Esto volverá a descargar las portadas de los libros. ¿Continuar?')) return;
+            showLog('Reparando portadas de libros...');
+            try {
+                const res = await fetch('/api/admin/books/repair-covers', { method: 'POST' });
+                const data = await readResponse(res);
+                showLog(`Revisión completada. Total: ${data.total_books}, reparadas: ${data.repaired}, errores: ${data.errors}`);
+                loadBooks(0);
+            } catch (err) {
+                showLog(`Error reparando portadas: ${err.message}`, true);
             }
         }
 

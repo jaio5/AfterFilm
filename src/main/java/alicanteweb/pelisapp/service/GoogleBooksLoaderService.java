@@ -234,13 +234,13 @@ public class GoogleBooksLoaderService {
                     String stored = imageService.downloadAndSave(coverUrl, prefix, "books");
                     if (stored != null) {
                         book.setCoverUrl(stored);
-                    } else if (!supabaseImageStorage.wantsSupabase() && (book.getCoverUrl() == null || book.getCoverUrl().isBlank())) {
-                        book.setCoverUrl(coverUrl);
+                    } else if (isRemoteCover(book.getCoverUrl())) {
+                        book.setCoverUrl(null);
                     }
                 } catch (Exception e) {
                     log.warn("No se pudo descargar portada para libro googleId={}: {}", book.getGoogleBooksId(), e.getMessage());
-                    if (!supabaseImageStorage.wantsSupabase() && (book.getCoverUrl() == null || book.getCoverUrl().isBlank())) {
-                        book.setCoverUrl(coverUrl);
+                    if (isRemoteCover(book.getCoverUrl())) {
+                        book.setCoverUrl(null);
                     }
                 }
             }
@@ -266,6 +266,10 @@ public class GoogleBooksLoaderService {
                         .replace("zoom=1", "zoom=0")
                         .replace("&edge=curl", ""))
                 .orElse(null);
+    }
+
+    private boolean isRemoteCover(String coverUrl) {
+        return coverUrl != null && !coverUrl.isBlank() && (coverUrl.startsWith("http://") || coverUrl.startsWith("https://"));
     }
 
     private String joinTextArray(JsonNode arrayNode, int maxLength) {

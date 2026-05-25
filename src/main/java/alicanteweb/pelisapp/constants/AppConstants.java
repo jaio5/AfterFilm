@@ -36,8 +36,8 @@ public final class AppConstants {
     public static final String ACHIEVEMENT_CELEBRITY_50_FOLLOWERS = "CELEBRITY_50_FOLLOWERS";
 
     // Constantes de reviews y ratings
-    public static final int MIN_STARS_RATING = 1;
-    public static final int MAX_STARS_RATING = 5;
+    public static final double MIN_STARS_RATING = 0.5;
+    public static final double MAX_STARS_RATING = 5.0;
     public static final int VIRAL_REVIEW_LIKES_THRESHOLD = 20;
     public static final double CRITIC_ROLE_AVG_LIKES_THRESHOLD = 3.0;
     public static final double TOP_CRITIC_ROLE_AVG_LIKES_THRESHOLD = 5.0;
@@ -49,7 +49,6 @@ public final class AppConstants {
 
     // Constantes de URLs y rutas
     public static final String LOGIN_REDIRECT_PATH = "redirect:/login";
-    public static final String PROFILE_TEMPLATE_PATH = "usuario/profile";
     public static final String INDEX_TEMPLATE_PATH = "index";
     public static final String ERROR_TEMPLATE_PATH = "error";
 
@@ -82,7 +81,7 @@ public final class AppConstants {
     public static final String ERROR_USER_NOT_FOUND = "Usuario no encontrado";
     public static final String ERROR_MOVIE_NOT_FOUND = "Película no encontrada";
     public static final String ERROR_REVIEW_NOT_FOUND = "Reseña no encontrada";
-    public static final String ERROR_INVALID_RATING = "La puntuación debe estar entre 1 y 5";
+    public static final String ERROR_INVALID_RATING = "La puntuación debe estar entre 0.5 y 5 y puede usar medias estrellas";
     public static final String ERROR_REVIEW_TOO_TOXIC = "Reseña rechazada por moderación";
 
     // Constantes adicionales para TMDB API

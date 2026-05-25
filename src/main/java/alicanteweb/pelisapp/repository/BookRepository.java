@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
@@ -30,6 +31,12 @@ public interface BookRepository extends JpaRepository<Book, Long> {
            countQuery = "SELECT COUNT(*) FROM books WHERE categories ~* :pattern",
            nativeQuery = true)
     Page<Book> findByCategoriesMatchingPattern(@Param("pattern") String pattern, Pageable pageable);
+
+    @Query("SELECT b FROM Book b JOIN b.reviews r " +
+           "WHERE r.createdAt >= :startOfMonth " +
+           "GROUP BY b.id " +
+           "ORDER BY AVG(r.stars) DESC, COUNT(r.id) DESC")
+    List<Book> findTopRatedThisMonth(@Param("startOfMonth") Instant startOfMonth, Pageable pageable);
 
     @Query("SELECT b.id, COALESCE(AVG(CAST(r.stars AS double)), null), COUNT(r.id) " +
            "FROM Book b LEFT JOIN b.reviews r " +

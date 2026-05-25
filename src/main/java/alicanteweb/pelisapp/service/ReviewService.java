@@ -19,6 +19,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -41,7 +43,7 @@ public class ReviewService {
     private final UserService userService;
 
     @Transactional
-    public Review createReview(Long userId, Long movieId, String text, int stars) {
+    public Review createReview(Long userId, Long movieId, String text, Double stars) {
         String reviewText = normalizeReviewText(text);
         validateReviewInput(stars, reviewText);
         User user = findUserById(userId);
@@ -94,10 +96,52 @@ public class ReviewService {
                 liker.getUsername(), reviewId, review.getLikesCount() + 1);
     }
 
+    @Transactional
+    public Review updateReview(Long userId, Long reviewId, String text, Double stars) {
+        String reviewText = normalizeReviewText(text);
+        validateReviewInput(stars, reviewText);
+
+        User user = findUserById(userId);
+        Review review = findReviewById(reviewId);
+        checkUserBanStatus(user);
+
+        if (review.getUser() == null || !review.getUser().getId().equals(userId)) {
+            log.warn("Usuario {} intentó editar una reseña ajena {}", userId, reviewId);
+            throw new SecurityException("Solo puedes editar tus propias reseñas");
+        }
+
+        String contentTitle = resolveContentTitle(review);
+        runModerationSync(user, reviewText, contentTitle);
+
+        review.setText(reviewText);
+        review.setStars(stars);
+        review.setUpdatedAt(Instant.now());
+        Review saved = reviewRepository.save(review);
+        runModerationAsync(saved);
+
+        log.info("✅ Reseña editada - Usuario: {}, Reseña: {}, Estrellas: {}",
+                user.getUsername(), reviewId, stars);
+        return saved;
+    }
+
+    @Transactional(readOnly = true)
     public Page<Review> getReviewsByUsername(String username, Pageable pageable) {
         User user = userRepository.findByUsername(username).orElse(null);
         if (user == null) return Page.empty();
         return reviewRepository.findAllByUser_Id(user.getId(), pageable);
+    }
+
+    @Transactional
+    public void deleteOwnReview(Long userId, Long reviewId) {
+        User user = findUserById(userId);
+        Review review = findReviewById(reviewId);
+        if (review.getUser() == null || !review.getUser().getId().equals(userId)) {
+            log.warn("Usuario {} intentó borrar una reseña ajena {}", userId, reviewId);
+            throw new SecurityException("Solo puedes borrar tus propias reseñas");
+        }
+        checkUserBanStatus(user);
+        reviewRepository.delete(review);
+        log.info("Reseña borrada por su autor - Usuario: {}, Reseña: {}", user.getUsername(), reviewId);
     }
 
     public List<Review> getReviewsByMovieId(Long movieId) {
@@ -119,7 +163,7 @@ public class ReviewService {
     }
 
     @Transactional
-    public Review createSeriesReview(Long userId, Long seriesId, String text, int stars) {
+    public Review createSeriesReview(Long userId, Long seriesId, String text, Double stars) {
         String reviewText = normalizeReviewText(text);
         validateReviewInput(stars, reviewText);
         User user = findUserById(userId);
@@ -150,7 +194,7 @@ public class ReviewService {
     }
 
     @Transactional
-    public Review createBookReview(Long userId, Long bookId, String text, int stars) {
+    public Review createBookReview(Long userId, Long bookId, String text, Double stars) {
         String reviewText = normalizeReviewText(text);
         validateReviewInput(stars, reviewText);
         User user = findUserById(userId);
@@ -188,8 +232,11 @@ public class ReviewService {
      * Valida la entrada de una reseña.
      * Permite texto vacío - solo se requieren las estrellas.
      */
-    private void validateReviewInput(int stars, String text) {
-        if (stars < AppConstants.MIN_STARS_RATING || stars > AppConstants.MAX_STARS_RATING) {
+    private void validateReviewInput(Double stars, String text) {
+        if (stars == null
+                || stars < AppConstants.MIN_STARS_RATING
+                || stars > AppConstants.MAX_STARS_RATING
+                || Math.abs((stars * 2) - Math.rint(stars * 2)) > 0.001) {
             throw new IllegalArgumentException(AppConstants.ERROR_INVALID_RATING);
         }
 
@@ -232,7 +279,7 @@ public class ReviewService {
                 });
     }
 
-    private Review buildReview(User user, Movie movie, String text, int stars) {
+    private Review buildReview(User user, Movie movie, String text, Double stars) {
         Review review = new Review();
         review.setUser(user);
         review.setMovie(movie);
@@ -243,7 +290,7 @@ public class ReviewService {
         return review;
     }
 
-    private Review buildReview(User user, TvShow series, String text, int stars) {
+    private Review buildReview(User user, TvShow series, String text, Double stars) {
         Review review = new Review();
         review.setUser(user);
         review.setSeries(series);
@@ -254,7 +301,7 @@ public class ReviewService {
         return review;
     }
 
-    private Review buildReview(User user, Book book, String text, int stars) {
+    private Review buildReview(User user, Book book, String text, Double stars) {
         Review review = new Review();
         review.setUser(user);
         review.setBook(book);
@@ -287,13 +334,28 @@ public class ReviewService {
             log.debug("📝 Reseña solo con estrellas - se omite moderación asíncrona, ID: {}", saved.getId());
             return;
         }
-        moderationService.moderateReviewAsync(saved)
-            .thenAccept(moderation -> log.debug("📊 Moderación asíncrona completada - ID: {}, Estado: {}",
-                    saved.getId(), moderation.getStatus()))
-            .exceptionally(ex -> {
-                log.warn("⚠️ Error en moderación asíncrona: {}", ex.getMessage());
-                return null;
+        Runnable moderationTask = () -> moderationService.moderateReviewAsync(saved.getId())
+                .thenAccept(moderation -> {
+                    if (moderation != null) {
+                        log.debug("📊 Moderación asíncrona completada - ID: {}, Estado: {}",
+                                saved.getId(), moderation.getStatus());
+                    }
+                })
+                .exceptionally(ex -> {
+                    log.warn("⚠️ Error en moderación asíncrona: {}", ex.getMessage());
+                    return null;
+                });
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    moderationTask.run();
+                }
             });
+        } else {
+            moderationTask.run();
+        }
     }
 
     /**
@@ -322,6 +384,13 @@ public class ReviewService {
      */
     private void incrementLikesCount(Review review) {
         reviewRepository.incrementLikesCount(review.getId());
+    }
+
+    private String resolveContentTitle(Review review) {
+        if (review.getMovie() != null) return review.getMovie().getTitle();
+        if (review.getSeries() != null) return review.getSeries().getTitle();
+        if (review.getBook() != null) return review.getBook().getTitle();
+        return "contenido";
     }
 
     /**

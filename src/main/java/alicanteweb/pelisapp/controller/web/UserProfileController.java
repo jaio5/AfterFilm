@@ -5,6 +5,7 @@ import alicanteweb.pelisapp.entity.Review;
 import alicanteweb.pelisapp.entity.UserContentList;
 import alicanteweb.pelisapp.repository.UserRepository;
 import alicanteweb.pelisapp.repository.ReviewRepository;
+import alicanteweb.pelisapp.service.ImageUrlService;
 import alicanteweb.pelisapp.service.UserListService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +14,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequiredArgsConstructor
@@ -22,6 +25,7 @@ public class UserProfileController {
     private final UserRepository userRepository;
     private final ReviewRepository reviewRepository;
     private final UserListService userListService;
+    private final ImageUrlService imageUrlService;
 
     @GetMapping("/perfil")
     @Transactional(readOnly = true)
@@ -41,7 +45,9 @@ public class UserProfileController {
             var archivements = user.getUsuarioArchievements();
             // Carátulas de películas (ya accesibles desde review.getMovie().getPosterLocalPath())
             double avgRating = userReviews.stream()
-                    .mapToInt(Review::getStars)
+                    .map(Review::getStars)
+                    .filter(stars -> stars != null)
+                    .mapToDouble(Double::doubleValue)
                     .average()
                     .orElse(0.0);
             List<UserContentList> favorites;
@@ -56,6 +62,7 @@ public class UserProfileController {
             }
             model.addAttribute("user", user);
             model.addAttribute("reviews", userReviews);
+            model.addAttribute("reviewPosterUrls", reviewPosterUrls(userReviews));
             model.addAttribute("reviewCount", userReviews.size());
             model.addAttribute("avgRating", avgRating);
             model.addAttribute("followersCount", followersCount);
@@ -69,5 +76,19 @@ public class UserProfileController {
             model.addAttribute("error", "Error cargando perfil: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             return "error";
         }
+    }
+
+    private Map<Long, String> reviewPosterUrls(List<Review> reviews) {
+        Map<Long, String> urls = new HashMap<>();
+        for (Review review : reviews) {
+            if (review.getId() == null) {
+                continue;
+            }
+            String posterUrl = imageUrlService.reviewContentPosterUrl(review, "w500");
+            if (posterUrl != null && !posterUrl.isBlank()) {
+                urls.put(review.getId(), posterUrl);
+            }
+        }
+        return urls;
     }
 }

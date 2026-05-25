@@ -7,6 +7,7 @@ import alicanteweb.pelisapp.entity.User;
 import alicanteweb.pelisapp.repository.BookRepository;
 import alicanteweb.pelisapp.repository.ReviewRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
+import alicanteweb.pelisapp.service.BookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
@@ -25,6 +26,7 @@ public class BookViewController {
     private final BookRepository bookRepository;
     private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
+    private final BookService bookService;
 
     @GetMapping("/libro/{id}")
     public String bookDetail(@PathVariable Long id, Model model, Authentication auth) {
@@ -44,6 +46,7 @@ public class BookViewController {
             }
             boolean isAdmin = isAuthenticated && auth.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                model.addAttribute("coverUrl", bookService.displayCoverUrl(book.getCoverUrl()));
             model.addAttribute("book", book);
             model.addAttribute("reviews", reviews);
             model.addAttribute("stats", stats);
@@ -65,10 +68,15 @@ public class BookViewController {
         double total = 0;
         int[] dist = new int[5];
         for (Review r : reviews) {
-            total += r.getStars();
-            dist[r.getStars() - 1]++;
+            Double stars = r.getStars();
+            if (stars == null || stars < 0.5 || stars > 5) {
+                continue;
+            }
+            total += stars;
+            dist[Math.max(0, Math.min(4, (int) Math.ceil(stars) - 1))]++;
         }
-        return new ContentStats(reviews.size(), total / reviews.size(), dist);
+        int validReviews = java.util.Arrays.stream(dist).sum();
+        return new ContentStats(validReviews, validReviews > 0 ? total / validReviews : 0.0, dist);
     }
 
 }

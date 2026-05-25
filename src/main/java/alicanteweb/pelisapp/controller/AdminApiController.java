@@ -10,11 +10,17 @@ import alicanteweb.pelisapp.entity.Review;
 import alicanteweb.pelisapp.entity.TvShow;
 import alicanteweb.pelisapp.entity.User;
 import alicanteweb.pelisapp.repository.BookRepository;
+import alicanteweb.pelisapp.repository.ChatConversationPreferenceRepository;
 import alicanteweb.pelisapp.repository.CommentModerationRepository;
+import alicanteweb.pelisapp.repository.FollowingRepository;
+import alicanteweb.pelisapp.repository.MessageRepository;
 import alicanteweb.pelisapp.repository.MovieRepository;
+import alicanteweb.pelisapp.repository.ReviewLikeRepository;
 import alicanteweb.pelisapp.repository.ReviewRepository;
 import alicanteweb.pelisapp.repository.TvShowRepository;
+import alicanteweb.pelisapp.repository.UserContentListRepository;
 import alicanteweb.pelisapp.repository.UserRepository;
+import alicanteweb.pelisapp.repository.UsuarioArchivementRepository;
 import alicanteweb.pelisapp.service.AuthService;
 import alicanteweb.pelisapp.service.BookService;
 import alicanteweb.pelisapp.service.GoogleBooksLoaderService;
@@ -35,6 +41,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -79,6 +88,12 @@ public class AdminApiController {
     private final UserRepository userRepository;
     private final CommentModerationRepository commentModerationRepository;
     private final ReviewRepository reviewRepository;
+    private final ReviewLikeRepository reviewLikeRepository;
+    private final FollowingRepository followingRepository;
+    private final UserContentListRepository userContentListRepository;
+    private final MessageRepository messageRepository;
+    private final ChatConversationPreferenceRepository chatConversationPreferenceRepository;
+    private final UsuarioArchivementRepository usuarioArchivementRepository;
 
     // ============= USER MANAGEMENT =============
 
@@ -171,7 +186,8 @@ public class AdminApiController {
     }
 
     @PostMapping("/users/{userId}/delete")
-    public ResponseEntity<String> deleteUser(@PathVariable Long userId) {
+    @Transactional
+    public ResponseEntity<String> deleteUser(@PathVariable Long userId, Authentication authentication) {
         try {
             Optional<User> userOpt = userRepository.findById(userId);
             if (userOpt.isEmpty()) {
@@ -179,6 +195,9 @@ public class AdminApiController {
             }
 
             User user = userOpt.get();
+            if (authentication != null && user.getUsername().equals(authentication.getName())) {
+                return ResponseEntity.badRequest().body("No puedes eliminar tu propio usuario desde esta sesión");
+            }
 
             // Verificar que no sea un superadmin
             boolean isSuperAdmin = user.getRoles().stream()
@@ -188,15 +207,36 @@ public class AdminApiController {
                 return ResponseEntity.badRequest().body("No se puede eliminar un superadmin");
             }
 
+            deleteUserDependencies(userId);
             userRepository.delete(user);
 
             log.info("Usuario ID {} eliminado permanentemente", userId);
             return ResponseEntity.ok("Usuario eliminado exitosamente");
 
         } catch (Exception e) {
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
             log.error("Error eliminando usuario {}: {}", userId, e.getMessage());
             return ResponseEntity.badRequest().body("Error: " + e.getMessage());
         }
+    }
+
+    private void deleteUserDependencies(Long userId) {
+        commentModerationRepository.clearReviewer(userId);
+        chatConversationPreferenceRepository.deleteAllByUserId(userId);
+        messageRepository.deleteAllByUserId(userId);
+        followingRepository.deleteAllByUserId(userId);
+        userContentListRepository.deleteByUser_Id(userId);
+        usuarioArchivementRepository.deleteByUser_Id(userId);
+        reviewLikeRepository.deleteByUser_Id(userId);
+
+        List<Review> userReviews = reviewRepository.findAllByUser_Id(userId);
+        for (Review review : userReviews) {
+            reviewLikeRepository.deleteByReview_Id(review.getId());
+        }
+        reviewRepository.deleteAll(userReviews);
+
+        userRepository.deleteTagLinks(userId);
+        userRepository.deleteRoleLinks(userId);
     }
 
     /**
@@ -578,7 +618,7 @@ public class AdminApiController {
     @PostMapping("/reviews/{reviewId}/delete")
     public ResponseEntity<String> deleteReviewAsAdmin(@PathVariable Long reviewId) {
         try {
-            Review review = reviewRepository.findById(reviewId).orElse(null);
+            Review review = reviewRepository.findByIdWithContent(reviewId).orElse(null);
             if (review == null) return ResponseEntity.notFound().build();
             String username = review.getUser() != null ? review.getUser().getUsername() : "?";
             String movieTitle = review.getMovie() != null ? review.getMovie().getTitle() : "?";
@@ -1099,7 +1139,9 @@ public class AdminApiController {
         for (String key : List.of("extraLarge", "large", "medium", "thumbnail", "smallThumbnail")) {
             String url = imageLinks.path(key).asText(null);
             if (url != null && !url.isBlank()) {
-                return url.replace("http://", "https://");
+                return url.replace("http://", "https://")
+                        .replace("zoom=1", "zoom=0")
+                        .replace("&edge=curl", "");
             }
         }
         return "";

@@ -5,13 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Moderación IA - Admin AfterFilm</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="icon" th:href="@{/favicon.ico}">
+    <link rel="icon" type="image/png" sizes="32x32" th:href="@{/favicon-32.png}">
+    <link rel="icon" type="image/png" sizes="16x16" th:href="@{/favicon-16.png}">
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <script th:src="@{/js/security.js}" src="/js/security.js"></script>
 </head>
 <body>
     <nav class="navbar">
         <div class="container">
             <a class="navbar-brand" th:href="@{/}">
-                <i class="fas fa-film"></i> AfterFilm
+                <img th:src="@{/logo.png}" src="/logo.png" alt="Afterfilms" class="site-logo">
                 <span style="font-size:0.65rem;font-weight:700;letter-spacing:0.1em;background:var(--accent);color:#fff;padding:0.15rem 0.45rem;border-radius:4px;vertical-align:middle;margin-left:0.4rem;">ADMIN</span>
             </a>
             <button class="navbar-menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" onclick="const nav=this.closest('.navbar'); nav.classList.toggle('menu-open'); this.setAttribute('aria-expanded', nav.classList.contains('menu-open'));"><i class="fas fa-bars"></i></button>
@@ -19,7 +23,7 @@
             <div class="navbar-nav-links">
                 <a th:href="@{/admin}"><i class="fas fa-arrow-left"></i> Panel</a>
                 <a th:href="@{/}"><i class="fas fa-home"></i> App</a>
-                <a th:href="@{/logout}"><i class="fas fa-sign-out-alt"></i> Salir</a>
+                <form th:action="@{/logout}" method="post" style="margin:0"><button type="submit"><i class="fas fa-sign-out-alt"></i> Salir</button></form>
             </div>
         </div>
     </nav>
@@ -208,7 +212,8 @@
                         const toxScore = m.toxicityScore != null
                             ? `<span class="${m.toxicityScore >= 0.7 ? 'badge-err' : m.toxicityScore >= 0.4 ? 'badge-warn' : 'badge-ok'}">${(m.toxicityScore * 100).toFixed(0)}%</span>`
                             : `<span class="badge-muted">–</span>`;
-                        const stars = m.reviewStars ? '★'.repeat(m.reviewStars) + '☆'.repeat(5 - m.reviewStars) : '–';
+                        const value = Number(m.reviewStars || 0);
+                        const stars = value ? '★'.repeat(Math.floor(value)) + (value % 1 ? '½' : '') + '☆'.repeat(Math.max(0, 5 - Math.ceil(value))) : '–';
                         const reviewText = m.reviewText ? esc(m.reviewText).substring(0, 120) + (m.reviewText.length > 120 ? '…' : '') : '<em style="color:var(--text-muted)">sin texto</em>';
                         return `<tr>
                             <td>
@@ -285,7 +290,8 @@
                             const movieLink = r.movieId
                                 ? `<a href="/pelicula/${r.movieId}" target="_blank" style="color:var(--accent);font-size:0.75rem">${esc(r.movieTitle || '–')}</a>`
                                 : `<span style="font-size:0.75rem;color:var(--text-muted)">${esc(r.movieTitle || '–')}</span>`;
-                            const stars = r.stars ? '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars) : '–';
+                            const value = Number(r.stars || 0);
+                            const stars = value ? '★'.repeat(Math.floor(value)) + (value % 1 ? '½' : '') + '☆'.repeat(Math.max(0, 5 - Math.ceil(value))) : '–';
                             const reviewText = r.text ? esc(r.text).substring(0, 100) + (r.text.length > 100 ? '…' : '') : '<em style="color:var(--text-muted)">sin texto</em>';
                             return `<tr>
                                 <td>

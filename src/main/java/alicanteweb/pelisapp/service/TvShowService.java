@@ -2,6 +2,10 @@ package alicanteweb.pelisapp.service;
 
 import alicanteweb.pelisapp.dto.TvShowDetailDTO;
 import alicanteweb.pelisapp.dto.TvShowListDTO;
+import alicanteweb.pelisapp.dto.CastDTO;
+import alicanteweb.pelisapp.dto.CrewDTO;
+import alicanteweb.pelisapp.entity.Actor;
+import alicanteweb.pelisapp.entity.Director;
 import alicanteweb.pelisapp.entity.TvShow;
 import alicanteweb.pelisapp.repository.TvShowRepository;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +39,7 @@ public class TvShowService {
     }
 
     public Optional<TvShowDetailDTO> getSeriesById(Long id) {
-        return tvShowRepository.findById(id).map(this::toDetailDTO);
+        return tvShowRepository.findByIdWithCastAndDirectors(id).map(this::toDetailDTO);
     }
 
     public List<TvShowListDTO> searchSeries(String query) {
@@ -115,6 +119,41 @@ public class TvShowService {
         dto.setGenres(show.getGenres());
         dto.setStatus(show.getStatus());
         dto.setLanguage(show.getLanguage());
+        dto.setCastMembers(show.getActors().stream()
+                .map(this::toCastDTO)
+                .toList());
+        dto.setDirectors(show.getDirectors().stream()
+                .map(this::toCrewDTO)
+                .toList());
+        return dto;
+    }
+
+    private CastDTO toCastDTO(Actor actor) {
+        CastDTO dto = new CastDTO();
+        dto.setTmdbId(actor.getTmdbId());
+        dto.setName(actor.getName());
+        dto.setCharacter("Reparto");
+        dto.setProfilePath(actor.getProfilePath());
+        dto.setProfileLocalPath(actor.getProfileLocalPath());
+        dto.setProfileUrl(imageUrlService.localImageUrlIfAvailable(actor.getProfileLocalPath()));
+        if (dto.getProfileUrl() == null) {
+            dto.setProfileUrl(imageUrlService.tmdbImageUrl(actor.getProfilePath(), "w185"));
+        }
+        return dto;
+    }
+
+    private CrewDTO toCrewDTO(Director director) {
+        CrewDTO dto = new CrewDTO();
+        dto.setTmdbId(director.getTmdbId());
+        dto.setName(director.getName());
+        dto.setJob("Direccion");
+        dto.setDepartment("Directing");
+        dto.setProfilePath(director.getProfilePath());
+        dto.setProfileLocalPath(director.getProfileLocalPath());
+        dto.setProfileUrl(imageUrlService.localImageUrlIfAvailable(director.getProfileLocalPath()));
+        if (dto.getProfileUrl() == null) {
+            dto.setProfileUrl(imageUrlService.tmdbImageUrl(director.getProfilePath(), "w185"));
+        }
         return dto;
     }
 }

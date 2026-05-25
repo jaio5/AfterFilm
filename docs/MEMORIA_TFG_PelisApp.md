@@ -239,7 +239,7 @@ TMDB, The Movie Database, es una API externa que proporciona informacion de peli
 - Series populares.
 - Peliculas populares y mejor valoradas.
 
-La integracion se realiza mediante un cliente HTTP y servicios especializados como `TMDBMovieLoaderService`, `TMDBSeriesLoaderService` y `TMDBBulkLoaderService`.
+La integracion se realiza mediante un cliente HTTP y servicios especializados como `TMDBMovieLoaderService` y `TMDBSeriesLoaderService`.
 
 ## 2.10 Google Books API
 
@@ -431,6 +431,8 @@ Rutas web principales:
 - `/admin/moderation`
 - `/admin/bulk-loader`
 - `/admin/email-config`
+
+El modulo `/admin/books` incluye acciones de mantenimiento para reparar portadas importadas desde Google Books cuando alguna referencia queda invalida.
 
 ## 3.10 Carga de contenido desde APIs externas
 
@@ -680,7 +682,7 @@ La pantalla de moderacion permite revisar contenido detectado por el sistema aut
 
 La aplicacion incluye pantallas y endpoints para comprobar conexiones con base de datos, TMDB, Ollama, email y servidor.
 
-**Captura recomendada:** `/connection-test.html` o panel de salud en administracion.
+**Captura recomendada:** panel de salud en administracion.
 
 ---
 
@@ -1075,4 +1077,3 @@ Tests run: 1, Failures: 0, Errors: 0, Skipped: 0
 - Anadir recuperacion de contrasena completa.
 - Crear estadisticas avanzadas para administradores.
 - Anadir notificaciones en tiempo real para chat y actividad social.
-
