@@ -1,2 +1,2 @@
 ALTER TABLE usuario
-  ADD COLUMN profile_image_path VARCHAR(1000) NULL;
+  ADD COLUMN IF NOT EXISTS profile_image_path VARCHAR(1000);
