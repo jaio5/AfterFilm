@@ -37,11 +37,17 @@ public class DatabaseStartupCheck {
             String database = connection.getMetaData().getDatabaseProductName().toLowerCase();
             if (database.contains("postgres")) {
                 statement.executeUpdate("ALTER TABLE usuario ADD COLUMN IF NOT EXISTS profile_image_path VARCHAR(1000)");
+                statement.executeUpdate("ALTER TABLE review ALTER COLUMN stars TYPE NUMERIC(2,1) USING stars::numeric");
             } else {
                 try {
                     statement.executeUpdate("ALTER TABLE usuario ADD COLUMN profile_image_path VARCHAR(1000) NULL");
                 } catch (Exception ignored) {
                     // Column already exists, or this schema is managed externally.
+                }
+                try {
+                    statement.executeUpdate("ALTER TABLE review MODIFY COLUMN stars DECIMAL(2,1) NOT NULL");
+                } catch (Exception ignored) {
+                    // Column is already decimal, or this schema is managed externally.
                 }
             }
             log.info("Database lightweight migrations applied");

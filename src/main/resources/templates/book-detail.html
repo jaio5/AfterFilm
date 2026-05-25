@@ -121,18 +121,12 @@
             <div class="review-form-box" th:if="${canReview}">
                 <h4>¿Qué te pareció?</h4>
                 <form id="resenaForm">
-                    <div class="star-rating" id="starRating">
-                        <input type="radio" name="stars" value="5" id="star5" required>
-                        <label for="star5" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="4" id="star4">
-                        <label for="star4" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="3" id="star3">
-                        <label for="star3" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="2" id="star2">
-                        <label for="star2" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="1" id="star1">
-                        <label for="star1" class="fas fa-star"></label>
-                    </div>
+                    <select class="form-input" name="stars" required style="max-width:180px">
+                        <option value="">Valorar</option>
+                        <option th:each="rating : ${#numbers.sequence(2, 10)}"
+                                th:value="${rating / 2.0}"
+                                th:text="${#numbers.formatDecimal(rating / 2.0, 1, 1)} + ' estrellas'">5.0 estrellas</option>
+                    </select>
                     <div class="form-field">
                         <label class="form-label" for="reviewText">
                             Comentario
@@ -184,10 +178,10 @@
                               class="review-username">Usuario eliminado</span>
                     </div>
                     <div class="review-stars-display">
-                        <span th:if="${review.stars != null and review.stars > 0}"
-                              th:each="i : ${#numbers.sequence(1, review.stars)}" class="fas fa-star"></span>
-                        <span th:if="${review.stars != null and review.stars < 5}"
-                              th:each="i : ${#numbers.sequence(review.stars + 1, 5)}" class="far fa-star"></span>
+                        <span th:if="${review.fullStars > 0}" th:each="i : ${#numbers.sequence(1, review.fullStars)}" class="fas fa-star"></span>
+                        <span th:if="${review.halfStar}" class="fas fa-star-half-alt"></span>
+                        <span th:if="${review.emptyStars > 0}" th:each="i : ${#numbers.sequence(1, review.emptyStars)}" class="far fa-star"></span>
+                        <span class="review-rating-number" th:text="${review.starsFormatted}">4.5</span>
                     </div>
                 </div>
                 <div class="review-body">
@@ -222,18 +216,12 @@
                       th:id="${'reviewEditForm-' + review.id}"
                       th:if="${currentUser != null and review.user != null and review.user.id == currentUser.id}"
                       style="display:none;margin-top:0.75rem;">
-                    <div class="star-rating">
-                        <input type="radio" name="stars" value="5" th:id="${'editStar5-' + review.id}" th:checked="${review.stars == 5}" required>
-                        <label th:for="${'editStar5-' + review.id}" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="4" th:id="${'editStar4-' + review.id}" th:checked="${review.stars == 4}">
-                        <label th:for="${'editStar4-' + review.id}" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="3" th:id="${'editStar3-' + review.id}" th:checked="${review.stars == 3}">
-                        <label th:for="${'editStar3-' + review.id}" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="2" th:id="${'editStar2-' + review.id}" th:checked="${review.stars == 2}">
-                        <label th:for="${'editStar2-' + review.id}" class="fas fa-star"></label>
-                        <input type="radio" name="stars" value="1" th:id="${'editStar1-' + review.id}" th:checked="${review.stars == 1}">
-                        <label th:for="${'editStar1-' + review.id}" class="fas fa-star"></label>
-                    </div>
+                    <select class="form-input" name="stars" required style="max-width:180px">
+                        <option th:each="rating : ${#numbers.sequence(2, 10)}"
+                                th:value="${rating / 2.0}"
+                                th:selected="${review.stars == rating / 2.0}"
+                                th:text="${#numbers.formatDecimal(rating / 2.0, 1, 1)} + ' estrellas'">5.0 estrellas</option>
+                    </select>
                     <textarea class="form-input" name="text" maxlength="1000" th:text="${review.text}"></textarea>
                     <input type="hidden" name="reviewId" th:value="${review.id}">
                     <div style="display:flex;gap:0.5rem;margin-top:0.5rem;align-items:center;flex-wrap:wrap;">
@@ -362,7 +350,7 @@
                 const raw = Object.fromEntries(data.entries());
                 const payload = {
                     text: raw.text && raw.text.trim() ? raw.text.trim() : "",
-                    stars: parseInt(raw.stars)
+                    stars: parseFloat(raw.stars)
                 };
                 const bookId = raw.bookId;
                 const msg = document.getElementById('resenaMessage');
@@ -398,7 +386,7 @@
                 const raw = Object.fromEntries(data.entries());
                 const payload = {
                     text: raw.text && raw.text.trim() ? raw.text.trim() : "",
-                    stars: parseInt(raw.stars)
+                    stars: parseFloat(raw.stars)
                 };
                 const msg = editForm.querySelector('.reviewEditMessage');
                 if (!payload.stars || payload.stars < 1 || payload.stars > 5) {

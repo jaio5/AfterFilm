@@ -11,4 +11,8 @@ public record ContentStats(int totalReviews, double averageRating, int[] starDis
         int count = (star >= 1 && star <= 5) ? starDistribution[star - 1] : 0;
         return (int) Math.round(count * 100.0 / totalReviews);
     }
+
+    public int getStarCount(int star) {
+        return (star >= 1 && star <= 5) ? starDistribution[star - 1] : 0;
+    }
 }

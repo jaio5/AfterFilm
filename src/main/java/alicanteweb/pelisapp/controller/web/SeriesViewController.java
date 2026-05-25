@@ -73,13 +73,13 @@ public class SeriesViewController {
         double total = 0;
         int[] dist = new int[5];
         for (Review r : reviews) {
-            Integer stars = r.getStars();
+            Double stars = r.getStars();
             if (stars == null || stars < 1 || stars > 5) {
                 log.warn("Reseña {} con puntuacion invalida: {}", r.getId(), stars);
                 continue;
             }
             total += stars;
-            dist[stars - 1]++;
+            dist[Math.max(0, Math.min(4, (int) Math.ceil(stars) - 1))]++;
         }
         int validReviews = java.util.Arrays.stream(dist).sum();
         return new ContentStats(validReviews, validReviews > 0 ? total / validReviews : 0.0, dist);

@@ -48,7 +48,9 @@ public class SocialService {
         User currentUser = resolveCurrentUser(currentUsername);
         List<Review> reviews = reviewRepository.findAllByUser_IdOrderByCreatedAtDesc(user.getId());
         double averageRating = reviews.stream()
-                .mapToInt(Review::getStars)
+                .map(Review::getStars)
+                .filter(stars -> stars != null)
+                .mapToDouble(Double::doubleValue)
                 .average()
                 .orElse(0.0);
         long followersCount = followingRepository.countByFollowed(user);

@@ -74,12 +74,12 @@ public class MovieViewController {
     }
 
 
-    private String starsText(Integer stars) {
+    private String starsText(Double stars) {
         if (stars == null || stars < 1) {
             return "";
         }
-        int safeStars = Math.min(stars, 5);
-        return "★".repeat(safeStars);
+        int fullStars = Math.min((int) Math.floor(stars), 5);
+        return "★".repeat(fullStars) + (Math.abs(stars - Math.floor(stars) - 0.5) < 0.001 ? "½" : "");
     }
 
     private ReviewView toReviewView(Review review) {
@@ -104,11 +104,34 @@ public class MovieViewController {
             String userInitial,
             boolean hasUser,
             String text,
-            Integer stars,
+            Double stars,
             Long likesCount,
             String createdDate) {
         public boolean hasText() {
             return text != null && !text.trim().isEmpty();
+        }
+
+        public int getFullStars() {
+            return stars == null ? 0 : (int) Math.floor(stars);
+        }
+
+        public boolean isHalfStar() {
+            if (stars == null) {
+                return false;
+            }
+            return Math.abs(stars - Math.floor(stars) - 0.5) < 0.001;
+        }
+
+        public int getEmptyStars() {
+            int used = getFullStars() + (isHalfStar() ? 1 : 0);
+            return Math.max(0, 5 - used);
+        }
+
+        public String getStarsFormatted() {
+            if (stars == null) {
+                return "";
+            }
+            return stars % 1 == 0 ? String.valueOf(stars.intValue()) : String.format("%.1f", stars);
         }
     }
 
@@ -119,13 +142,13 @@ public class MovieViewController {
         double totalRating = 0;
         int[] starDistribution = new int[5];
         for (Review review : reviews) {
-            Integer stars = review.getStars();
+            Double stars = review.getStars();
             if (stars == null || stars < 1 || stars > 5) {
                 log.warn("Reseña {} con puntuación inválida: {}", review.getId(), stars);
                 continue;
             }
             totalRating += stars;
-            starDistribution[stars - 1]++;
+            starDistribution[Math.max(0, Math.min(4, (int) Math.ceil(stars) - 1))]++;
         }
         int validReviews = java.util.Arrays.stream(starDistribution).sum();
         double averageRating = validReviews > 0 ? totalRating / validReviews : 0.0;

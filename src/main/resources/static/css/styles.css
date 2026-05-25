@@ -1137,6 +1137,11 @@ textarea.form-input {
 }
 
 .review-stars-display .far { color: var(--bg-elevated); }
+.review-rating-number {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    margin-left: 0.25rem;
+}
 
 .review-body {
     font-size: 0.875rem;
