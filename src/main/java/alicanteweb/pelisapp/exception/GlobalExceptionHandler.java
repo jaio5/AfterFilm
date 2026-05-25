@@ -112,7 +112,12 @@ public class GlobalExceptionHandler {
      * Maneja todas las demás excepciones no específicas.
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(Exception e) {
+    public ResponseEntity<?> handleGenericException(Exception e) {
+        if (isClientAbort(e)) {
+            log.debug("Client closed connection before response completed: {}", rootCauseMessage(e));
+            return ResponseEntity.status(499).build();
+        }
+
         log.error("Unexpected error occurred: ", e);
 
         ErrorResponse error = ErrorResponse.builder()
@@ -130,5 +135,23 @@ public class GlobalExceptionHandler {
             current = current.getCause();
         }
         return current.getMessage() != null ? current.getMessage() : throwable.getMessage();
+    }
+
+    private boolean isClientAbort(Throwable throwable) {
+        Throwable current = throwable;
+        while (current != null) {
+            String className = current.getClass().getName();
+            String message = current.getMessage() == null ? "" : current.getMessage().toLowerCase();
+            if (className.contains("ClientAbortException")
+                    || className.contains("ClosedChannelException")
+                    || className.contains("AsyncRequestNotUsableException")
+                    || message.contains("broken pipe")
+                    || message.contains("connection reset")
+                    || message.contains("closed channel")) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }
