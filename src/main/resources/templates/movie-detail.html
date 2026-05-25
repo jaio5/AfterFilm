@@ -212,7 +212,7 @@
                         <span th:text="${review.likesCount}">0</span>
                     </button>
                     <button class="btn-text" style="font-size:0.78rem;"
-                            th:if="${currentUser != null and review.username == currentUser.username}"
+                            th:if="${review.ownedByCurrentUser}"
                             th:onclick="'toggleReviewEdit(' + ${review.id} + ')'">
                         <i class="fas fa-pen"></i> Editar
                     </button>
@@ -227,7 +227,7 @@
                 </div>
                 <form class="reviewEditForm review-inline-edit"
                       th:id="${'reviewEditForm-' + review.id}"
-                      th:if="${currentUser != null and review.username == currentUser.username}"
+                      th:if="${review.ownedByCurrentUser}"
                       style="display:none;margin-top:0.75rem;">
                     <div class="half-star-rating" data-rating-widget>
                         <input type="hidden" name="stars" th:value="${review.stars}" required>
