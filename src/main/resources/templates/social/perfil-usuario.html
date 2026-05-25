@@ -116,9 +116,9 @@
                 <a th:if="${review.book != null}" th:href="@{/libro/{id}(id=${review.book.id})}"
                    class="profile-review-title" th:text="${review.book.title}">Titulo</a>
                 <div class="profile-review-stars">
-                    <span th:if="${review.fullStars > 0}" th:each="i : ${#numbers.sequence(1, review.fullStars)}" class="fas fa-star"></span>
-                    <span th:if="${review.halfStar}" class="fas fa-star-half-alt"></span>
-                    <span th:if="${review.emptyStars > 0}" th:each="i : ${#numbers.sequence(1, review.emptyStars)}" class="far fa-star"></span>
+                    <span th:each="i : ${#numbers.sequence(1, 5)}"
+                          th:class="${review.stars != null and i <= review.stars ? 'fas fa-star' : (review.stars != null and i - 0.5 <= review.stars ? 'fas fa-star-half-alt' : 'far fa-star')}"
+                          th:style="${review.stars == null or i - 0.5 > review.stars ? 'color:var(--bg-elevated)' : ''}"></span>
                     <span th:text="${review.starsFormatted}">4.5</span>
                 </div>
                 <div class="profile-review-text"

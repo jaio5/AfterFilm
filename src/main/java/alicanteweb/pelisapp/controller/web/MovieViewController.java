@@ -75,7 +75,7 @@ public class MovieViewController {
 
 
     private String starsText(Double stars) {
-        if (stars == null || stars < 1) {
+        if (stars == null || stars < 0.5) {
             return "";
         }
         int fullStars = Math.min((int) Math.floor(stars), 5);
@@ -143,7 +143,7 @@ public class MovieViewController {
         int[] starDistribution = new int[5];
         for (Review review : reviews) {
             Double stars = review.getStars();
-            if (stars == null || stars < 1 || stars > 5) {
+            if (stars == null || stars < 0.5 || stars > 5) {
                 log.warn("Reseña {} con puntuación inválida: {}", review.getId(), stars);
                 continue;
             }

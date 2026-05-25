@@ -177,9 +177,8 @@
                               class="review-username">Usuario eliminado</span>
                     </div>
                     <div class="review-stars-display">
-                        <span th:if="${review.fullStars > 0}" th:each="i : ${#numbers.sequence(1, review.fullStars)}" class="fas fa-star"></span>
-                        <span th:if="${review.halfStar}" class="fas fa-star-half-alt"></span>
-                        <span th:if="${review.emptyStars > 0}" th:each="i : ${#numbers.sequence(1, review.emptyStars)}" class="far fa-star"></span>
+                        <span th:each="i : ${#numbers.sequence(1, 5)}"
+                              th:class="${review.stars != null and i <= review.stars ? 'fas fa-star' : (review.stars != null and i - 0.5 <= review.stars ? 'fas fa-star-half-alt' : 'far fa-star')}"></span>
                         <span class="review-rating-number" th:text="${review.starsFormatted}">4.5</span>
                     </div>
                 </div>
@@ -380,7 +379,7 @@
                 };
                 const bookId = raw.bookId;
                 const msg = document.getElementById('resenaMessage');
-                if (!payload.stars || payload.stars < 1 || payload.stars > 5) {
+                if (!payload.stars || payload.stars < 0.5 || payload.stars > 5) {
                     msg.style.display = 'block';
                     msg.textContent = 'Por favor selecciona una valoración de 0.5 a 5 estrellas.';
                     return;
@@ -415,7 +414,7 @@
                     stars: parseFloat(raw.stars)
                 };
                 const msg = editForm.querySelector('.reviewEditMessage');
-                if (!payload.stars || payload.stars < 1 || payload.stars > 5) {
+                if (!payload.stars || payload.stars < 0.5 || payload.stars > 5) {
                     msg.style.display = 'block';
                     msg.textContent = 'Por favor selecciona una valoración de 0.5 a 5 estrellas.';
                     return;
