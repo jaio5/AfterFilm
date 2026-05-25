@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS `usuario` (
   `email` VARCHAR(200),
   `password` VARCHAR(255) NOT NULL,
   `display_name` VARCHAR(255),
+  `profile_image_path` VARCHAR(1000),
   `registered_at` DATETIME,
   `critic_level` INT NOT NULL DEFAULT 0,
   `enabled` TINYINT(1) NOT NULL DEFAULT 1,

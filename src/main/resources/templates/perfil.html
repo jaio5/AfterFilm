@@ -114,9 +114,15 @@
             </div>
         </div>
 
-        <div th:each="review : ${reviews}" class="profile-review-card">
+        <div th:each="review : ${reviews}" th:with="posterUrl=${reviewPosterUrls != null ? reviewPosterUrls.get(review.id) : null}" class="profile-review-card">
+            <img th:if="${posterUrl != null and !posterUrl.trim().isEmpty()}"
+                 th:src="${posterUrl}"
+                 class="profile-review-poster"
+                 alt=""
+                 onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
             <!-- Icon based on content type -->
-            <div class="profile-review-poster-placeholder">
+            <div class="profile-review-poster-placeholder"
+                 th:style="${posterUrl != null and !posterUrl.trim().isEmpty() ? 'display:none' : ''}">
                 <i th:class="${review.series != null ? 'fas fa-tv' : (review.book != null ? 'fas fa-book' : 'fas fa-film')}"></i>
             </div>
             <!-- Review body -->

@@ -32,6 +32,7 @@ public class SocialService {
     private final FollowingRepository followingRepository;
     private final ReviewRepository reviewRepository;
     private final UserListService userListService;
+    private final UserProfileImageService userProfileImageService;
 
     @Transactional(readOnly = true)
     public UserPublicDTO getPublicProfile(String username, String currentUsername) {
@@ -60,6 +61,7 @@ public class SocialService {
                 user.getId(),
                 user.getUsername(),
                 displayName,
+                userProfileImageService.profileImageUrl(user),
                 user.getCriticLevel(),
                 followersCount,
                 followingCount,
@@ -176,6 +178,7 @@ public class SocialService {
                 ? user.getDisplayName()
                 : user.getUsername();
         return new UserPublicDTO(user.getId(), user.getUsername(), displayName,
+                userProfileImageService.profileImageUrl(user),
                 followersCount, followingCount, reviewCount, isFollowing);
     }
 

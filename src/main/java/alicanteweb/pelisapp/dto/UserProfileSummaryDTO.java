@@ -6,6 +6,7 @@ public record UserProfileSummaryDTO(
         Long id,
         String username,
         String displayName,
+        String profileImageUrl,
         Integer criticLevel,
         long followersCount,
         long followingCount,

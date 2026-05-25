@@ -1,6 +1,7 @@
 package alicanteweb.pelisapp.service;
 
 import alicanteweb.pelisapp.entity.Movie;
+import alicanteweb.pelisapp.entity.Review;
 import alicanteweb.pelisapp.entity.TvShow;
 import alicanteweb.pelisapp.service.image.SupabaseImageStorage;
 import org.springframework.beans.factory.annotation.Value;
@@ -37,6 +38,41 @@ public class ImageUrlService {
             return null;
         }
         return posterUrl(series.getPosterLocalPath(), series.getPosterPath(), tmdbSize, series.getTmdbId(), "series");
+    }
+
+    public String reviewContentPosterUrl(Review review, String tmdbSize) {
+        if (review == null) {
+            return null;
+        }
+        if (review.getMovie() != null) {
+            return moviePosterUrl(review.getMovie(), tmdbSize);
+        }
+        if (review.getSeries() != null) {
+            return seriesPosterUrl(review.getSeries(), tmdbSize);
+        }
+        if (review.getBook() != null) {
+            return displayImageUrl(review.getBook().getCoverUrl());
+        }
+        return null;
+    }
+
+    public String displayImageUrl(String path) {
+        if (path == null || path.isBlank()) {
+            return null;
+        }
+        if (path.startsWith("http://") || path.startsWith("https://")) {
+            return path;
+        }
+        String localUrl = localImageUrlIfAvailable(path);
+        if (localUrl != null) {
+            return localUrl;
+        }
+        String supabaseUrl = supabaseUrlForStoredPath(path);
+        if (supabaseUrl != null) {
+            return supabaseUrl;
+        }
+        String clean = normalizeRelativeImagePath(path);
+        return clean == null ? null : serveBase + "/" + clean;
     }
 
     public String posterUrl(String localPath, String remotePath, String tmdbSize) {
@@ -123,7 +159,10 @@ public class ImageUrlService {
             return supabaseUrl;
         }
 
-        String relativePath = stripServeBase(localPath);
+        String relativePath = normalizeRelativeImagePath(localPath);
+        if (relativePath == null) {
+            return null;
+        }
         Path file = storagePath.resolve(relativePath).normalize();
         if (!file.startsWith(storagePath) || !Files.exists(file)) {
             return null;
@@ -141,7 +180,7 @@ public class ImageUrlService {
         return supabaseImageStorage.displayUrlForStoredPath(path);
     }
 
-    private String stripServeBase(String path) {
+    private String normalizeRelativeImagePath(String path) {
         String clean = path.trim().replace("\\", "/");
         if (clean.startsWith(serveBase + "/")) {
             clean = clean.substring(serveBase.length() + 1);
@@ -149,6 +188,19 @@ public class ImageUrlService {
             clean = clean.substring(serveBase.length());
         } else if (clean.startsWith("/")) {
             clean = clean.substring(1);
+        }
+
+        String storage = storagePath.toString().replace("\\", "/");
+        if (clean.startsWith(storage + "/")) {
+            clean = clean.substring(storage.length() + 1);
+        }
+        while (clean.startsWith("data/images/")) {
+            clean = clean.substring("data/images/".length());
+        }
+
+        clean = clean.replaceAll("/{2,}", "/");
+        if (clean.isBlank() || clean.contains("..")) {
+            return null;
         }
         return clean;
     }
