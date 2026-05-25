@@ -1,5 +1,7 @@
 package alicanteweb.pelisapp.controller;
 
+import alicanteweb.pelisapp.dto.UserContentListDTO;
+import alicanteweb.pelisapp.entity.UserContentList;
 import alicanteweb.pelisapp.service.UserListService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -7,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -15,6 +18,38 @@ import java.util.Map;
 public class UserListApiController {
 
     private final UserListService userListService;
+
+    @GetMapping("")
+    public ResponseEntity<List<UserContentListDTO>> getMyList(
+            @RequestParam String listType,
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) return ResponseEntity.status(401).build();
+        String safeListType = EndpointSanitizer.listType(listType);
+        return ResponseEntity.ok(userListService.getList(userDetails.getUsername(), safeListType)
+                .stream()
+                .map(UserListApiController::toDto)
+                .toList());
+    }
+
+    @GetMapping("/favorites")
+    public ResponseEntity<List<UserContentListDTO>> getMyFavorites(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(userListService.getList(userDetails.getUsername(), UserListService.FAVORITE)
+                .stream()
+                .map(UserListApiController::toDto)
+                .toList());
+    }
+
+    @GetMapping("/watchlist")
+    public ResponseEntity<List<UserContentListDTO>> getMyWatchlist(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        if (userDetails == null) return ResponseEntity.status(401).build();
+        return ResponseEntity.ok(userListService.getList(userDetails.getUsername(), UserListService.WATCHLIST)
+                .stream()
+                .map(UserListApiController::toDto)
+                .toList());
+    }
 
     /**
      * Toggle an item in FAVORITE or WATCHLIST.
@@ -63,5 +98,16 @@ public class UserListApiController {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, String>> handleBadArg(IllegalArgumentException e) {
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    }
+
+    public static UserContentListDTO toDto(UserContentList item) {
+        return new UserContentListDTO(
+                item.getId(),
+                item.getListType(),
+                item.getContentType(),
+                item.getContentId(),
+                item.getContentTitle(),
+                item.getContentPoster(),
+                item.getAddedAt());
     }
 }

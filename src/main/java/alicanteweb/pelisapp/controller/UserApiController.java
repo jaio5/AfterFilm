@@ -1,7 +1,8 @@
 package alicanteweb.pelisapp.controller;
 
 import alicanteweb.pelisapp.dto.UserDTO;
-import alicanteweb.pelisapp.entity.Review;
+import alicanteweb.pelisapp.dto.UserReviewDTO;
+import alicanteweb.pelisapp.service.UserProfileDtoMapper;
 import alicanteweb.pelisapp.service.AuthService;
 import alicanteweb.pelisapp.service.ReviewService;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserApiController {
     private final AuthService authService;
     private final ReviewService reviewService;
+    private final UserProfileDtoMapper userProfileDtoMapper;
 
     // Obtener los datos del usuario autenticado
     @GetMapping("")
@@ -35,16 +37,25 @@ public class UserApiController {
 
     // Obtener las reviews del usuario autenticado (paginado)
     @GetMapping("/reviews")
-    public ResponseEntity<Page<Review>> getMyReviews(
+    public ResponseEntity<Page<UserReviewDTO>> getMyReviews(
             @AuthenticationPrincipal UserDetails userDetails,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         if (userDetails == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        Page<Review> reviews = reviewService.getReviewsByUsername(
+        Page<UserReviewDTO> reviews = reviewService.getReviewsByUsername(
                 userDetails.getUsername(),
-                PageRequest.of(EndpointSanitizer.page(page), EndpointSanitizer.size(size, 10, 50)));
+                PageRequest.of(EndpointSanitizer.page(page), EndpointSanitizer.size(size, 10, 50)))
+                .map(userProfileDtoMapper::toReviewDto);
         return ResponseEntity.ok(reviews);
+    }
+
+    @GetMapping("/comments")
+    public ResponseEntity<Page<UserReviewDTO>> getMyComments(
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return getMyReviews(userDetails, page, size);
     }
 }

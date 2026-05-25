@@ -104,6 +104,12 @@ public class SocialService {
     }
 
     @Transactional(readOnly = true)
+    public List<Review> getUserReviews(String username, int page, int size) {
+        User user = userRepository.findByUsername(username).orElseThrow();
+        return reviewRepository.findAllByUser_IdOrderByCreatedAtDesc(user.getId(), PageRequest.of(page, size));
+    }
+
+    @Transactional(readOnly = true)
     public List<Review> getFeed(String username, int page, int size) {
         User user = userRepository.findByUsername(username).orElseThrow();
         List<Long> followedIds = followingRepository.findByFollower(user).stream()

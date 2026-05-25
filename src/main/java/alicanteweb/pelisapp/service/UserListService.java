@@ -64,6 +64,7 @@ public class UserListService {
                 user.getId(), listType, contentType, contentId);
     }
 
+    @Transactional(readOnly = true)
     public List<UserContentList> getList(String username, String listType) {
         User user = userRepository.findByUsername(username).orElseThrow();
         List<UserContentList> items = repo.findByUser_IdAndListTypeOrderByAddedAtDesc(user.getId(), listType);
