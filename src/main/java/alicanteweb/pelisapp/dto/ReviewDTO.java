@@ -9,7 +9,7 @@ public class ReviewDTO {
     private SimpleUserDTO user;
     private SimpleMovieDTO movie;
     private String text;
-    private int stars;
+    private Double stars;
     private Instant createdAt;
     private Long likesCount;
 
@@ -25,4 +25,3 @@ public class ReviewDTO {
         private String title;
     }
 }
-

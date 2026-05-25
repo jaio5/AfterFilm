@@ -68,10 +68,15 @@ public class BookViewController {
         double total = 0;
         int[] dist = new int[5];
         for (Review r : reviews) {
-            total += r.getStars();
-            dist[r.getStars() - 1]++;
+            Double stars = r.getStars();
+            if (stars == null || stars < 1 || stars > 5) {
+                continue;
+            }
+            total += stars;
+            dist[Math.max(0, Math.min(4, (int) Math.ceil(stars) - 1))]++;
         }
-        return new ContentStats(reviews.size(), total / reviews.size(), dist);
+        int validReviews = java.util.Arrays.stream(dist).sum();
+        return new ContentStats(validReviews, validReviews > 0 ? total / validReviews : 0.0, dist);
     }
 
 }

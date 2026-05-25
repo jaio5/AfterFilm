@@ -44,7 +44,7 @@ public class Review {
     private String text;
 
     @Column(nullable = false)
-    private Integer stars; // 1..5
+    private Double stars; // 1..5, supports half stars
 
     private Instant createdAt;
     private Instant updatedAt;
@@ -62,5 +62,32 @@ public class Review {
         if (series != null) return "series";
         if (book != null) return "book";
         return "movie";
+    }
+
+    @Transient
+    public int getFullStars() {
+        return stars == null ? 0 : (int) Math.floor(stars);
+    }
+
+    @Transient
+    public boolean isHalfStar() {
+        if (stars == null) {
+            return false;
+        }
+        return Math.abs(stars - Math.floor(stars) - 0.5) < 0.001;
+    }
+
+    @Transient
+    public int getEmptyStars() {
+        int used = getFullStars() + (isHalfStar() ? 1 : 0);
+        return Math.max(0, 5 - used);
+    }
+
+    @Transient
+    public String getStarsFormatted() {
+        if (stars == null) {
+            return "";
+        }
+        return stars % 1 == 0 ? String.valueOf(stars.intValue()) : String.format("%.1f", stars);
     }
 }

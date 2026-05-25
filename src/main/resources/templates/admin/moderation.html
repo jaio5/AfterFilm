@@ -212,7 +212,8 @@
                         const toxScore = m.toxicityScore != null
                             ? `<span class="${m.toxicityScore >= 0.7 ? 'badge-err' : m.toxicityScore >= 0.4 ? 'badge-warn' : 'badge-ok'}">${(m.toxicityScore * 100).toFixed(0)}%</span>`
                             : `<span class="badge-muted">–</span>`;
-                        const stars = m.reviewStars ? '★'.repeat(m.reviewStars) + '☆'.repeat(5 - m.reviewStars) : '–';
+                        const value = Number(m.reviewStars || 0);
+                        const stars = value ? '★'.repeat(Math.floor(value)) + (value % 1 ? '½' : '') + '☆'.repeat(Math.max(0, 5 - Math.ceil(value))) : '–';
                         const reviewText = m.reviewText ? esc(m.reviewText).substring(0, 120) + (m.reviewText.length > 120 ? '…' : '') : '<em style="color:var(--text-muted)">sin texto</em>';
                         return `<tr>
                             <td>
@@ -289,7 +290,8 @@
                             const movieLink = r.movieId
                                 ? `<a href="/pelicula/${r.movieId}" target="_blank" style="color:var(--accent);font-size:0.75rem">${esc(r.movieTitle || '–')}</a>`
                                 : `<span style="font-size:0.75rem;color:var(--text-muted)">${esc(r.movieTitle || '–')}</span>`;
-                            const stars = r.stars ? '★'.repeat(r.stars) + '☆'.repeat(5 - r.stars) : '–';
+                            const value = Number(r.stars || 0);
+                            const stars = value ? '★'.repeat(Math.floor(value)) + (value % 1 ? '½' : '') + '☆'.repeat(Math.max(0, 5 - Math.ceil(value))) : '–';
                             const reviewText = r.text ? esc(r.text).substring(0, 100) + (r.text.length > 100 ? '…' : '') : '<em style="color:var(--text-muted)">sin texto</em>';
                             return `<tr>
                                 <td>

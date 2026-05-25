@@ -45,7 +45,9 @@ public class UserProfileController {
             var archivements = user.getUsuarioArchievements();
             // Carátulas de películas (ya accesibles desde review.getMovie().getPosterLocalPath())
             double avgRating = userReviews.stream()
-                    .mapToInt(Review::getStars)
+                    .map(Review::getStars)
+                    .filter(stars -> stars != null)
+                    .mapToDouble(Double::doubleValue)
                     .average()
                     .orElse(0.0);
             List<UserContentList> favorites;
