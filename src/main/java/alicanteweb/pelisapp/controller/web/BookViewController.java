@@ -10,6 +10,7 @@ import alicanteweb.pelisapp.repository.UserRepository;
 import alicanteweb.pelisapp.service.BookService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -37,11 +38,15 @@ public class BookViewController {
             ContentStats stats = calculateStats(reviews);
             Review userReview = null;
             User currentUser = null;
-            boolean isAuthenticated = auth != null && auth.isAuthenticated();
+            boolean isAuthenticated = auth != null
+                    && auth.isAuthenticated()
+                    && !(auth instanceof AnonymousAuthenticationToken);
             if (isAuthenticated) {
                 currentUser = userRepository.findByUsername(auth.getName()).orElse(null);
                 if (currentUser != null) {
-                    userReview = reviewRepository.findByUserIdAndBookId(currentUser.getId(), book.getId()).orElse(null);
+                    List<Review> currentUserReviews = reviewRepository
+                            .findAllByUserIdAndBookIdOrderByCreatedAtDesc(currentUser.getId(), book.getId());
+                    userReview = currentUserReviews.isEmpty() ? null : currentUserReviews.get(0);
                 }
             }
             boolean isAdmin = isAuthenticated && auth.getAuthorities().stream()
@@ -51,7 +56,7 @@ public class BookViewController {
             model.addAttribute("reviews", reviews);
             model.addAttribute("stats", stats);
             model.addAttribute("userReview", userReview);
-            model.addAttribute("canReview", isAuthenticated && userReview == null);
+            model.addAttribute("canReview", currentUser != null && userReview == null);
             model.addAttribute("isAuthenticated", isAuthenticated);
             model.addAttribute("isAdmin", isAdmin);
             model.addAttribute("currentUser", currentUser);

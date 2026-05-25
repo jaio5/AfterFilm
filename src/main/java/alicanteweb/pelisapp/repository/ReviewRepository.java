@@ -46,6 +46,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     Optional<Review> findByUserIdAndMovieId(Long userId, Long movieId);
 
     @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
+    List<Review> findAllByUserIdAndMovieIdOrderByCreatedAtDesc(Long userId, Long movieId);
+
+    @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
     List<Review> findBySeriesIdOrderByCreatedAtDesc(Long seriesId);
 
     @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
@@ -55,7 +58,13 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     Optional<Review> findByUserIdAndSeriesId(Long userId, Long seriesId);
 
     @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
+    List<Review> findAllByUserIdAndSeriesIdOrderByCreatedAtDesc(Long userId, Long seriesId);
+
+    @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
     Optional<Review> findByUserIdAndBookId(Long userId, Long bookId);
+
+    @EntityGraph(attributePaths = {"user", "movie", "series", "book"})
+    List<Review> findAllByUserIdAndBookIdOrderByCreatedAtDesc(Long userId, Long bookId);
 
     @Modifying
     @Query("UPDATE Review r SET r.likesCount = r.likesCount + 1 WHERE r.id = :id")

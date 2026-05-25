@@ -51,7 +51,10 @@ public class ReviewService {
         checkUserBanStatus(user);
         
         // Verificar si ya existe una reseña de este usuario para esta película
-        Optional<Review> existingReview = reviewRepository.findByUserIdAndMovieId(userId, movieId);
+        Optional<Review> existingReview = reviewRepository
+                .findAllByUserIdAndMovieIdOrderByCreatedAtDesc(userId, movieId)
+                .stream()
+                .findFirst();
         if (existingReview.isPresent()) {
             // Actualizar la reseña existente
             Review review = existingReview.get();
@@ -172,7 +175,10 @@ public class ReviewService {
         checkUserBanStatus(user);
         
         // Verificar si ya existe una reseña de este usuario para esta serie
-        Optional<Review> existingReview = reviewRepository.findByUserIdAndSeriesId(userId, seriesId);
+        Optional<Review> existingReview = reviewRepository
+                .findAllByUserIdAndSeriesIdOrderByCreatedAtDesc(userId, seriesId)
+                .stream()
+                .findFirst();
         if (existingReview.isPresent()) {
             // Actualizar la reseña existente
             Review review = existingReview.get();
@@ -203,7 +209,10 @@ public class ReviewService {
         checkUserBanStatus(user);
         
         // Verificar si ya existe una reseña de este usuario para este libro
-        Optional<Review> existingReview = reviewRepository.findByUserIdAndBookId(userId, bookId);
+        Optional<Review> existingReview = reviewRepository
+                .findAllByUserIdAndBookIdOrderByCreatedAtDesc(userId, bookId)
+                .stream()
+                .findFirst();
         if (existingReview.isPresent()) {
             // Actualizar la reseña existente
             Review review = existingReview.get();
